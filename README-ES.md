@@ -3,7 +3,7 @@
 **Visor rapido de terminal para archivos MBOX de cualquier tamano. Abre, busca y exporta correos de backups Gmail Takeout (50 GB+) sin cargarlos en memoria.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/Rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 
 [Read in English](README.md)
 
@@ -66,7 +66,7 @@ En Windows, mueve `mboxshell-windows-x86_64.exe` a una carpeta en tu `PATH`, o e
 
 ### Compilar desde el codigo fuente
 
-Requisitos: [Rust](https://www.rust-lang.org/tools/install) 1.75 o superior.
+Requisitos: [Rust](https://www.rust-lang.org/tools/install) 1.85 o superior.
 
 ```bash
 # Clonar y compilar
