@@ -189,6 +189,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `Tab` / `Shift-Tab` | Cycle panel focus |
 | `Esc` | Back to list / close popup |
 | `/` | Open search bar |
+| `F` | Open search filter popup |
 | `n` / `N` | Next / previous search result |
 | `Space` | Mark / unmark message |
 | `*` | Mark / unmark all |
@@ -313,6 +314,7 @@ src/
         +-- header_bar.rs      # Top bar
         +-- status_bar.rs      # Status bar
         +-- search_bar.rs      # Search bar
+        +-- search_popup.rs    # Search filter popup
         +-- help_popup.rs      # Help popup
         +-- attachment_popup.rs # Attachment popup
         +-- export_popup.rs     # Export popup
@@ -333,6 +335,12 @@ src/
 | `tracing` | Structured logging |
 
 ## Changelog
+
+### v0.3.0
+- Search filter popup (`F`): visual form to build queries without remembering syntax (from, to, subject, date range, size, attachment, label)
+- Result counter in search bar: shows `(N / total)` while typing
+- Search history: Up/Down arrow keys in the search bar navigate previous queries, with `[history]` indicator
+- New help entries for `F` shortcut and search history hint
 
 ### v0.2.0
 - Incremental search: message list filters as you type (metadata fields only; full-text runs on Enter)

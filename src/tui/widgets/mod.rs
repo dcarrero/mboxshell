@@ -7,5 +7,6 @@ pub mod help_popup;
 pub mod mail_list;
 pub mod mail_view;
 pub mod search_bar;
+pub mod search_popup;
 pub mod sidebar;
 pub mod status_bar;

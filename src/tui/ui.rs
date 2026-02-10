@@ -75,4 +75,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     if app.show_export {
         widgets::export_popup::render(frame, app);
     }
+    if app.show_search_filter {
+        widgets::search_popup::render(frame, app);
+    }
 }

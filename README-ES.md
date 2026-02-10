@@ -189,6 +189,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `Tab` / `Shift-Tab` | Cambiar panel |
 | `Esc` | Volver a la lista / cerrar popup |
 | `/` | Abrir barra de busqueda |
+| `F` | Abrir popup de filtros de busqueda |
 | `n` / `N` | Siguiente / anterior resultado de busqueda |
 | `Space` | Marcar / desmarcar mensaje |
 | `*` | Marcar / desmarcar todos |
@@ -313,6 +314,7 @@ src/
         +-- header_bar.rs      # Barra superior
         +-- status_bar.rs      # Barra de estado
         +-- search_bar.rs      # Barra de busqueda
+        +-- search_popup.rs    # Popup de filtros de busqueda
         +-- help_popup.rs      # Popup de ayuda
         +-- attachment_popup.rs # Popup de adjuntos
         +-- export_popup.rs     # Popup de exportacion
@@ -333,6 +335,12 @@ src/
 | `tracing` | Logging estructurado |
 
 ## Changelog
+
+### v0.3.0
+- Popup de filtros de busqueda (`F`): formulario visual para construir queries sin recordar la sintaxis (from, to, subject, rango de fechas, tamano, adjuntos, etiqueta)
+- Contador de resultados en la barra de busqueda: muestra `(N / total)` mientras escribes
+- Historial de busqueda: las teclas Arriba/Abajo en la barra de busqueda navegan por consultas anteriores, con indicador `[history]`
+- Nuevas entradas en la ayuda para el atajo `F` e historial de busqueda
 
 ### v0.2.0
 - Busqueda incremental: la lista de mensajes se filtra mientras escribes (solo campos de metadatos; busqueda full-text se ejecuta al pulsar Enter)

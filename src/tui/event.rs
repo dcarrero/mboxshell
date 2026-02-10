@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::app::{App, LayoutMode, PanelFocus, SortColumn};
+use super::app::{App, LayoutMode, PanelFocus, SearchFilterField, SortColumn, SIZE_OPTIONS};
 
 /// Process a key event and update the application state.
 pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
@@ -28,6 +28,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
 
     if app.show_export {
         return handle_export_popup(app, key);
+    }
+
+    if app.show_search_filter {
+        return handle_search_filter_popup(app, key);
     }
 
     // ── Always-available shortcuts ────────────────────────
@@ -232,6 +236,10 @@ fn handle_mail_list_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         }
         KeyCode::Char('h') => app.show_full_headers = !app.show_full_headers,
         KeyCode::Char('r') => app.show_raw = !app.show_raw,
+        KeyCode::Char('F') => {
+            app.reset_search_filters();
+            app.show_search_filter = true;
+        }
         KeyCode::Char('t') => app.toggle_threads(),
 
         // ── Search navigation ────────────────────────────────
@@ -610,6 +618,7 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.search_active = false;
+            app.search_history_index = None;
             app.focus = PanelFocus::MailList;
             // Reset to show all messages (respecting active label filter)
             if let Some(label) = app.active_label_filter.clone() {
@@ -624,18 +633,141 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             }
         }
         KeyCode::Enter => {
+            app.push_search_history(&app.search_query.clone());
+            app.search_history_index = None;
             app.execute_search();
             app.search_active = false;
             app.focus = PanelFocus::MailList;
         }
+        KeyCode::Up => {
+            // Navigate backward through history
+            if !app.search_history.is_empty() {
+                match app.search_history_index {
+                    None => {
+                        // Save current query as draft and load first history entry
+                        app.search_draft = app.search_query.clone();
+                        app.search_history_index = Some(0);
+                        app.search_query = app.search_history[0].clone();
+                    }
+                    Some(idx) => {
+                        let next = idx + 1;
+                        if next < app.search_history.len() {
+                            app.search_history_index = Some(next);
+                            app.search_query = app.search_history[next].clone();
+                        }
+                    }
+                }
+                app.execute_incremental_search();
+            }
+        }
+        KeyCode::Down => {
+            // Navigate forward through history (toward draft)
+            if let Some(idx) = app.search_history_index {
+                if idx == 0 {
+                    // Restore the original draft
+                    app.search_history_index = None;
+                    app.search_query = app.search_draft.clone();
+                } else {
+                    let prev = idx - 1;
+                    app.search_history_index = Some(prev);
+                    app.search_query = app.search_history[prev].clone();
+                }
+                app.execute_incremental_search();
+            }
+        }
         KeyCode::Backspace => {
             app.search_query.pop();
+            app.search_history_index = None;
             app.execute_incremental_search();
         }
         KeyCode::Char(c) => {
             app.search_query.push(c);
+            app.search_history_index = None;
             app.execute_incremental_search();
         }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// Key handling when the search filter popup is open.
+fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
+    let has_labels = !app.all_labels.is_empty();
+    let focus = app.search_filter_focus;
+
+    match key.code {
+        KeyCode::Esc => {
+            app.show_search_filter = false;
+        }
+        KeyCode::Tab => {
+            app.search_filter_focus = focus.next(has_labels);
+        }
+        KeyCode::BackTab => {
+            app.search_filter_focus = focus.prev(has_labels);
+        }
+        KeyCode::Enter => {
+            // Build query from filters, execute search, and close popup
+            let query = app.build_query_from_filters();
+            app.search_query = query.clone();
+            app.push_search_history(&query);
+            app.show_search_filter = false;
+            app.execute_search();
+        }
+        KeyCode::Char(' ') if focus == SearchFilterField::HasAttachment => {
+            app.filter_has_attachment = !app.filter_has_attachment;
+        }
+        KeyCode::Char('j') | KeyCode::Down if focus == SearchFilterField::Size => {
+            let max = SIZE_OPTIONS.len().saturating_sub(1);
+            if app.filter_size_selected < max {
+                app.filter_size_selected += 1;
+            }
+        }
+        KeyCode::Char('k') | KeyCode::Up if focus == SearchFilterField::Size => {
+            if app.filter_size_selected > 0 {
+                app.filter_size_selected -= 1;
+            }
+        }
+        KeyCode::Char('j') | KeyCode::Down if focus == SearchFilterField::Label => {
+            let max = app.all_labels.len(); // 0=Any, so max index = labels.len()
+            if app.filter_label_selected < max {
+                app.filter_label_selected += 1;
+            }
+        }
+        KeyCode::Char('k') | KeyCode::Up if focus == SearchFilterField::Label => {
+            if app.filter_label_selected > 0 {
+                app.filter_label_selected -= 1;
+            }
+        }
+        KeyCode::Backspace if focus.is_text_input() => match focus {
+            SearchFilterField::Text => {
+                app.filter_text.pop();
+            }
+            SearchFilterField::From => {
+                app.filter_from.pop();
+            }
+            SearchFilterField::To => {
+                app.filter_to.pop();
+            }
+            SearchFilterField::Subject => {
+                app.filter_subject.pop();
+            }
+            SearchFilterField::DateFrom => {
+                app.filter_date_from.pop();
+            }
+            SearchFilterField::DateTo => {
+                app.filter_date_to.pop();
+            }
+            _ => {}
+        },
+        KeyCode::Char(c) if focus.is_text_input() => match focus {
+            SearchFilterField::Text => app.filter_text.push(c),
+            SearchFilterField::From => app.filter_from.push(c),
+            SearchFilterField::To => app.filter_to.push(c),
+            SearchFilterField::Subject => app.filter_subject.push(c),
+            SearchFilterField::DateFrom => app.filter_date_from.push(c),
+            SearchFilterField::DateTo => app.filter_date_to.push(c),
+            _ => {}
+        },
         _ => {}
     }
     Ok(())

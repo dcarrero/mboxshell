@@ -37,6 +37,85 @@ pub enum SortColumn {
     Size,
 }
 
+/// Field currently focused in the search filter popup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchFilterField {
+    Text,
+    From,
+    To,
+    Subject,
+    DateFrom,
+    DateTo,
+    Size,
+    HasAttachment,
+    Label,
+}
+
+impl SearchFilterField {
+    /// Advance to the next field (Tab). `has_labels` controls whether the Label row is shown.
+    pub fn next(self, has_labels: bool) -> Self {
+        match self {
+            Self::Text => Self::From,
+            Self::From => Self::To,
+            Self::To => Self::Subject,
+            Self::Subject => Self::DateFrom,
+            Self::DateFrom => Self::DateTo,
+            Self::DateTo => Self::Size,
+            Self::Size => Self::HasAttachment,
+            Self::HasAttachment => {
+                if has_labels {
+                    Self::Label
+                } else {
+                    Self::Text
+                }
+            }
+            Self::Label => Self::Text,
+        }
+    }
+
+    /// Move to the previous field (Shift-Tab).
+    pub fn prev(self, has_labels: bool) -> Self {
+        match self {
+            Self::Text => {
+                if has_labels {
+                    Self::Label
+                } else {
+                    Self::HasAttachment
+                }
+            }
+            Self::From => Self::Text,
+            Self::To => Self::From,
+            Self::Subject => Self::To,
+            Self::DateFrom => Self::Subject,
+            Self::DateTo => Self::DateFrom,
+            Self::Size => Self::DateTo,
+            Self::HasAttachment => Self::Size,
+            Self::Label => Self::HasAttachment,
+        }
+    }
+
+    /// Whether this field accepts free-form text input.
+    pub fn is_text_input(self) -> bool {
+        matches!(
+            self,
+            Self::Text | Self::From | Self::To | Self::Subject | Self::DateFrom | Self::DateTo
+        )
+    }
+}
+
+/// Size filter options for the search filter popup.
+pub const SIZE_OPTIONS: &[(&str, &str)] = &[
+    ("Any", ""),
+    ("> 100 KB", "size:>100kb"),
+    ("> 1 MB", "size:>1mb"),
+    ("> 5 MB", "size:>5mb"),
+    ("> 10 MB", "size:>10mb"),
+    ("< 10 KB", "size:<10kb"),
+];
+
+/// Maximum number of entries kept in search history.
+const MAX_SEARCH_HISTORY: usize = 20;
+
 /// Complete TUI state.
 pub struct App {
     // ── Data ──────────────────────────────────
@@ -109,6 +188,38 @@ pub struct App {
     pub search_results: Vec<usize>,
     /// Current position within `search_results`.
     pub search_result_index: usize,
+
+    // ── Search filter popup ──────────────────
+    /// Whether the search filter popup is visible.
+    pub show_search_filter: bool,
+    /// Which field is focused in the filter popup.
+    pub search_filter_focus: SearchFilterField,
+    /// Text field value in the filter popup.
+    pub filter_text: String,
+    /// From field value in the filter popup.
+    pub filter_from: String,
+    /// To field value in the filter popup.
+    pub filter_to: String,
+    /// Subject field value in the filter popup.
+    pub filter_subject: String,
+    /// Date-from field value in the filter popup.
+    pub filter_date_from: String,
+    /// Date-to field value in the filter popup.
+    pub filter_date_to: String,
+    /// Selected index in the size selector (into `SIZE_OPTIONS`).
+    pub filter_size_selected: usize,
+    /// Whether the "has attachment" checkbox is checked.
+    pub filter_has_attachment: bool,
+    /// Selected index in the label selector (0 = Any, 1..N = labels).
+    pub filter_label_selected: usize,
+
+    // ── Search history ───────────────────────
+    /// Recent search queries, most recent first.
+    pub search_history: Vec<String>,
+    /// Current position in history when navigating with Up/Down (None = not navigating).
+    pub search_history_index: Option<usize>,
+    /// Draft query saved when the user starts navigating history.
+    pub search_draft: String,
 
     // ── Sorting ───────────────────────────────
     pub sort_column: SortColumn,
@@ -186,6 +297,20 @@ impl App {
             search_query: String::new(),
             search_results: Vec::new(),
             search_result_index: 0,
+            show_search_filter: false,
+            search_filter_focus: SearchFilterField::Text,
+            filter_text: String::new(),
+            filter_from: String::new(),
+            filter_to: String::new(),
+            filter_subject: String::new(),
+            filter_date_from: String::new(),
+            filter_date_to: String::new(),
+            filter_size_selected: 0,
+            filter_has_attachment: false,
+            filter_label_selected: 0,
+            search_history: Vec::new(),
+            search_history_index: None,
+            search_draft: String::new(),
             sort_column: SortColumn::Date,
             sort_ascending: false,
             current_body: None,
@@ -499,6 +624,88 @@ impl App {
         } else {
             self.current_body = None;
         }
+    }
+
+    /// Build a query string from the current filter popup fields.
+    pub fn build_query_from_filters(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+
+        if !self.filter_text.is_empty() {
+            parts.push(self.filter_text.clone());
+        }
+        if !self.filter_from.is_empty() {
+            parts.push(format!("from:{}", self.filter_from));
+        }
+        if !self.filter_to.is_empty() {
+            parts.push(format!("to:{}", self.filter_to));
+        }
+        if !self.filter_subject.is_empty() {
+            parts.push(format!("subject:{}", self.filter_subject));
+        }
+
+        // Date range
+        let has_from = !self.filter_date_from.is_empty();
+        let has_to = !self.filter_date_to.is_empty();
+        if has_from && has_to {
+            parts.push(format!(
+                "date:{}..{}",
+                self.filter_date_from, self.filter_date_to
+            ));
+        } else if has_from {
+            parts.push(format!("after:{}", self.filter_date_from));
+        } else if has_to {
+            parts.push(format!("before:{}", self.filter_date_to));
+        }
+
+        // Size selector
+        if self.filter_size_selected > 0 {
+            if let Some(&(_, query_part)) = SIZE_OPTIONS.get(self.filter_size_selected) {
+                if !query_part.is_empty() {
+                    parts.push(query_part.to_string());
+                }
+            }
+        }
+
+        if self.filter_has_attachment {
+            parts.push("has:attachment".to_string());
+        }
+
+        // Label selector (0 = Any, skip)
+        if self.filter_label_selected > 0 {
+            if let Some(label) = self.all_labels.get(self.filter_label_selected - 1) {
+                parts.push(format!("label:{label}"));
+            }
+        }
+
+        parts.join(" ")
+    }
+
+    /// Reset all search filter popup fields to their defaults.
+    pub fn reset_search_filters(&mut self) {
+        self.search_filter_focus = SearchFilterField::Text;
+        self.filter_text.clear();
+        self.filter_from.clear();
+        self.filter_to.clear();
+        self.filter_subject.clear();
+        self.filter_date_from.clear();
+        self.filter_date_to.clear();
+        self.filter_size_selected = 0;
+        self.filter_has_attachment = false;
+        self.filter_label_selected = 0;
+    }
+
+    /// Push a query into the search history (most recent first, dedup, capped).
+    pub fn push_search_history(&mut self, query: &str) {
+        if query.is_empty() {
+            return;
+        }
+        let q = query.to_string();
+        // Remove duplicates
+        self.search_history.retain(|h| h != &q);
+        // Insert at front
+        self.search_history.insert(0, q);
+        // Cap at max
+        self.search_history.truncate(MAX_SEARCH_HISTORY);
     }
 
     /// Ensure the selected row is visible given the current scroll offset.

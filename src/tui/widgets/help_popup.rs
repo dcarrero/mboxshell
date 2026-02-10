@@ -185,6 +185,10 @@ fn build_lines<'a>(
                 desc: "Search bar",
             },
             Shortcut {
+                key: "F",
+                desc: "Filter popup",
+            },
+            Shortcut {
                 key: "n / N",
                 desc: "Next / prev result",
             },
@@ -195,6 +199,10 @@ fn build_lines<'a>(
     );
     lines.push(Line::from(Span::styled(
         "    from: to: subject: body: label: date: size: has:attachment",
+        theme.help_dim,
+    )));
+    lines.push(Line::from(Span::styled(
+        "    Up/Down in search bar: navigate history",
         theme.help_dim,
     )));
     lines.push(Line::from(""));
