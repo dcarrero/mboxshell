@@ -50,6 +50,7 @@ Descarga la ultima version para tu plataforma desde la pagina de [Releases](http
 | macOS Intel | `mboxshell-macos-x86_64` |
 | macOS Apple Silicon | `mboxshell-macos-aarch64` |
 | Windows x86_64 | `mboxshell-windows-x86_64.exe` |
+| Windows ARM64 | `mboxshell-windows-aarch64.exe` |
 
 Tras descargar, dale permisos de ejecucion y muevelo a tu PATH:
 
