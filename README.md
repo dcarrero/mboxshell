@@ -308,6 +308,26 @@ src/
 | `lru` | Decoded message cache |
 | `tracing` | Structured logging |
 
+## Changelog
+
+### v0.1.2
+- Active panel border highlighted in cyan for clear focus indicator
+- Context-sensitive status bar: hints change depending on the focused panel
+- Version number displayed at the bottom-right corner
+- Help popup reorganized in multi-column layout (adapts to terminal width)
+- Help popup now shows app name, version, license and author
+
+### v0.1.0
+- Initial release
+- Streaming MBOX parser (handles 50 GB+ files without loading into memory)
+- Persistent binary index for instant re-opens
+- Full terminal UI with vi-style navigation and three layout modes
+- Gmail labels support (X-Gmail-Labels) with sidebar filtering
+- Advanced search: from:, to:, subject:, body:, date:, size:, has:attachment, label:
+- Conversation threading (JWZ algorithm)
+- Export to EML, TXT, CSV with attachment extraction
+- Bilingual interface (English / Spanish)
+
 ## License
 
 [MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo

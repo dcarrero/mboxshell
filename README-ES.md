@@ -308,6 +308,26 @@ src/
 | `lru` | Cache de mensajes decodificados |
 | `tracing` | Logging estructurado |
 
+## Changelog
+
+### v0.1.2
+- Borde del panel activo resaltado en cyan para indicar claramente el foco
+- Barra de estado contextual: los atajos cambian segun el panel enfocado
+- Numero de version visible en la esquina inferior derecha
+- Popup de ayuda reorganizado en columnas multiples (se adapta al ancho del terminal)
+- Popup de ayuda muestra nombre de la app, version, licencia y autor
+
+### v0.1.0
+- Version inicial
+- Parser MBOX streaming (maneja archivos de 50 GB+ sin cargar en memoria)
+- Indice binario persistente para re-aperturas instantaneas
+- Interfaz de terminal completa con navegacion estilo vi y tres modos de layout
+- Soporte de etiquetas Gmail (X-Gmail-Labels) con filtrado en panel lateral
+- Busqueda avanzada: from:, to:, subject:, body:, date:, size:, has:attachment, label:
+- Agrupacion en conversaciones (algoritmo JWZ)
+- Exportacion a EML, TXT, CSV con extraccion de adjuntos
+- Interfaz bilingue (Ingles / Espanol)
+
 ## Licencia
 
 [MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo
