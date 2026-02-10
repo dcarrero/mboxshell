@@ -47,6 +47,8 @@ Download the latest release for your platform from the [Releases](https://github
 |----------|--------|
 | Linux x86_64 | `mboxshell-linux-x86_64` |
 | Linux ARM64 | `mboxshell-linux-aarch64` |
+| Linux RISC-V 64 | `mboxshell-linux-riscv64` |
+| FreeBSD x86_64 | `mboxshell-freebsd-x86_64` |
 | macOS Intel | `mboxshell-macos-x86_64` |
 | macOS Apple Silicon | `mboxshell-macos-aarch64` |
 | Windows x86_64 | `mboxshell-windows-x86_64.exe` |

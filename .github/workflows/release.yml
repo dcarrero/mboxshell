@@ -26,6 +26,16 @@ jobs:
             target: aarch64-unknown-linux-gnu
             artifact: mboxshell-linux-aarch64
             cross: true
+          # Linux RISC-V 64
+          - os: ubuntu-latest
+            target: riscv64gc-unknown-linux-gnu
+            artifact: mboxshell-linux-riscv64
+            cross: true
+          # FreeBSD x86_64 (via cross)
+          - os: ubuntu-latest
+            target: x86_64-unknown-freebsd
+            artifact: mboxshell-freebsd-x86_64
+            cross: true
           # macOS Intel (cross-compiled on Apple Silicon runner)
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -54,12 +64,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # Cross-compilation toolchain for Linux ARM64
+      # Cross-compilation toolchains
       - name: Install cross-compilation tools
-        if: matrix.cross
+        if: matrix.cross && runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
 
       - name: Set linker for aarch64-unknown-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
@@ -68,7 +78,24 @@ jobs:
           echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config.toml
           echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
 
+      - name: Set linker for riscv64gc-unknown-linux-gnu
+        if: matrix.target == 'riscv64gc-unknown-linux-gnu'
+        run: |
+          mkdir -p .cargo
+          echo '[target.riscv64gc-unknown-linux-gnu]' >> .cargo/config.toml
+          echo 'linker = "riscv64-linux-gnu-gcc"' >> .cargo/config.toml
+
+      # FreeBSD cross-compilation via cross tool
+      - name: Install cross for FreeBSD
+        if: matrix.target == 'x86_64-unknown-freebsd'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build release (cross)
+        if: matrix.target == 'x86_64-unknown-freebsd'
+        run: cross build --release --target ${{ matrix.target }}
+
       - name: Build release
+        if: matrix.target != 'x86_64-unknown-freebsd'
         run: cargo build --release --target ${{ matrix.target }}
 
       # Rename binary for upload
@@ -131,6 +158,8 @@ jobs:
           |----------|--------|
           | Linux x86_64 | \`mboxshell-linux-x86_64\` |
           | Linux ARM64 | \`mboxshell-linux-aarch64\` |
+          | Linux RISC-V 64 | \`mboxshell-linux-riscv64\` |
+          | FreeBSD x86_64 | \`mboxshell-freebsd-x86_64\` |
           | macOS Intel | \`mboxshell-macos-x86_64\` |
           | macOS Apple Silicon | \`mboxshell-macos-aarch64\` |
           | Windows x86_64 | \`mboxshell-windows-x86_64.exe\` |
