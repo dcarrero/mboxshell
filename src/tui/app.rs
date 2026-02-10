@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 
+use crate::i18n;
 use crate::index::builder;
 use crate::model::mail::{MailBody, MailEntry};
 use crate::store::reader::MboxStore;
@@ -421,11 +422,11 @@ impl App {
         self.threaded_view = !self.threaded_view;
         if self.threaded_view {
             self.rebuild_threaded_view();
-            self.set_status("Threaded view enabled");
+            self.set_status(i18n::tui_threaded_view());
         } else {
             self.thread_depths.clear();
             self.apply_sort();
-            self.set_status("Flat view enabled");
+            self.set_status(i18n::tui_flat_view());
         }
         if !self.visible_indices.is_empty() {
             self.select_message(0);
@@ -505,10 +506,13 @@ impl App {
             self.current_body = None;
         }
         match &label {
-            None => self.set_status("Showing all messages"),
+            None => self.set_status(i18n::tui_showing_all()),
             Some(lbl) => {
                 let count = self.visible_indices.len();
-                self.set_status(&format!("Label \"{lbl}\": {count} message(s)"));
+                self.set_status(&format!(
+                    "Label \"{lbl}\": {count} {}",
+                    i18n::tui_messages_count()
+                ));
             }
         }
     }
@@ -554,11 +558,11 @@ impl App {
                 }
 
                 let count = self.visible_indices.len();
-                self.set_status(&format!("{count} result(s)"));
+                self.set_status(&format!("{count} {}", i18n::tui_results()));
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Search failed");
-                self.set_status(&format!("Search error: {e}"));
+                self.set_status(&format!("{}: {e}", i18n::tui_search_error()));
             }
         }
     }

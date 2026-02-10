@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use crate::i18n;
+
 use super::app::{App, LayoutMode, PanelFocus, SearchFilterField, SortColumn, SIZE_OPTIONS};
 
 /// Process a key event and update the application state.
@@ -129,7 +131,7 @@ fn next_focus(app: &App, forward: bool) -> PanelFocus {
 /// Handle the L key: toggle sidebar visibility and focus.
 fn handle_sidebar_toggle(app: &mut App) {
     if app.all_labels.is_empty() {
-        app.set_status("No labels found in this MBOX");
+        app.set_status(i18n::tui_no_labels());
         return;
     }
 
@@ -212,13 +214,17 @@ fn handle_mail_list_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             };
             app.sort_by(next);
             let col_name = match app.sort_column {
-                SortColumn::Date => "Date",
-                SortColumn::From => "From",
-                SortColumn::Subject => "Subject",
-                SortColumn::Size => "Size",
+                SortColumn::Date => i18n::tui_col_date(),
+                SortColumn::From => i18n::tui_col_from(),
+                SortColumn::Subject => i18n::tui_col_subject(),
+                SortColumn::Size => i18n::tui_col_size(),
             };
-            let dir = if app.sort_ascending { "asc" } else { "desc" };
-            app.set_status(&format!("Sorted by {col_name} ({dir})"));
+            let dir = if app.sort_ascending {
+                i18n::tui_sort_asc()
+            } else {
+                i18n::tui_sort_desc()
+            };
+            app.set_status(&format!("{} {col_name} ({dir})", i18n::tui_sorted_by()));
         }
         KeyCode::Char('S') => {
             app.sort_ascending = !app.sort_ascending;
@@ -387,11 +393,15 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                 match save_single_attachment(app, app.attachment_selected, &output_dir) {
                     Ok(path) => {
                         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
-                        app.set_status(&format!("Saved: {name} -> {}", output_dir.display()));
+                        app.set_status(&format!(
+                            "{}: {name} -> {}",
+                            i18n::tui_saved(),
+                            output_dir.display()
+                        ));
                         app.show_attachments = false;
                     }
                     Err(e) => {
-                        app.set_status(&format!("Error saving attachment: {e}"));
+                        app.set_status(&format!("{}: {e}", i18n::tui_error_saving()));
                     }
                 }
             }
@@ -403,14 +413,16 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                 match save_all_attachments(app, &output_dir) {
                     Ok(paths) => {
                         app.set_status(&format!(
-                            "Saved {} attachment(s) -> {}",
+                            "{} {} {} -> {}",
+                            i18n::tui_saved(),
                             paths.len(),
+                            i18n::tui_attachments_count(),
                             output_dir.display()
                         ));
                         app.show_attachments = false;
                     }
                     Err(e) => {
-                        app.set_status(&format!("Error saving attachments: {e}"));
+                        app.set_status(&format!("{}: {e}", i18n::tui_error_saving_all()));
                     }
                 }
             }
@@ -422,7 +434,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
 
 /// Key handling when the export popup is open.
 fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
-    let option_count = crate::tui::widgets::export_popup::EXPORT_OPTIONS.len();
+    let option_count = crate::tui::widgets::export_popup::EXPORT_OPTION_COUNT;
     match key.code {
         KeyCode::Esc => app.show_export = false,
         KeyCode::Char('j') | KeyCode::Down => {
@@ -445,7 +457,7 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                             app.set_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("Export error: {e}")),
+                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
                     }
                 }
                 1 => {
@@ -455,7 +467,7 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                             app.set_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("Export error: {e}")),
+                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
                     }
                 }
                 2 => {
@@ -465,7 +477,7 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                             app.set_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("Export error: {e}")),
+                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
                     }
                 }
                 3 => {
@@ -476,18 +488,20 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                         .map(|b| b.attachments.len())
                         .unwrap_or(0);
                     if att_count == 0 {
-                        app.set_status("No attachments in this message");
+                        app.set_status(i18n::tui_no_attachments_msg());
                     } else {
                         match save_all_attachments(app, &output_dir) {
                             Ok(paths) => {
                                 app.set_status(&format!(
-                                    "Saved {} attachment(s) -> {}",
+                                    "{} {} {} -> {}",
+                                    i18n::tui_saved(),
                                     paths.len(),
+                                    i18n::tui_attachments_count(),
                                     output_dir.display()
                                 ));
                                 app.show_export = false;
                             }
-                            Err(e) => app.set_status(&format!("Error: {e}")),
+                            Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_error())),
                         }
                     }
                 }
@@ -523,7 +537,9 @@ fn export_current_eml(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
         let count = entries.len();
         crate::export::eml::export_multiple_eml(&mut app.store, &entries, output_dir, &|_, _| {})?;
         Ok(format!(
-            "Exported {count} message(s) as EML -> {}",
+            "{} {count} {} -> {}",
+            i18n::tui_exported(),
+            i18n::tui_exported_messages_eml(),
             output_dir.display()
         ))
     } else if let Some(entry) = app.current_entry().cloned() {
@@ -532,9 +548,13 @@ fn export_current_eml(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("message.eml");
-        Ok(format!("Exported: {name} -> {}", output_dir.display()))
+        Ok(format!(
+            "{}: {name} -> {}",
+            i18n::tui_exported(),
+            output_dir.display()
+        ))
     } else {
-        Ok("No message selected".to_string())
+        Ok(i18n::tui_no_message().to_string())
     }
 }
 
@@ -548,9 +568,13 @@ fn export_current_txt(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("message.txt");
-        Ok(format!("Exported: {name} -> {}", output_dir.display()))
+        Ok(format!(
+            "{}: {name} -> {}",
+            i18n::tui_exported(),
+            output_dir.display()
+        ))
     } else {
-        Ok("No message selected".to_string())
+        Ok(i18n::tui_no_message().to_string())
     }
 }
 
@@ -566,14 +590,16 @@ fn export_current_csv(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
     } else if let Some(entry) = app.current_entry() {
         vec![entry]
     } else {
-        return Ok("No message selected".to_string());
+        return Ok(i18n::tui_no_message().to_string());
     };
 
     let count = entries.len();
     let csv_path = output_dir.join("mboxshell_export.csv");
     crate::export::csv::export_csv(&entries, &csv_path, None)?;
     Ok(format!(
-        "Exported {count} message(s) as CSV -> {}",
+        "{} {count} {} -> {}",
+        i18n::tui_exported(),
+        i18n::tui_exported_csv(),
         csv_path.display()
     ))
 }

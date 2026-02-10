@@ -6,6 +6,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::{App, PanelFocus};
 use crate::tui::theme::current_theme;
 
@@ -23,7 +24,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(border_style)
-        .title(" Labels ");
+        .title(i18n::tui_labels_title());
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -39,7 +40,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let all_count = app.entries.len();
     let is_selected = app.sidebar_selected == 0;
     let is_active = app.active_label_filter.is_none();
-    let all_label = truncate_sidebar_entry("All Messages", all_count, max_width);
+    let all_label = truncate_sidebar_entry(i18n::tui_all_messages(), all_count, max_width);
 
     let style = if is_selected && is_focused {
         theme.sidebar_selected

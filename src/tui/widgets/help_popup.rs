@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::App;
 use crate::tui::theme::current_theme;
 
@@ -49,7 +50,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(theme.popup_title)
-        .title(" Help ")
+        .title(i18n::tui_help_title())
         .style(theme.popup);
 
     let inner = block.inner(area);
@@ -70,43 +71,43 @@ fn build_lines<'a>(
 
     // ── App header ─────────────────────────────────
     lines.push(Line::from(vec![
-        Span::styled("  mboxShell", theme.popup_title),
+        Span::styled(format!("  {}", i18n::app_name()), theme.popup_title),
         Span::styled(format!("  v{VERSION}"), theme.help_dim),
     ]));
     lines.push(Line::from(Span::styled(
-        "  Fast terminal viewer for MBOX files",
+        format!("  {}", i18n::tui_help_description()),
         theme.help_dim,
     )));
     lines.push(Line::from(""));
 
     // ── Navigation ─────────────────────────────────
-    add_section_header(&mut lines, "Navigation", theme, sep_width);
+    add_section_header(&mut lines, i18n::tui_help_navigation(), theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
             Shortcut {
                 key: "j / k",
-                desc: "Next / prev",
+                desc: i18n::tui_help_next_prev(),
             },
             Shortcut {
                 key: "g / G",
-                desc: "First / last",
+                desc: i18n::tui_help_first_last(),
             },
             Shortcut {
                 key: "PgDn/Up",
-                desc: "Page scroll",
+                desc: i18n::tui_help_page_scroll(),
             },
             Shortcut {
                 key: "Enter",
-                desc: "Open message",
+                desc: i18n::tui_help_open_message(),
             },
             Shortcut {
                 key: "Tab",
-                desc: "Cycle panel",
+                desc: i18n::tui_help_cycle_panel(),
             },
             Shortcut {
                 key: "Esc",
-                desc: "Back / close",
+                desc: i18n::tui_help_back_close(),
             },
         ],
         cols,
@@ -116,25 +117,30 @@ fn build_lines<'a>(
     lines.push(Line::from(""));
 
     // ── Message & Export ───────────────────────────
-    add_section_header(&mut lines, "Message & Export", theme, sep_width);
+    add_section_header(
+        &mut lines,
+        i18n::tui_help_message_export(),
+        theme,
+        sep_width,
+    );
     add_shortcuts_columns(
         &mut lines,
         &[
             Shortcut {
                 key: "h",
-                desc: "Full headers",
+                desc: i18n::tui_help_full_headers(),
             },
             Shortcut {
                 key: "r",
-                desc: "Raw source",
+                desc: i18n::tui_help_raw_source(),
             },
             Shortcut {
                 key: "e",
-                desc: "Export menu",
+                desc: i18n::tui_help_export_menu(),
             },
             Shortcut {
                 key: "a",
-                desc: "Attachments",
+                desc: i18n::tui_help_attachments(),
             },
         ],
         cols,
@@ -144,29 +150,29 @@ fn build_lines<'a>(
     lines.push(Line::from(""));
 
     // ── List Actions ──────────────────────────────
-    add_section_header(&mut lines, "List Actions", theme, sep_width);
+    add_section_header(&mut lines, i18n::tui_help_list_actions(), theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
             Shortcut {
                 key: "Space",
-                desc: "Mark / unmark",
+                desc: i18n::tui_help_mark_unmark(),
             },
             Shortcut {
                 key: "*",
-                desc: "Mark all",
+                desc: i18n::tui_help_mark_all(),
             },
             Shortcut {
                 key: "s",
-                desc: "Cycle sort col",
+                desc: i18n::tui_help_cycle_sort(),
             },
             Shortcut {
                 key: "S",
-                desc: "Sort direction",
+                desc: i18n::tui_help_sort_direction(),
             },
             Shortcut {
                 key: "t",
-                desc: "Thread view",
+                desc: i18n::tui_help_thread_view(),
             },
         ],
         cols,
@@ -176,21 +182,21 @@ fn build_lines<'a>(
     lines.push(Line::from(""));
 
     // ── Search ────────────────────────────────────
-    add_section_header(&mut lines, "Search", theme, sep_width);
+    add_section_header(&mut lines, i18n::tui_help_search(), theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
             Shortcut {
                 key: "/",
-                desc: "Search bar",
+                desc: i18n::tui_help_search_bar(),
             },
             Shortcut {
                 key: "F",
-                desc: "Filter popup",
+                desc: i18n::tui_help_filter_popup(),
             },
             Shortcut {
                 key: "n / N",
-                desc: "Next / prev result",
+                desc: i18n::tui_help_next_prev_result(),
             },
         ],
         cols,
@@ -202,35 +208,40 @@ fn build_lines<'a>(
         theme.help_dim,
     )));
     lines.push(Line::from(Span::styled(
-        "    Up/Down in search bar: navigate history",
+        format!("    {}", i18n::tui_help_search_history()),
         theme.help_dim,
     )));
     lines.push(Line::from(""));
 
     // ── Layout & General ──────────────────────────
-    add_section_header(&mut lines, "Layout & General", theme, sep_width);
+    add_section_header(
+        &mut lines,
+        i18n::tui_help_layout_general(),
+        theme,
+        sep_width,
+    );
     add_shortcuts_columns(
         &mut lines,
         &[
             Shortcut {
                 key: "1/2/3",
-                desc: "Layout mode",
+                desc: i18n::tui_help_layout_mode(),
             },
             Shortcut {
                 key: "L",
-                desc: "Labels sidebar",
+                desc: i18n::tui_help_labels_sidebar(),
             },
             Shortcut {
                 key: "?",
-                desc: "This help",
+                desc: i18n::tui_help_this_help(),
             },
             Shortcut {
                 key: "q",
-                desc: "Quit",
+                desc: i18n::tui_help_quit(),
             },
             Shortcut {
                 key: "Ctrl-C",
-                desc: "Force quit",
+                desc: i18n::tui_help_force_quit(),
             },
         ],
         cols,

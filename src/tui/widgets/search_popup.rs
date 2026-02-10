@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::{App, SearchFilterField, SIZE_OPTIONS};
 use crate::tui::theme::current_theme;
 
@@ -28,7 +29,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(theme.popup_title)
-        .title(" Search Filters ")
+        .title(i18n::tui_search_filters_title())
         .style(theme.popup);
 
     let inner = block.inner(area);
@@ -54,7 +55,7 @@ fn build_lines(
     let size_label = SIZE_OPTIONS
         .get(app.filter_size_selected)
         .map(|&(name, _)| name)
-        .unwrap_or("Any");
+        .unwrap_or(i18n::tui_filter_any());
 
     let check_mark = if app.filter_has_attachment {
         "[x]"
@@ -64,7 +65,7 @@ fn build_lines(
 
     let mut lines = vec![
         build_text_row(
-            "Text:",
+            i18n::tui_filter_text(),
             &app.filter_text,
             label_w,
             value_w,
@@ -72,7 +73,7 @@ fn build_lines(
             theme,
         ),
         build_text_row(
-            "From:",
+            i18n::tui_filter_from(),
             &app.filter_from,
             label_w,
             value_w,
@@ -80,7 +81,7 @@ fn build_lines(
             theme,
         ),
         build_text_row(
-            "To:",
+            i18n::tui_filter_to(),
             &app.filter_to,
             label_w,
             value_w,
@@ -88,7 +89,7 @@ fn build_lines(
             theme,
         ),
         build_text_row(
-            "Subject:",
+            i18n::tui_filter_subject(),
             &app.filter_subject,
             label_w,
             value_w,
@@ -104,16 +105,16 @@ fn build_lines(
             theme,
         ),
         build_selector_row(
-            "Size:",
+            i18n::tui_filter_size(),
             size_label,
             label_w,
             focus == SearchFilterField::Size,
             theme,
         ),
         build_checkbox_row(
-            "Attachment:",
+            i18n::tui_filter_attachment(),
             check_mark,
-            "Has attachment",
+            i18n::tui_filter_has_attachment(),
             label_w,
             focus == SearchFilterField::HasAttachment,
             theme,
@@ -122,15 +123,15 @@ fn build_lines(
 
     if has_labels {
         let label_display = if app.filter_label_selected == 0 {
-            "Any"
+            i18n::tui_filter_any()
         } else {
             app.all_labels
                 .get(app.filter_label_selected - 1)
                 .map(|s| s.as_str())
-                .unwrap_or("Any")
+                .unwrap_or(i18n::tui_filter_any())
         };
         lines.push(build_selector_row(
-            "Label:",
+            i18n::tui_filter_label(),
             label_display,
             label_w,
             focus == SearchFilterField::Label,
@@ -140,7 +141,7 @@ fn build_lines(
 
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
-        "  Tab:Next  Shift-Tab:Prev  Space:Toggle  Enter:Search  Esc:Cancel",
+        format!("  {}", i18n::tui_filter_footer()),
         theme.help_dim,
     )));
 
@@ -187,7 +188,11 @@ fn build_date_row<'a>(
     focus: SearchFilterField,
     theme: &crate::tui::theme::Theme,
 ) -> Line<'a> {
-    let padded_label = format!("  {:<width$}", "Date from:", width = label_w);
+    let padded_label = format!(
+        "  {:<width$}",
+        i18n::tui_filter_date_from(),
+        width = label_w
+    );
 
     let from_focused = focus == SearchFilterField::DateFrom;
     let to_focused = focus == SearchFilterField::DateTo;
@@ -222,7 +227,10 @@ fn build_date_row<'a>(
     Line::from(vec![
         Span::styled(padded_label, theme.message_header_label),
         Span::styled(from_display, from_style),
-        Span::styled("   Date to: ", theme.message_header_label),
+        Span::styled(
+            format!("   {} ", i18n::tui_filter_date_to()),
+            theme.message_header_label,
+        ),
         Span::styled(to_display, to_style),
     ])
 }

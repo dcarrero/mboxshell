@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, Row, Table};
 use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
 
+use crate::i18n;
 use crate::tui::app::{App, PanelFocus, SortColumn};
 use crate::tui::theme::current_theme;
 
@@ -22,7 +23,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(border_style)
-        .title(" Messages ");
+        .title(i18n::tui_messages_title());
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -66,10 +67,14 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     };
 
-    let h_date = format!("Date{}", sort_arrow(SortColumn::Date));
-    let h_from = format!("From{}", sort_arrow(SortColumn::From));
-    let h_subject = format!("Subject{}", sort_arrow(SortColumn::Subject));
-    let h_size = format!("Size{}", sort_arrow(SortColumn::Size));
+    let h_date = format!("{}{}", i18n::tui_col_date(), sort_arrow(SortColumn::Date));
+    let h_from = format!("{}{}", i18n::tui_col_from(), sort_arrow(SortColumn::From));
+    let h_subject = format!(
+        "{}{}",
+        i18n::tui_col_subject(),
+        sort_arrow(SortColumn::Subject)
+    );
+    let h_size = format!("{}{}", i18n::tui_col_size(), sort_arrow(SortColumn::Size));
 
     let header = Row::new(vec![
         " ".to_string(),

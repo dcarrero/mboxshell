@@ -366,7 +366,10 @@ fn cmd_search(path: &Path, query: &str, json: bool, force: bool) -> anyhow::Resu
     let pb = ProgressBar::new(entries.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} Searching [{bar:40.cyan/blue}] {pos}/{len}")
+            .template(&format!(
+                "{{spinner:.green}} {} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}",
+                i18n::cli_searching()
+            ))
             .expect("valid template")
             .progress_chars("#>-"),
     );
@@ -420,7 +423,8 @@ fn cmd_export(
         indices.iter().map(|&i| &entries[i]).collect();
 
     println!(
-        "  Exporting {} message(s) as {} to {}",
+        "  {} {} message(s) as {} to {}",
+        i18n::cli_export_count(),
         selected.len(),
         format,
         output.display()
@@ -429,7 +433,10 @@ fn cmd_export(
     let pb = ProgressBar::new(selected.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} Exporting [{bar:40.cyan/blue}] {pos}/{len}")
+            .template(&format!(
+                "{{spinner:.green}} {} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}",
+                i18n::cli_exporting()
+            ))
             .expect("valid template")
             .progress_chars("#>-"),
     );
@@ -446,7 +453,12 @@ fn cmd_export(
                 },
             )?;
             pb.finish_and_clear();
-            println!("  Exported {} .eml file(s)", paths.len());
+            println!(
+                "  {} {} {}",
+                i18n::cli_exported_eml(),
+                paths.len(),
+                i18n::cli_eml_files()
+            );
         }
         "csv" => {
             let csv_path = if output.extension().is_some() {
@@ -459,7 +471,7 @@ fn cmd_export(
             }
             mboxshell::export::csv::export_csv(&selected, &csv_path, None)?;
             pb.finish_and_clear();
-            println!("  Exported CSV to {}", csv_path.display());
+            println!("  {} {}", i18n::cli_exported_csv(), csv_path.display());
         }
         "txt" | "text" => {
             std::fs::create_dir_all(output)?;
@@ -471,12 +483,19 @@ fn cmd_export(
                 count += 1;
             }
             pb.finish_and_clear();
-            println!("  Exported {} .txt file(s)", count);
+            println!(
+                "  {} {} {}",
+                i18n::cli_exported_txt(),
+                count,
+                i18n::cli_txt_files()
+            );
         }
         _ => {
             anyhow::bail!(
-                "Unknown export format '{}'. Supported: eml, csv, txt",
-                format
+                "{} '{}'. {}",
+                i18n::cli_unknown_format(),
+                format,
+                i18n::cli_supported_formats()
             );
         }
     }
@@ -495,7 +514,10 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, dedup: bool) -> anyhow::Result<(
     let pb = ProgressBar::new(inputs.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} Merging [{bar:40.cyan/blue}] {pos}/{len} files")
+            .template(&format!(
+                "{{spinner:.green}} {} [{{bar:40.cyan/blue}}] {{pos}}/{{len}} files",
+                i18n::cli_merging()
+            ))
             .expect("valid template")
             .progress_chars("#>-"),
     );
@@ -513,21 +535,26 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, dedup: bool) -> anyhow::Result<(
 
     use humansize::{format_size, BINARY};
     println!();
-    println!("  Merge complete:");
-    println!("  {:<25} {}", "Input files", stats.input_files);
-    println!("  {:<25} {}", "Total messages", stats.total_messages);
+    println!("  {}", i18n::cli_merge_complete());
+    println!("  {:<25} {}", i18n::cli_input_files(), stats.input_files);
+    println!(
+        "  {:<25} {}",
+        i18n::cli_total_messages(),
+        stats.total_messages
+    );
     if dedup {
         println!(
             "  {:<25} {}",
-            "Duplicates removed", stats.duplicates_removed
+            i18n::cli_duplicates_removed(),
+            stats.duplicates_removed
         );
     }
     println!(
         "  {:<25} {}",
-        "Output size",
+        i18n::cli_output_size(),
         format_size(stats.output_size, BINARY)
     );
-    println!("  {:<25} {}", "Output file", output.display());
+    println!("  {:<25} {}", i18n::cli_output_file(), output.display());
     println!();
 
     Ok(())
@@ -546,19 +573,23 @@ fn cmd_attachments(path: &Path, output: &Path, force: bool) -> anyhow::Result<()
         entries.iter().filter(|e| e.has_attachments).collect();
 
     if with_att.is_empty() {
-        println!("  No messages with attachments found.");
+        println!("  {}", i18n::cli_no_attachments_found());
         return Ok(());
     }
 
     println!(
-        "  Extracting attachments from {} message(s)",
+        "  {} {} message(s)",
+        i18n::cli_extracting_from(),
         with_att.len()
     );
 
     let pb = ProgressBar::new(with_att.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} Extracting [{bar:40.cyan/blue}] {pos}/{len}")
+            .template(&format!(
+                "{{spinner:.green}} {} [{{bar:40.cyan/blue}}] {{pos}}/{{len}}",
+                i18n::cli_extracting()
+            ))
             .expect("valid template")
             .progress_chars("#>-"),
     );
@@ -574,8 +605,10 @@ fn cmd_attachments(path: &Path, output: &Path, force: bool) -> anyhow::Result<()
 
     pb.finish_and_clear();
     println!(
-        "  Extracted {} attachment(s) to {}",
+        "  {} {} {} {}",
+        i18n::cli_extracted(),
         paths.len(),
+        i18n::cli_attachments_to(),
         output.display()
     );
 
@@ -587,7 +620,7 @@ fn print_search_results_table(entries: &[mboxshell::model::mail::MailEntry], res
     use humansize::{format_size, BINARY};
 
     println!();
-    println!("  {} result(s)", results.len());
+    println!("  {} {}", results.len(), i18n::tui_results());
     println!();
 
     if results.is_empty() {
@@ -596,7 +629,11 @@ fn print_search_results_table(entries: &[mboxshell::model::mail::MailEntry], res
 
     println!(
         "  {:<4} {:<17} {:<25} {:<40} {:>8}",
-        "#", "Date", "From", "Subject", "Size"
+        "#",
+        i18n::tui_col_date(),
+        i18n::tui_col_from(),
+        i18n::tui_col_subject(),
+        i18n::tui_col_size()
     );
     println!("  {}", "-".repeat(98));
 

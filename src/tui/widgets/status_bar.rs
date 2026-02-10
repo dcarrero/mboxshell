@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::{App, PanelFocus};
 use crate::tui::theme::current_theme;
 
@@ -56,46 +57,46 @@ fn build_hints(app: &App) -> Vec<(&'static str, &'static str)> {
 
     match app.focus {
         PanelFocus::Sidebar => {
-            hints.push(("j/k", "Nav"));
-            hints.push(("Enter", "Select"));
+            hints.push(("j/k", i18n::tui_hint_nav()));
+            hints.push(("Enter", i18n::tui_hint_select()));
             if !app.all_labels.is_empty() {
-                hints.push(("L", "Labels"));
+                hints.push(("L", i18n::tui_hint_labels()));
             }
-            hints.push(("Esc", "Back"));
-            hints.push(("Tab", "Panel"));
-            hints.push(("?", "Help"));
-            hints.push(("q", "Quit"));
+            hints.push(("Esc", i18n::tui_hint_back()));
+            hints.push(("Tab", i18n::tui_hint_panel()));
+            hints.push(("?", i18n::tui_hint_help()));
+            hints.push(("q", i18n::tui_hint_quit()));
         }
         PanelFocus::MailList => {
-            hints.push(("j/k", "Nav"));
-            hints.push(("/", "Search"));
-            hints.push(("Enter", "Open"));
-            hints.push(("s", "Sort"));
-            hints.push(("Space", "Mark"));
-            hints.push(("e", "Export"));
-            hints.push(("a", "Attach"));
-            hints.push(("t", "Thread"));
+            hints.push(("j/k", i18n::tui_hint_nav()));
+            hints.push(("/", i18n::tui_hint_search()));
+            hints.push(("Enter", i18n::tui_hint_open()));
+            hints.push(("s", i18n::tui_hint_sort()));
+            hints.push(("Space", i18n::tui_hint_mark()));
+            hints.push(("e", i18n::tui_hint_export()));
+            hints.push(("a", i18n::tui_hint_attach()));
+            hints.push(("t", i18n::tui_hint_thread()));
             if !app.all_labels.is_empty() {
-                hints.push(("L", "Labels"));
+                hints.push(("L", i18n::tui_hint_labels()));
             }
-            hints.push(("Tab", "Panel"));
-            hints.push(("?", "Help"));
-            hints.push(("q", "Quit"));
+            hints.push(("Tab", i18n::tui_hint_panel()));
+            hints.push(("?", i18n::tui_hint_help()));
+            hints.push(("q", i18n::tui_hint_quit()));
         }
         PanelFocus::MailView => {
-            hints.push(("j/k", "Scroll"));
-            hints.push(("h", "Headers"));
-            hints.push(("r", "Raw"));
-            hints.push(("e", "Export"));
-            hints.push(("a", "Attach"));
-            hints.push(("Esc", "Back"));
-            hints.push(("Tab", "Panel"));
-            hints.push(("?", "Help"));
-            hints.push(("q", "Quit"));
+            hints.push(("j/k", i18n::tui_hint_scroll()));
+            hints.push(("h", i18n::tui_hint_headers()));
+            hints.push(("r", i18n::tui_hint_raw()));
+            hints.push(("e", i18n::tui_hint_export()));
+            hints.push(("a", i18n::tui_hint_attach()));
+            hints.push(("Esc", i18n::tui_hint_back()));
+            hints.push(("Tab", i18n::tui_hint_panel()));
+            hints.push(("?", i18n::tui_hint_help()));
+            hints.push(("q", i18n::tui_hint_quit()));
         }
         PanelFocus::SearchBar => {
-            hints.push(("Enter", "Search"));
-            hints.push(("Esc", "Cancel"));
+            hints.push(("Enter", i18n::tui_hint_search()));
+            hints.push(("Esc", i18n::tui_hint_cancel()));
         }
     }
 

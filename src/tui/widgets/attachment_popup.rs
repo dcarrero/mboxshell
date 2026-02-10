@@ -4,6 +4,7 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::widgets::{Block, Borders, Cell, Clear, Row, Table};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::App;
 use crate::tui::theme::current_theme;
 
@@ -18,7 +19,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(theme.popup_title)
-        .title(" Attachments ")
+        .title(i18n::tui_attachments_title())
         .style(theme.popup);
 
     let attachments = app
@@ -29,7 +30,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     if attachments.is_empty() {
         let rows = vec![Row::new(vec![
-            Cell::from("No attachments").style(theme.popup)
+            Cell::from(i18n::tui_no_attachments()).style(theme.popup)
         ])];
         let table = Table::new(rows, [Constraint::Min(30)]).block(block);
         frame.render_widget(table, area);
@@ -66,9 +67,9 @@ pub fn render(frame: &mut Frame, app: &App) {
     let header = Row::new(vec![
         Cell::from("").style(theme.popup_title),
         Cell::from("#").style(theme.popup_title),
-        Cell::from("Filename").style(theme.popup_title),
-        Cell::from("Type").style(theme.popup_title),
-        Cell::from("Size").style(theme.popup_title),
+        Cell::from(i18n::tui_col_filename()).style(theme.popup_title),
+        Cell::from(i18n::tui_col_type()).style(theme.popup_title),
+        Cell::from(i18n::tui_col_size()).style(theme.popup_title),
     ]);
 
     let footer = vec![
@@ -81,7 +82,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         ]),
         Row::new(vec![
             Cell::from(""),
-            Cell::from("j/k:Navigate  Enter:Save  A:Save all  Esc:Close").style(theme.status_bar),
+            Cell::from(i18n::tui_attachment_footer()).style(theme.status_bar),
             Cell::from(""),
             Cell::from(""),
             Cell::from(""),

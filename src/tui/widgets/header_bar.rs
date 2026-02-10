@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::App;
 use crate::tui::theme::current_theme;
 
@@ -24,12 +25,15 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     let mut spans = vec![
         Span::styled(format!(" {file_name}"), theme.header_bar),
-        Span::styled(format!(" | {visible} / {total} messages"), theme.header_bar),
+        Span::styled(
+            format!(" | {visible} / {total} {}", i18n::tui_messages_count()),
+            theme.header_bar,
+        ),
     ];
 
     if marked > 0 {
         spans.push(Span::styled(
-            format!(" | {marked} marked"),
+            format!(" | {marked} {}", i18n::tui_marked_count()),
             theme.header_bar,
         ));
     }
@@ -47,7 +51,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     // Right-aligned help hint
     let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
-    let right_text = " [?] Help ";
+    let right_text = i18n::tui_help_hint();
     let padding = area.width as usize - left_len.min(area.width as usize) - right_text.len();
     if padding > 0 && area.width as usize > left_len + right_text.len() {
         spans.push(Span::styled(" ".repeat(padding), theme.header_bar));

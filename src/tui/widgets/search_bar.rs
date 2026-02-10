@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::App;
 use crate::tui::theme::current_theme;
 
@@ -27,7 +28,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     // History indicator
     if let Some(idx) = app.search_history_index {
         let hist_len = app.search_history.len();
-        let indicator = format!("  [history {}/{}]", idx + 1, hist_len);
+        let indicator = format!("  [{} {}/{}]", i18n::tui_history(), idx + 1, hist_len);
         spans.push(Span::styled(indicator, theme.help_dim));
     }
 

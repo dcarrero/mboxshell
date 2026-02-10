@@ -4,16 +4,25 @@ use ratatui::layout::{Constraint, Rect};
 use ratatui::widgets::{Block, Borders, Cell, Clear, Row, Table};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::App;
 use crate::tui::theme::current_theme;
 
-/// Available export options.
-pub const EXPORT_OPTIONS: &[(&str, &str)] = &[
-    ("EML", "Raw email (RFC 5322 .eml file)"),
-    ("TXT", "Plain text with headers"),
-    ("CSV", "Metadata summary (CSV)"),
-    ("Attachments", "Save all attachments to folder"),
-];
+/// Number of export options available.
+pub const EXPORT_OPTION_COUNT: usize = 4;
+
+/// Available export options (localized).
+pub fn export_options() -> Vec<(&'static str, &'static str)> {
+    vec![
+        (i18n::tui_export_eml(), i18n::tui_export_eml_desc()),
+        (i18n::tui_export_txt(), i18n::tui_export_txt_desc()),
+        (i18n::tui_export_csv(), i18n::tui_export_csv_desc()),
+        (
+            i18n::tui_export_attachments(),
+            i18n::tui_export_attachments_desc(),
+        ),
+    ]
+}
 
 /// Render the export popup centered on screen.
 pub fn render(frame: &mut Frame, app: &App) {
@@ -24,9 +33,13 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     let has_marked = !app.marked.is_empty();
     let title = if has_marked {
-        format!(" Export {} marked message(s) ", app.marked.len())
+        format!(
+            " {} ({}) ",
+            i18n::tui_export_marked_title(),
+            app.marked.len()
+        )
     } else {
-        " Export current message ".to_string()
+        format!(" {} ", i18n::tui_export_current_title())
     };
 
     let block = Block::default()
@@ -35,7 +48,8 @@ pub fn render(frame: &mut Frame, app: &App) {
         .title(title)
         .style(theme.popup);
 
-    let rows: Vec<Row> = EXPORT_OPTIONS
+    let options = export_options();
+    let rows: Vec<Row> = options
         .iter()
         .enumerate()
         .map(|(i, (name, desc))| {
@@ -57,7 +71,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         Row::new(vec![Cell::from(""), Cell::from(""), Cell::from("")]),
         Row::new(vec![
             Cell::from(""),
-            Cell::from("j/k:Navigate  Enter:Export  Esc:Cancel").style(theme.status_bar),
+            Cell::from(i18n::tui_export_footer()).style(theme.status_bar),
             Cell::from(""),
         ]),
     ];

@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
+use crate::i18n;
 use crate::tui::app::{App, PanelFocus};
 use crate::tui::theme::current_theme;
 
@@ -20,11 +21,11 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let title = if app.show_raw {
-        " Message [RAW] "
+        i18n::tui_message_raw()
     } else if app.show_full_headers {
-        " Message [HEADERS] "
+        i18n::tui_message_headers()
     } else {
-        " Message "
+        i18n::tui_message_title()
     };
 
     let block = Block::default()
@@ -39,7 +40,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let entry = match app.current_entry() {
         Some(e) => e,
         None => {
-            let empty = Paragraph::new("No message selected").style(theme.message_body);
+            let empty = Paragraph::new(i18n::tui_no_message()).style(theme.message_body);
             frame.render_widget(empty, inner);
             return;
         }
@@ -98,7 +99,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         if header_fields {
             // Standard compact headers
             lines.push(Line::from(vec![
-                Span::styled("Date:    ", theme.message_header_label),
+                Span::styled(i18n::tui_header_date(), theme.message_header_label),
                 Span::styled(
                     entry.date.format("%a, %d %b %Y %H:%M:%S %z").to_string(),
                     theme.message_header_value,
@@ -106,7 +107,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             ]));
 
             lines.push(Line::from(vec![
-                Span::styled("From:    ", theme.message_header_label),
+                Span::styled(i18n::tui_header_from(), theme.message_header_label),
                 Span::styled(entry.from.display(), theme.message_header_value),
             ]));
 
@@ -118,7 +119,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     .collect::<Vec<_>>()
                     .join(", ");
                 lines.push(Line::from(vec![
-                    Span::styled("To:      ", theme.message_header_label),
+                    Span::styled(i18n::tui_header_to(), theme.message_header_label),
                     Span::styled(to_str, theme.message_header_value),
                 ]));
             }
@@ -131,13 +132,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     .collect::<Vec<_>>()
                     .join(", ");
                 lines.push(Line::from(vec![
-                    Span::styled("Cc:      ", theme.message_header_label),
+                    Span::styled(i18n::tui_header_cc(), theme.message_header_label),
                     Span::styled(cc_str, theme.message_header_value),
                 ]));
             }
 
             lines.push(Line::from(vec![
-                Span::styled("Subject: ", theme.message_header_label),
+                Span::styled(i18n::tui_header_subject(), theme.message_header_label),
                 Span::styled(entry.subject.clone(), theme.message_header_value),
             ]));
         }
@@ -160,7 +161,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                 }
             } else {
                 lines.push(Line::from(Span::styled(
-                    "(No text content)",
+                    i18n::tui_no_text_content(),
                     theme.message_body,
                 )));
             }
@@ -169,7 +170,11 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             if !body.attachments.is_empty() {
                 lines.push(Line::from(""));
                 lines.push(Line::from(Span::styled(
-                    format!("[Attachments: {} file(s)]", body.attachments.len()),
+                    format!(
+                        "[{}: {} file(s)]",
+                        i18n::tui_attachments_count(),
+                        body.attachments.len()
+                    ),
                     theme.attachment,
                 )));
                 for att in &body.attachments {
