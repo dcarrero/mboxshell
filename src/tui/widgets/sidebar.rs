@@ -15,7 +15,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     let is_focused = app.focus == PanelFocus::Sidebar;
     let border_style = if is_focused {
-        theme.border.add_modifier(Modifier::BOLD)
+        theme.border_focused
     } else {
         theme.border
     };

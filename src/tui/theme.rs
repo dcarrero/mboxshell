@@ -19,6 +19,7 @@ pub struct Theme {
     pub search_highlight: Style,
     pub attachment: Style,
     pub border: Style,
+    pub border_focused: Style,
     pub popup: Style,
     pub popup_title: Style,
     pub search_prompt: Style,
@@ -58,6 +59,9 @@ impl Theme {
             search_highlight: Style::default().fg(Color::Black).bg(Color::Yellow),
             attachment: Style::default().fg(Color::Green),
             border: Style::default().fg(Color::Rgb(80, 80, 100)),
+            border_focused: Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
             popup: Style::default()
                 .fg(Color::Rgb(220, 220, 230))
                 .bg(Color::Rgb(20, 20, 35)),

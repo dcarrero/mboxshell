@@ -1,7 +1,6 @@
 //! Mail list widget — virtual-scrolling table of messages.
 
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::Modifier;
 use ratatui::widgets::{Block, Borders, Row, Table};
 use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
@@ -15,7 +14,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let is_focused = app.focus == PanelFocus::MailList;
     let border_style = if is_focused {
-        theme.border.add_modifier(Modifier::BOLD)
+        theme.border_focused
     } else {
         theme.border
     };

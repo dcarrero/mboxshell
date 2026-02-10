@@ -1,45 +1,103 @@
-//! Bottom status bar showing transient messages or keyboard hints.
+//! Bottom status bar showing transient messages or context-sensitive keyboard hints.
 
-use ratatui::layout::Rect;
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
-use crate::tui::app::App;
+use crate::tui::app::{App, PanelFocus};
 use crate::tui::theme::current_theme;
 
-/// Render the status bar at the bottom.
+/// Version string shown at the right edge of the status bar.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Render the status bar at the bottom with context-sensitive hints and version.
 pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let theme = current_theme();
 
+    let version_text = format!("v{VERSION} ");
+    let version_width = version_text.len() as u16;
+
+    // Split: hints (flexible) | version (fixed)
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(10), Constraint::Length(version_width)])
+        .split(area);
+
+    // Left side: hints or status message
     let content = if let Some((msg, _)) = &app.status_message {
         Line::from(Span::styled(format!(" {msg}"), theme.status_bar))
     } else {
-        let mut hints = vec![
-            Span::styled(" j/k", theme.search_prompt),
-            Span::styled(":Nav  ", theme.status_bar),
-            Span::styled("/", theme.search_prompt),
-            Span::styled(":Search  ", theme.status_bar),
-            Span::styled("Enter", theme.search_prompt),
-            Span::styled(":Open  ", theme.status_bar),
-            Span::styled("s", theme.search_prompt),
-            Span::styled(":Sort  ", theme.status_bar),
-            Span::styled("e", theme.search_prompt),
-            Span::styled(":Export  ", theme.status_bar),
-            Span::styled("a", theme.search_prompt),
-            Span::styled(":Attach  ", theme.status_bar),
-        ];
-        if !app.all_labels.is_empty() {
-            hints.push(Span::styled("L", theme.search_prompt));
-            hints.push(Span::styled(":Labels  ", theme.status_bar));
+        let hints = build_hints(app);
+        let mut spans = Vec::new();
+        for (i, (key, desc)) in hints.iter().enumerate() {
+            if i > 0 {
+                spans.push(Span::styled(" ", theme.status_bar));
+            }
+            spans.push(Span::styled(format!(" {key}"), theme.search_prompt));
+            spans.push(Span::styled(format!(":{desc}"), theme.status_bar));
         }
-        hints.push(Span::styled("?", theme.search_prompt));
-        hints.push(Span::styled(":Help  ", theme.status_bar));
-        hints.push(Span::styled("q", theme.search_prompt));
-        hints.push(Span::styled(":Quit", theme.status_bar));
-        Line::from(hints)
+        Line::from(spans)
     };
 
     let bar = Paragraph::new(content).style(theme.status_bar);
-    frame.render_widget(bar, area);
+    frame.render_widget(bar, chunks[0]);
+
+    // Right side: version
+    let version = Paragraph::new(Line::from(Span::styled(version_text, theme.border)))
+        .alignment(Alignment::Right)
+        .style(theme.status_bar);
+    frame.render_widget(version, chunks[1]);
+}
+
+/// Return context-sensitive hint pairs (key, description) for the active panel.
+fn build_hints(app: &App) -> Vec<(&'static str, &'static str)> {
+    let mut hints = Vec::new();
+
+    match app.focus {
+        PanelFocus::Sidebar => {
+            hints.push(("j/k", "Nav"));
+            hints.push(("Enter", "Select"));
+            if !app.all_labels.is_empty() {
+                hints.push(("L", "Labels"));
+            }
+            hints.push(("Esc", "Back"));
+            hints.push(("Tab", "Panel"));
+            hints.push(("?", "Help"));
+            hints.push(("q", "Quit"));
+        }
+        PanelFocus::MailList => {
+            hints.push(("j/k", "Nav"));
+            hints.push(("/", "Search"));
+            hints.push(("Enter", "Open"));
+            hints.push(("s", "Sort"));
+            hints.push(("Space", "Mark"));
+            hints.push(("e", "Export"));
+            hints.push(("a", "Attach"));
+            hints.push(("t", "Thread"));
+            if !app.all_labels.is_empty() {
+                hints.push(("L", "Labels"));
+            }
+            hints.push(("Tab", "Panel"));
+            hints.push(("?", "Help"));
+            hints.push(("q", "Quit"));
+        }
+        PanelFocus::MailView => {
+            hints.push(("j/k", "Scroll"));
+            hints.push(("h", "Headers"));
+            hints.push(("r", "Raw"));
+            hints.push(("e", "Export"));
+            hints.push(("a", "Attach"));
+            hints.push(("Esc", "Back"));
+            hints.push(("Tab", "Panel"));
+            hints.push(("?", "Help"));
+            hints.push(("q", "Quit"));
+        }
+        PanelFocus::SearchBar => {
+            hints.push(("Enter", "Search"));
+            hints.push(("Esc", "Cancel"));
+        }
+    }
+
+    hints
 }
