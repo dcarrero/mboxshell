@@ -19,7 +19,30 @@ struct Shortcut {
 /// Render the help popup centered on screen with multi-column shortcuts.
 pub fn render(frame: &mut Frame, _app: &App) {
     let theme = current_theme();
-    let area = centered_rect(78, 85, frame.area());
+    let screen = frame.area();
+
+    // First pass: determine width and column count using a preliminary width
+    let popup_width = (screen.width * 78 / 100).min(screen.width.saturating_sub(4));
+    let inner_width = popup_width.saturating_sub(2) as usize; // borders
+
+    let cols = if inner_width >= 90 {
+        3
+    } else if inner_width >= 56 {
+        2
+    } else {
+        1
+    };
+    let col_width = inner_width / cols;
+    let sep_width = inner_width.saturating_sub(2);
+
+    // Build all lines
+    let lines = build_lines(cols, col_width, sep_width, &theme);
+
+    // Size popup to fit content: lines + 2 (borders) + 1 (bottom padding)
+    let content_height = lines.len() as u16 + 1; // +1 small bottom padding
+    let popup_height = (content_height + 2).min(screen.height.saturating_sub(2)); // +2 borders
+
+    let area = centered_rect_exact(popup_width, popup_height, screen);
 
     frame.render_widget(Clear, area);
 
@@ -32,17 +55,17 @@ pub fn render(frame: &mut Frame, _app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let total_width = inner.width as usize;
-    // Decide columns: 3 if wide enough, else 2
-    let cols = if total_width >= 90 {
-        3
-    } else if total_width >= 56 {
-        2
-    } else {
-        1
-    };
-    let col_width = total_width / cols;
+    let paragraph = Paragraph::new(lines);
+    frame.render_widget(paragraph, inner);
+}
 
+/// Build all the help content lines.
+fn build_lines<'a>(
+    cols: usize,
+    col_width: usize,
+    sep_width: usize,
+    theme: &crate::tui::theme::Theme,
+) -> Vec<Line<'a>> {
     let mut lines: Vec<Line> = Vec::new();
 
     // ── App header ─────────────────────────────────
@@ -56,10 +79,8 @@ pub fn render(frame: &mut Frame, _app: &App) {
     )));
     lines.push(Line::from(""));
 
-    let sep_width = total_width.saturating_sub(2);
-
     // ── Navigation ─────────────────────────────────
-    add_section_header(&mut lines, "Navigation", &theme, sep_width);
+    add_section_header(&mut lines, "Navigation", theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
@@ -90,12 +111,12 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ],
         cols,
         col_width,
-        &theme,
+        theme,
     );
     lines.push(Line::from(""));
 
     // ── Message & Export ───────────────────────────
-    add_section_header(&mut lines, "Message & Export", &theme, sep_width);
+    add_section_header(&mut lines, "Message & Export", theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
@@ -118,12 +139,12 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ],
         cols,
         col_width,
-        &theme,
+        theme,
     );
     lines.push(Line::from(""));
 
     // ── List Actions ──────────────────────────────
-    add_section_header(&mut lines, "List Actions", &theme, sep_width);
+    add_section_header(&mut lines, "List Actions", theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
@@ -150,12 +171,12 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ],
         cols,
         col_width,
-        &theme,
+        theme,
     );
     lines.push(Line::from(""));
 
     // ── Search ────────────────────────────────────
-    add_section_header(&mut lines, "Search", &theme, sep_width);
+    add_section_header(&mut lines, "Search", theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
@@ -170,7 +191,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ],
         cols,
         col_width,
-        &theme,
+        theme,
     );
     lines.push(Line::from(Span::styled(
         "    from: to: subject: body: label: date: size: has:attachment",
@@ -179,7 +200,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
     lines.push(Line::from(""));
 
     // ── Layout & General ──────────────────────────
-    add_section_header(&mut lines, "Layout & General", &theme, sep_width);
+    add_section_header(&mut lines, "Layout & General", theme, sep_width);
     add_shortcuts_columns(
         &mut lines,
         &[
@@ -206,7 +227,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ],
         cols,
         col_width,
-        &theme,
+        theme,
     );
     lines.push(Line::from(""));
 
@@ -222,8 +243,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
         theme.help_dim,
     )));
 
-    let paragraph = Paragraph::new(lines);
-    frame.render_widget(paragraph, inner);
+    lines
 }
 
 /// Add a section header with a trailing separator line.
@@ -250,12 +270,11 @@ fn add_shortcuts_columns(
     col_width: usize,
     theme: &crate::tui::theme::Theme,
 ) {
-    // Key portion width inside each column
     let key_w: usize = 8;
 
     for row_start in (0..shortcuts.len()).step_by(cols) {
         let mut spans: Vec<Span<'static>> = Vec::new();
-        spans.push(Span::raw("  ")); // left margin
+        spans.push(Span::raw("  "));
 
         for c in 0..cols {
             let idx = row_start + c;
@@ -282,11 +301,11 @@ fn add_shortcuts_columns(
     }
 }
 
-/// Calculate a centered rectangle with given percentage of width and height.
-fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    let width = area.width * percent_x / 100;
-    let height = area.height * percent_y / 100;
-    let x = area.x + (area.width.saturating_sub(width)) / 2;
-    let y = area.y + (area.height.saturating_sub(height)) / 2;
-    Rect::new(x, y, width, height)
+/// Calculate a centered rectangle with exact pixel dimensions, clamped to screen.
+fn centered_rect_exact(width: u16, height: u16, area: Rect) -> Rect {
+    let w = width.min(area.width);
+    let h = height.min(area.height);
+    let x = area.x + (area.width.saturating_sub(w)) / 2;
+    let y = area.y + (area.height.saturating_sub(h)) / 2;
+    Rect::new(x, y, w, h)
 }
