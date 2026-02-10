@@ -29,7 +29,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     if attachments.is_empty() {
         let rows = vec![Row::new(vec![
-            Cell::from("No attachments").style(theme.popup),
+            Cell::from("No attachments").style(theme.popup)
         ])];
         let table = Table::new(rows, [Constraint::Min(30)]).block(block);
         frame.render_widget(table, area);
@@ -81,8 +81,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         ]),
         Row::new(vec![
             Cell::from(""),
-            Cell::from("j/k:Navigate  Enter:Save  A:Save all  Esc:Close")
-                .style(theme.status_bar),
+            Cell::from("j/k:Navigate  Enter:Save  A:Save all  Esc:Close").style(theme.status_bar),
             Cell::from(""),
             Cell::from(""),
             Cell::from(""),

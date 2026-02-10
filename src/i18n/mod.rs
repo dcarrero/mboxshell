@@ -130,16 +130,8 @@ msg!(
     "Forzar reconstrucci\u{f3}n aunque el \u{ed}ndice exista"
 );
 msg!(help_output_json, "Output as JSON", "Salida en formato JSON");
-msg!(
-    help_cmd_search,
-    "Search messages",
-    "Buscar mensajes"
-);
-msg!(
-    help_cmd_export,
-    "Export messages",
-    "Exportar mensajes"
-);
+msg!(help_cmd_search, "Search messages", "Buscar mensajes");
+msg!(help_cmd_export, "Export messages", "Exportar mensajes");
 msg!(
     help_cmd_merge,
     "Merge multiple MBOX files",

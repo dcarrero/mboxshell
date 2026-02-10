@@ -35,13 +35,9 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Open a file in the TUI
-    Open {
-        path: PathBuf,
-    },
+    Open { path: PathBuf },
     /// Index an MBOX file
-    Index {
-        path: PathBuf,
-    },
+    Index { path: PathBuf },
     /// Show statistics
     Stats {
         path: PathBuf,
@@ -123,15 +119,33 @@ fn build_localized_command() -> clap::Command {
         .map(|sub| {
             let mut s = sub.clone();
             match s.get_name() {
-                "open" => { s = s.about(i18n::help_cmd_open()); }
-                "index" => { s = s.about(i18n::help_cmd_index()); }
-                "stats" => { s = s.about(i18n::help_cmd_stats()); }
-                "search" => { s = s.about(i18n::help_cmd_search()); }
-                "export" => { s = s.about(i18n::help_cmd_export()); }
-                "merge" => { s = s.about(i18n::help_cmd_merge()); }
-                "attachments" => { s = s.about(i18n::help_cmd_attachments()); }
-                "completions" => { s = s.about(i18n::help_cmd_completions()); }
-                "manpage" => { s = s.about(i18n::help_cmd_manpage()); }
+                "open" => {
+                    s = s.about(i18n::help_cmd_open());
+                }
+                "index" => {
+                    s = s.about(i18n::help_cmd_index());
+                }
+                "stats" => {
+                    s = s.about(i18n::help_cmd_stats());
+                }
+                "search" => {
+                    s = s.about(i18n::help_cmd_search());
+                }
+                "export" => {
+                    s = s.about(i18n::help_cmd_export());
+                }
+                "merge" => {
+                    s = s.about(i18n::help_cmd_merge());
+                }
+                "attachments" => {
+                    s = s.about(i18n::help_cmd_attachments());
+                }
+                "completions" => {
+                    s = s.about(i18n::help_cmd_completions());
+                }
+                "manpage" => {
+                    s = s.about(i18n::help_cmd_manpage());
+                }
                 _ => {}
             }
             s

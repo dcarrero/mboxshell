@@ -39,11 +39,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         .iter()
         .enumerate()
         .map(|(i, (name, desc))| {
-            let marker = if i == app.export_selected {
-                ">"
-            } else {
-                " "
-            };
+            let marker = if i == app.export_selected { ">" } else { " " };
             let style = if i == app.export_selected {
                 theme.list_selected
             } else {

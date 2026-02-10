@@ -237,8 +237,7 @@ fn handle_mail_list_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         // ── Search navigation ────────────────────────────────
         KeyCode::Char('n') => {
             if !app.search_results.is_empty() {
-                app.search_result_index =
-                    (app.search_result_index + 1) % app.search_results.len();
+                app.search_result_index = (app.search_result_index + 1) % app.search_results.len();
                 let idx = app.search_results[app.search_result_index];
                 if let Some(pos) = app.visible_indices.iter().position(|&i| i == idx) {
                     app.select_message(pos);
@@ -369,10 +368,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                 let output_dir = default_download_dir();
                 match save_single_attachment(app, app.attachment_selected, &output_dir) {
                     Ok(path) => {
-                        let name = path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("file");
+                        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
                         app.set_status(&format!("Saved: {name} -> {}", output_dir.display()));
                         app.show_attachments = false;
                     }

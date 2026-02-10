@@ -35,10 +35,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     if let Some(label) = &app.active_label_filter {
-        spans.push(Span::styled(
-            format!(" | label: {label}"),
-            theme.header_bar,
-        ));
+        spans.push(Span::styled(format!(" | label: {label}"), theme.header_bar));
     }
 
     if !app.search_query.is_empty() && !app.search_active {
