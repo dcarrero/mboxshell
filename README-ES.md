@@ -158,27 +158,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 
 ## Interfaz de terminal
 
-```
- correo.mbox | 142.857 / 142.857 mensajes | label: Inbox        [?] Help
-+-Etiquetas -------++-Mensajes --------------------------------------------+
-| Todos     (142857|||   Fecha v          De                  Asunto        |
-|-                 |||   2025-07-16 03:01 usuario@gmail.com   Re: Proyec.. |
-| Inbox       (834)|||   2025-07-15 18:22 otro@empresa.com    Presupuest.. |
-| Sent       (1204)||| * 2025-07-15 10:00 maria@ejemplo.com   Reunion ma.. |
-| Starred      (47)|||   2025-07-14 22:15 noreply@servicio..  Tu factura.. |
-| Important   (312)|||   ...                                                |
-| Trabajo     (205)||+-----------------------------------------------------+
-| Personal    (189)||| Date:    Wed, 16 Jul 2025 03:01:03 +0000            |
-|                  ||| From:    Usuario <usuario@gmail.com>                 |
-|                  ||| To:      Otro <otro@empresa.com>                     |
-|                  ||| Subject: Re: Proyecto Q3                             |
-|                  ||| --------------------------------------------------- |
-|                  ||| Hola,                                                |
-|                  |||                                                      |
-|                  ||| Te adjunto el documento actualizado...                |
-+------------------++------------------------------------------------------+
- j/k:Nav  /:Buscar  Enter:Abrir  s:Ordenar  e:Exportar  a:Adjuntos  ?:Ayuda
-```
+![Captura de mboxShell](mboxshell-capture.png)
 
 ## Atajos de teclado
 
