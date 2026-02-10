@@ -293,6 +293,14 @@ fn handle_mail_view_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         }
         KeyCode::Char('h') => app.show_full_headers = !app.show_full_headers,
         KeyCode::Char('r') => app.show_raw = !app.show_raw,
+        KeyCode::Char('a') => {
+            app.attachment_selected = 0;
+            app.show_attachments = true;
+        }
+        KeyCode::Char('e') => {
+            app.export_selected = 0;
+            app.show_export = true;
+        }
         KeyCode::Char('q') => {
             app.should_quit = true;
         }
