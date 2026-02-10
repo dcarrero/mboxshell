@@ -323,6 +323,7 @@ src/
 - Contador de resultados en la barra de busqueda: muestra `(N / total)` mientras escribes
 - Historial de busqueda: las teclas Arriba/Abajo en la barra de busqueda navegan por consultas anteriores, con indicador `[history]`
 - Nuevas entradas en la ayuda para el atajo `F` e historial de busqueda
+- Internacionalizacion completa EN/ES: todos los textos de la TUI y CLI (~150 claves de traduccion), deteccion automatica del idioma del sistema o seleccion manual con `--lang en|es`
 
 ### v0.2.0
 - Busqueda incremental: la lista de mensajes se filtra mientras escribes (solo campos de metadatos; busqueda full-text se ejecuta al pulsar Enter)

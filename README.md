@@ -323,6 +323,7 @@ src/
 - Result counter in search bar: shows `(N / total)` while typing
 - Search history: Up/Down arrow keys in the search bar navigate previous queries, with `[history]` indicator
 - New help entries for `F` shortcut and search history hint
+- Complete EN/ES internationalization: all TUI and CLI strings (~150 translation keys), auto-detected from system locale or set with `--lang en|es`
 
 ### v0.2.0
 - Incremental search: message list filters as you type (metadata fields only; full-text runs on Enter)
