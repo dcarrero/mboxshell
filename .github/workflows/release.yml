@@ -26,8 +26,8 @@ jobs:
             target: aarch64-unknown-linux-gnu
             artifact: mboxshell-linux-aarch64
             cross: true
-          # macOS Intel
-          - os: macos-13
+          # macOS Intel (cross-compiled on Apple Silicon runner)
+          - os: macos-latest
             target: x86_64-apple-darwin
             artifact: mboxshell-macos-x86_64
             cross: false
