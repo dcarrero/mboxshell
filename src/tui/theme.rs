@@ -22,6 +22,8 @@ pub struct Theme {
     pub border_focused: Style,
     pub popup: Style,
     pub popup_title: Style,
+    pub help_section: Style,
+    pub help_dim: Style,
     pub search_prompt: Style,
 }
 
@@ -68,6 +70,10 @@ impl Theme {
             popup_title: Style::default()
                 .fg(Color::Rgb(130, 170, 255))
                 .add_modifier(Modifier::BOLD),
+            help_section: Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+            help_dim: Style::default().fg(Color::Rgb(100, 100, 120)),
             search_prompt: Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
