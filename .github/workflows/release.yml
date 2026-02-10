@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: mboxshell-linux-x86_64
+            cross: false
+          # Linux ARM64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: mboxshell-linux-aarch64
+            cross: true
+          # macOS Intel
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: mboxshell-macos-x86_64
+            cross: false
+          # macOS Apple Silicon
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: mboxshell-macos-aarch64
+            cross: false
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: mboxshell-windows-x86_64.exe
+            cross: false
+          # Windows ARM64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact: mboxshell-windows-arm64.exe
+            cross: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # Cross-compilation toolchain for Linux ARM64
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Set linker for aarch64-unknown-linux-gnu
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          mkdir -p .cargo
+          echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # Rename binary for upload
+      - name: Prepare binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/mboxshell ${{ matrix.artifact }}
+          chmod +x ${{ matrix.artifact }}
+
+      - name: Prepare binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cp target/${{ matrix.target }}/release/mboxshell.exe ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          # Collect all binaries
+          FILES=""
+          for dir in artifacts/*/; do
+            for file in "$dir"*; do
+              if [ -f "$file" ]; then
+                FILES="$FILES $file"
+              fi
+            done
+          done
+
+          gh release create "$TAG" \
+            --title "mboxShell $TAG" \
+            --notes "## mboxShell $TAG
+
+          Fast terminal viewer for MBOX files of any size.
+
+          ### Downloads
+
+          | Platform | Binary |
+          |----------|--------|
+          | Linux x86_64 | \`mboxshell-linux-x86_64\` |
+          | Linux ARM64 | \`mboxshell-linux-aarch64\` |
+          | macOS Intel | \`mboxshell-macos-x86_64\` |
+          | macOS Apple Silicon | \`mboxshell-macos-aarch64\` |
+          | Windows x86_64 | \`mboxshell-windows-x86_64.exe\` |
+          | Windows ARM64 | \`mboxshell-windows-arm64.exe\` |
+
+          ### Installation
+
+          \`\`\`bash
+          # Linux / macOS
+          chmod +x mboxshell-*
+          sudo mv mboxshell-* /usr/local/bin/mboxshell
+
+          # Or build from source
+          cargo install --git https://github.com/dcarrero/mboxshell.git
+          \`\`\`
+
+          ### What's included
+
+          - Streaming MBOX parser (handles 50GB+ files)
+          - Persistent binary index for instant re-opens
+          - Gmail labels support (X-Gmail-Labels)
+          - Advanced search (from:, subject:, date:, body:, has:attachment, etc.)
+          - Conversation threading (JWZ algorithm)
+          - Export to EML, TXT, CSV with attachment extraction
+          - Full terminal UI with vi-style navigation
+          - Bilingual interface (English/Spanish)
+          " \
+            $FILES
