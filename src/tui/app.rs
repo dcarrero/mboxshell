@@ -125,6 +125,8 @@ pub struct App {
 
     /// Cached viewport height for the list (set during render).
     pub list_viewport_height: usize,
+    /// Cached viewport height for the message view (set during render).
+    pub message_view_height: usize,
 }
 
 impl App {
@@ -190,6 +192,7 @@ impl App {
             should_quit: false,
             status_message: None,
             list_viewport_height: 20,
+            message_view_height: 20,
         };
 
         // Sort by date descending and load first message
@@ -432,6 +435,69 @@ impl App {
                 tracing::warn!(error = %e, "Search failed");
                 self.set_status(&format!("Search error: {e}"));
             }
+        }
+    }
+
+    /// Run a fast metadata-only incremental search (called on each keystroke).
+    ///
+    /// If the query requires full-text search (body:), this skips filtering
+    /// and shows all entries (full search runs on Enter).
+    pub fn execute_incremental_search(&mut self) {
+        if self.search_query.is_empty() {
+            // Restore all messages (respecting label filter)
+            if let Some(label) = self.active_label_filter.clone() {
+                self.visible_indices = self
+                    .entries
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| e.labels.iter().any(|l| l == &label))
+                    .map(|(i, _)| i)
+                    .collect();
+            } else {
+                self.visible_indices = (0..self.entries.len()).collect();
+            }
+            self.apply_sort();
+            if !self.visible_indices.is_empty() {
+                self.select_message(0);
+            }
+            return;
+        }
+
+        let query = crate::search::query::parse_query(&self.search_query);
+
+        // Skip incremental filtering if full-text is needed (too slow)
+        if query.needs_fulltext {
+            return;
+        }
+
+        // Start from full set (or label-filtered set)
+        let base_indices: Vec<usize> = if let Some(ref label) = self.active_label_filter {
+            self.entries
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| e.labels.iter().any(|l| l == label))
+                .map(|(i, _)| i)
+                .collect()
+        } else {
+            (0..self.entries.len()).collect()
+        };
+
+        // Filter using metadata search
+        let all_results = crate::search::metadata::search_metadata(&self.entries, &query);
+        let result_set: std::collections::HashSet<usize> = all_results.into_iter().collect();
+        self.visible_indices = base_indices
+            .into_iter()
+            .filter(|i| result_set.contains(i))
+            .collect();
+
+        self.apply_sort();
+        if self.threaded_view {
+            self.rebuild_threaded_view();
+        }
+        if !self.visible_indices.is_empty() {
+            self.select_message(0);
+        } else {
+            self.current_body = None;
         }
     }
 

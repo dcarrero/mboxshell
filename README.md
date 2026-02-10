@@ -130,6 +130,29 @@ mboxshell completions zsh > ~/.zfunc/_mboxshell
 mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 ```
 
+## CLI commands
+
+| Command | Description |
+|---------|-------------|
+| `mboxshell [FILE]` | Open a file in the TUI (default action) |
+| `mboxshell open <path>` | Open a file or directory in the TUI |
+| `mboxshell index <path> [-f/--force]` | Build or rebuild the binary index |
+| `mboxshell stats <path> [--json]` | Show statistics about an MBOX file |
+| `mboxshell search <path> <query> [--json]` | Search messages from the command line |
+| `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt) |
+| `mboxshell merge <files...> -o <output> [--dedup]` | Merge multiple MBOX files into one |
+| `mboxshell attachments <path> -o <output>` | Extract all attachments |
+| `mboxshell completions <shell>` | Generate shell completions (bash, zsh, fish, powershell) |
+| `mboxshell manpage` | Generate a man page |
+
+**Global flags:**
+
+| Flag | Description |
+|------|-------------|
+| `-f`, `--force` | Force rebuild index even if one exists |
+| `-v`, `--verbose` | Increase log verbosity (-v info, -vv debug, -vvv trace) |
+| `--lang <en\|es>` | Force interface language (auto-detected by default) |
+
 ## Terminal UI
 
 ```
@@ -310,6 +333,13 @@ src/
 
 ## Changelog
 
+### v0.2.0
+- Incremental search: message list filters as you type (metadata fields only; full-text runs on Enter)
+- Dynamic message view title shows current mode: `[RAW]` or `[HEADERS]`
+- Proportional PageDown/Up scroll in message view (adapts to actual viewport height)
+- Improved thread indentation with vertical connectors (`│└`) and depth capped at 4 levels
+- Added full CLI commands reference to documentation
+
 ### v0.1.2
 - Active panel border highlighted in cyan for clear focus indicator
 - Context-sensitive status bar: hints change depending on the focused panel
@@ -330,6 +360,6 @@ src/
 
 ## License
 
-[MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo
+[MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo - [https://carrero.es](https://carrero.es)
 
 Source Code: [https://github.com/dcarrero/mboxshell](https://github.com/dcarrero/mboxshell)

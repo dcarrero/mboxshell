@@ -106,9 +106,15 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             // Indent subject in threaded view
             let depth = app.thread_depth(vis_idx);
             let indent = if depth > 0 {
-                let arrows = "\u{2514} "; // └
-                let prefix: String = "  ".repeat(depth.saturating_sub(1));
-                format!("{prefix}{arrows}")
+                // Cap visual indentation at depth 4 to preserve readability
+                let capped = depth.min(4);
+                let mut prefix = String::new();
+                for _ in 0..capped.saturating_sub(1) {
+                    prefix.push('\u{2502}'); // │
+                }
+                prefix.push('\u{2514}'); // └
+                prefix.push(' ');
+                prefix
             } else {
                 String::new()
             };

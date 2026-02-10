@@ -130,6 +130,29 @@ mboxshell completions zsh > ~/.zfunc/_mboxshell
 mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 ```
 
+## Comandos CLI
+
+| Comando | Descripcion |
+|---------|-------------|
+| `mboxshell [ARCHIVO]` | Abrir en la interfaz de terminal (accion por defecto) |
+| `mboxshell open <ruta>` | Abrir un archivo o directorio en la TUI |
+| `mboxshell index <ruta> [-f/--force]` | Construir o reconstruir el indice binario |
+| `mboxshell stats <ruta> [--json]` | Mostrar estadisticas de un archivo MBOX |
+| `mboxshell search <ruta> <consulta> [--json]` | Buscar mensajes desde la linea de comandos |
+| `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt) |
+| `mboxshell merge <archivos...> -o <salida> [--dedup]` | Combinar varios archivos MBOX en uno |
+| `mboxshell attachments <ruta> -o <salida>` | Extraer todos los adjuntos |
+| `mboxshell completions <shell>` | Generar completions de shell (bash, zsh, fish, powershell) |
+| `mboxshell manpage` | Generar pagina de manual |
+
+**Flags globales:**
+
+| Flag | Descripcion |
+|------|-------------|
+| `-f`, `--force` | Forzar reconstruccion del indice aunque exista |
+| `-v`, `--verbose` | Aumentar verbosidad del log (-v info, -vv debug, -vvv trace) |
+| `--lang <en\|es>` | Forzar idioma de la interfaz (auto-detectado por defecto) |
+
 ## Interfaz de terminal
 
 ```
@@ -310,6 +333,13 @@ src/
 
 ## Changelog
 
+### v0.2.0
+- Busqueda incremental: la lista de mensajes se filtra mientras escribes (solo campos de metadatos; busqueda full-text se ejecuta al pulsar Enter)
+- Titulo dinamico en la vista de mensaje muestra el modo actual: `[RAW]` o `[HEADERS]`
+- Scroll proporcional con PageDown/Up en la vista de mensaje (se adapta a la altura real del viewport)
+- Indentacion mejorada en vista de hilos con conectores verticales (`│└`) y profundidad limitada a 4 niveles
+- Referencia completa de comandos CLI anadida a la documentacion
+
 ### v0.1.2
 - Borde del panel activo resaltado en cyan para indicar claramente el foco
 - Barra de estado contextual: los atajos cambian segun el panel enfocado
@@ -330,6 +360,6 @@ src/
 
 ## Licencia
 
-[MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo
+[MIT](LICENSE) - Copyright (c) 2026 David Carrero Fernandez-Baillo - [https://carrero.es](https://carrero.es)
 
 Codigo fuente: [https://github.com/dcarrero/mboxshell](https://github.com/dcarrero/mboxshell)

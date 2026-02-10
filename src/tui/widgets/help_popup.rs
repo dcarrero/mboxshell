@@ -235,7 +235,7 @@ fn build_lines<'a>(
     let sep = "\u{2500}".repeat(sep_width);
     lines.push(Line::from(Span::styled(format!("  {sep}"), theme.help_dim)));
     lines.push(Line::from(Span::styled(
-        "  MIT License - David Carrero Fernandez-Baillo",
+        "  MIT License - David Carrero Fernandez-Baillo - carrero.es",
         theme.help_dim,
     )));
     lines.push(Line::from(Span::styled(

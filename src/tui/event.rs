@@ -280,10 +280,12 @@ fn handle_mail_view_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             app.message_scroll_offset = app.message_scroll_offset.saturating_sub(1);
         }
         KeyCode::PageDown => {
-            app.message_scroll_offset += 20;
+            let page = app.message_view_height.max(1);
+            app.message_scroll_offset += page;
         }
         KeyCode::PageUp => {
-            app.message_scroll_offset = app.message_scroll_offset.saturating_sub(20);
+            let page = app.message_view_height.max(1);
+            app.message_scroll_offset = app.message_scroll_offset.saturating_sub(page);
         }
         KeyCode::Char('g') | KeyCode::Home => {
             app.message_scroll_offset = 0;
@@ -628,9 +630,11 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         }
         KeyCode::Backspace => {
             app.search_query.pop();
+            app.execute_incremental_search();
         }
         KeyCode::Char(c) => {
             app.search_query.push(c);
+            app.execute_incremental_search();
         }
         _ => {}
     }

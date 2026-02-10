@@ -9,7 +9,7 @@ use crate::tui::app::{App, PanelFocus};
 use crate::tui::theme::current_theme;
 
 /// Render the message view panel.
-pub fn render(frame: &mut Frame, app: &App, area: Rect) {
+pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let theme = current_theme();
 
     let is_focused = app.focus == PanelFocus::MailView;
@@ -19,12 +19,21 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
         theme.border
     };
 
+    let title = if app.show_raw {
+        " Message [RAW] "
+    } else if app.show_full_headers {
+        " Message [HEADERS] "
+    } else {
+        " Message "
+    };
+
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(border_style)
-        .title(" Message ");
+        .title(title);
 
     let inner = block.inner(area);
+    app.message_view_height = inner.height as usize;
     frame.render_widget(block, area);
 
     let entry = match app.current_entry() {

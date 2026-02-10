@@ -142,6 +142,13 @@ impl MboxParser {
                 message_buf.extend_from_slice(&line_buf);
             } else if message_buf.len() + line_buf.len() <= self.max_message_size {
                 message_buf.extend_from_slice(&line_buf);
+            } else if message_buf.len() <= self.max_message_size {
+                // First time exceeding the limit — log a warning once per message
+                warn!(
+                    offset = message_start,
+                    max_size = self.max_message_size,
+                    "Message exceeds maximum size, truncating body"
+                );
             }
 
             prev_line_was_empty = is_blank_line(&line_buf);

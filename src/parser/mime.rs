@@ -6,11 +6,6 @@ use crate::error::{MboxError, Result};
 use crate::model::attachment::AttachmentMeta;
 use crate::model::mail::MailBody;
 
-/// Maximum depth for recursive multipart parsing (to prevent stack overflow on adversarial input).
-/// Reserved for future use in Phase 2+ when we implement recursive multipart descent.
-#[allow(dead_code)]
-const MAX_DEPTH: usize = 10;
-
 /// Parse a complete raw message (headers + body) and extract its content.
 ///
 /// Uses `mail-parser` internally, with extra fallbacks for malformed messages.

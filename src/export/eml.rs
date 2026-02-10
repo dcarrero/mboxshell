@@ -77,7 +77,8 @@ fn skip_from_line(raw: &[u8]) -> &[u8] {
 
 /// Sanitize a string for use in filenames.
 ///
-/// Replaces invalid characters with `_` and truncates to `max_len`.
+/// Replaces invalid characters with `_`, strips path separators and `..`
+/// sequences to prevent path traversal, and truncates to `max_len`.
 pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
     let sanitized: String = s
         .chars()
@@ -90,6 +91,12 @@ pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
         })
         .take(max_len)
         .collect();
+
+    // Prevent path traversal: collapse `..` into `_`
+    let sanitized = sanitized.replace("..", "_");
+
+    // Strip leading dots (hidden files on Unix) and trailing dots (Windows issue)
+    let sanitized = sanitized.trim_matches('.').to_string();
 
     if sanitized.is_empty() {
         "unknown".to_string()
@@ -111,6 +118,18 @@ mod tests {
         );
         assert_eq!(sanitize_filename_part("a/b\\c:d*e", 20), "a_b_c_d_e");
         assert_eq!(sanitize_filename_part("", 20), "unknown");
+    }
+
+    #[test]
+    fn test_sanitize_filename_path_traversal() {
+        // ".." sequences must be neutralized
+        assert!(!sanitize_filename_part("../../etc/passwd", 50).contains(".."));
+        assert!(!sanitize_filename_part("..%2f..%2fetc", 50).contains(".."));
+        // Leading dots stripped (no hidden files)
+        assert!(!sanitize_filename_part(".hidden", 50).starts_with('.'));
+        assert!(!sanitize_filename_part("...triple", 50).starts_with('.'));
+        // Trailing dots stripped
+        assert!(!sanitize_filename_part("file...", 50).ends_with('.'));
     }
 
     #[test]
