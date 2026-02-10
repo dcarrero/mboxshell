@@ -1,0 +1,31 @@
+From sender@example.com Mon Feb 12 10:00:00 2024
+From: =?ISO-8859-1?Q?Fran=E7ois?= <francois@example.com>
+To: recipient@example.com
+Subject: =?ISO-8859-1?Q?R=E9sum=E9_du_projet?=
+Date: Mon, 12 Feb 2024 10:00:00 +0100
+Message-ID: <enc001@example.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+Voici le r=E9sum=E9 du projet.
+
+From sender2@example.com Mon Feb 12 11:00:00 2024
+From: =?UTF-8?B?5bGx55Sw5aSq6YOO?= <yamada@example.jp>
+To: recipient@example.com
+Subject: =?UTF-8?B?44GK55+l44KJ44Gb?=
+Date: Mon, 12 Feb 2024 11:00:00 +0900
+Message-ID: <enc002@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+日本語のテストメッセージです。
+
+From sender3@example.com Mon Feb 12 12:00:00 2024
+From: =?Windows-1252?Q?M=FCller?= <mueller@example.de>
+To: recipient@example.com
+Subject: =?Windows-1252?Q?Stra=DFenverkehr_=96_Bericht?=
+Date: Mon, 12 Feb 2024 12:00:00 +0100
+Message-ID: <enc003@example.com>
+Content-Type: text/plain; charset=Windows-1252
+Content-Transfer-Encoding: quoted-printable
+
+Stra=DFenverkehr-Bericht f=FCr M=E4rz.

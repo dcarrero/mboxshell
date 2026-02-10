@@ -1,0 +1,10 @@
+/target
+*.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.mboxshell.idx
+*.mbox-tui.idx
+CLAUDE.md

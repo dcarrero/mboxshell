@@ -1,0 +1,9 @@
+From: Test Sender <sender@example.com>
+To: Test Receiver <receiver@example.com>
+Subject: Single EML Test
+Date: Wed, 10 Jan 2024 15:30:00 +0000
+Message-ID: <eml001@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+This is a standalone EML file.
+It should be parsed as a single message.

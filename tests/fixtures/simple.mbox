@@ -1,0 +1,55 @@
+From user1@example.com Thu Jan 04 10:00:00 2024
+From: User One <user1@example.com>
+To: User Two <user2@example.com>
+Subject: Hello World
+Date: Thu, 04 Jan 2024 10:00:00 +0000
+Message-ID: <msg001@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+This is the first test message.
+It has two lines.
+
+From user2@example.com Thu Jan 04 11:00:00 2024
+From: User Two <user2@example.com>
+To: User One <user1@example.com>
+Subject: Re: Hello World
+Date: Thu, 04 Jan 2024 11:00:00 +0000
+Message-ID: <msg002@example.com>
+In-Reply-To: <msg001@example.com>
+References: <msg001@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+This is a reply.
+
+From user3@example.com Fri Jan 05 09:00:00 2024
+From: =?UTF-8?B?Sm9zw6kgR2FyY8Ota2E=?= <user3@example.com>
+To: user1@example.com
+Subject: =?UTF-8?Q?Caf=C3=A9_con_le=C3=B1a?=
+Date: Fri, 05 Jan 2024 09:00:00 +0100
+Message-ID: <msg003@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+Mensaje con caracteres especiales: áéíóú ñ ü
+
+From user4@example.com Fri Jan 05 14:00:00 2024
+From: User Four <user4@example.com>
+To: user1@example.com
+Subject: Message with From in body
+Date: Fri, 05 Jan 2024 14:00:00 +0000
+Message-ID: <msg004@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+This message has a tricky line:
+>From the perspective of the user, this should not be a separator.
+And this continues normally.
+
+From user5@example.com Sat Jan 06 08:00:00 2024
+From: User Five <user5@example.com>
+To: user1@example.com, user2@example.com
+Cc: user3@example.com
+Subject: Meeting tomorrow
+Date: Sat, 06 Jan 2024 08:00:00 -0500
+Message-ID: <msg005@example.com>
+Content-Type: text/plain; charset=US-ASCII
+
+Please confirm attendance.

@@ -1,0 +1,78 @@
+[package]
+name = "mboxshell"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Fast terminal viewer for MBOX files of any size. Open, search and export emails from Gmail Takeout backups (50GB+) without loading them into memory."
+license = "MIT"
+authors = ["David Carrero Fernández-Baillo"]
+repository = "https://github.com/dcarrero/mboxshell"
+homepage = "https://github.com/dcarrero/mboxshell"
+keywords = ["mbox", "email", "tui", "terminal", "viewer"]
+categories = ["command-line-utilities", "email"]
+
+[dependencies]
+# Email parsing
+mail-parser = "0.9"
+encoding_rs = "0.8"
+
+# Date and time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+bincode = "1.3"
+
+# Hashing for index integrity
+sha2 = "0.10"
+
+# Efficient I/O
+memmap2 = "0.9"
+
+# CLI
+clap = { version = "4", features = ["derive", "env", "wrap_help"] }
+
+# Errors
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Progress
+indicatif = "0.17"
+
+# Cross-platform directories
+dirs = "5"
+
+# Config
+toml = "0.8"
+
+# Shell completions & manpage
+clap_complete = "4"
+clap_mangen = "0.2"
+
+# Logging to file
+tracing-appender = "0.2"
+
+# Utilities
+byteorder = "1"
+humansize = "2"
+lru = "0.12"
+unicode-width = "0.2"
+
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3"
+assert_fs = "1"
+predicates = "3"
+
+[[bench]]
+name = "parsing"
+harness = false
