@@ -24,6 +24,10 @@ When you export your email from Gmail using Google Takeout, you get one or more 
 - **Extract attachments** individually or in bulk
 - **Merge multiple MBOX files** into one, removing duplicates
 
+## Also on Mac: mboxViewer
+
+If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewer.net) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
+
 ## Features
 
 - **Never loads the file into memory.** Uses streaming I/O with a 1 MB buffer. A 100 GB MBOX uses roughly the same ~500 MB of RAM as a 1 GB one (only the metadata index lives in memory).
