@@ -328,7 +328,7 @@ src/
 - New `html` export format: `mbox-tui export ... --format html` and a new HTML option in the export popup. Produces a standalone HTML page with the headers in a table and the original HTML body (or `<pre>`-wrapped text). **HTML bodies are sanitized by default** (scripts, `on*` handlers, iframes, `javascript:` URLs stripped via the `ammonia` crate); pass `--raw-html` to keep the original markup for local archival (#1).
 - Search bar now shows an inline syntax cheatsheet (`from: to: subject: body: date:` …) while empty, so the query language is discoverable without reading docs (#1).
 - New `--qp` flag on `export ... --format eml`: re-encodes 8-bit text bodies as quoted-printable so the resulting EML is pure 7-bit ASCII. Helps strict-UTF-8 tools like `eml-extractor` and `emlAnalyzer`. **Works for both single-part and multipart messages** — the MIME tree is walked recursively and every text/* leaf is re-encoded in place (#1).
-- CI: opt into Node 24 (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`) ahead of GitHub's Sep 2026 Node 20 sunset.
+- CI: bump `actions/checkout`, `actions/upload-artifact` and `actions/download-artifact` to v5 (native Node 24) ahead of GitHub's Sep 2026 Node 20 sunset.
 
 ### v0.3.1
 - Fix: search bar registered every keystroke and pasted character twice on Windows Terminal and terminals with the kitty keyboard protocol (#2). Key events are now filtered on `KeyEventKind::Press`.
