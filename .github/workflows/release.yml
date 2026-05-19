@@ -7,10 +7,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # Opt javascript actions into Node 24 (Node 20 is deprecated on GH runners
-  # from Sep 2026). Keeps actions/checkout@v4 and actions/upload-artifact@v4
-  # working past the deprecation date without bumping action versions.
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: write
@@ -62,7 +58,7 @@ jobs:
             cross: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -115,7 +111,7 @@ jobs:
           cp target/${{ matrix.target }}/release/mboxshell.exe ${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
@@ -124,10 +120,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
 
