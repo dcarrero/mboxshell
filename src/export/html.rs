@@ -137,9 +137,7 @@ mod tests {
         MailEntry {
             offset: 0,
             length: 0,
-            date: chrono::Utc
-                .with_ymd_and_hms(2024, 1, 4, 10, 0, 0)
-                .unwrap(),
+            date: chrono::Utc.with_ymd_and_hms(2024, 1, 4, 10, 0, 0).unwrap(),
             from: EmailAddress {
                 display_name: "Alice".to_string(),
                 address: "alice@example.com".to_string(),

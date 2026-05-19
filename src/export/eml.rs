@@ -240,9 +240,7 @@ fn find_header_body_split(bytes: &[u8]) -> Option<HeaderBodySplit> {
 }
 
 fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|w| w == needle)
+    haystack.windows(needle.len()).position(|w| w == needle)
 }
 
 fn window_contains(haystack: &[u8], needle: &[u8]) -> bool {
@@ -280,9 +278,7 @@ fn split_header_lines(headers: &[u8]) -> Vec<&[u8]> {
 /// first occurrence only, without folding handling (sufficient for CTE).
 fn extract_header_value(headers_lower: &[u8], name_lower: &[u8]) -> Option<String> {
     for line in split_header_lines(headers_lower) {
-        if line.starts_with(name_lower)
-            && line.get(name_lower.len()) == Some(&b':')
-        {
+        if line.starts_with(name_lower) && line.get(name_lower.len()) == Some(&b':') {
             let val = &line[name_lower.len() + 1..];
             return Some(String::from_utf8_lossy(val).trim().to_string());
         }
@@ -381,10 +377,16 @@ mod tests {
         let eml = b"Subject: Test\r\nContent-Type: text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: 8bit\r\n\r\nHola caf\xf1n\r\n".to_vec();
         let out = reencode_single_part_as_qp(eml);
         // All bytes must be < 128 after re-encoding
-        assert!(out.iter().all(|&b| b < 128), "QP output must be 7-bit ASCII");
+        assert!(
+            out.iter().all(|&b| b < 128),
+            "QP output must be 7-bit ASCII"
+        );
         let s = String::from_utf8(out).unwrap();
         assert!(s.contains("Content-Transfer-Encoding: quoted-printable"));
-        assert!(s.contains("=F1") || s.contains("=f1"), "0xf1 must be QP-encoded");
+        assert!(
+            s.contains("=F1") || s.contains("=f1"),
+            "0xf1 must be QP-encoded"
+        );
         // Old 8bit header must be gone
         assert!(!s.contains("Content-Transfer-Encoding: 8bit"));
     }
