@@ -1,0 +1,4111 @@
+From schen@cloudnews.tech Wed Jan 03 08:00:00 2024
+From: Sarah Chen <schen@cloudnews.tech>
+To: subscribers@cloudnews.tech
+Subject: Weekly Cloud Digest: European Data Centers Surge in Q1 2024
+Date: Wed, 03 Jan 2024 08:00:00 +0100
+Message-ID: <en001@cloudnews.tech>
+X-Gmail-Labels: Inbox,Cloud,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hello subscribers,
+
+This week's top stories from cloudnews.tech:
+
+1. European data center capacity grew 22% year-over-year in Q1 2024
+2. Madrid and Warsaw emerge as top destinations for new builds
+3. GAIA-X releases compliance framework v24.01
+4. Green energy PPAs now cover 45% of EU data center power
+
+The shift toward digital sovereignty is accelerating. Read more at https://cloudnews.tech/weekly/2024-01
+
+Best regards,
+Sarah Chen
+Editor-in-Chief, cloudnews.tech
+
+From jmitchell@cloudnews.tech Wed Jan 03 11:00:00 2024
+From: James Mitchell <jmitchell@cloudnews.tech>
+To: editorial@cloudnews.tech
+Subject: Article draft: The Rise of Sovereign Cloud in Southern Europe
+Date: Wed, 03 Jan 2024 11:00:00 +0100
+Message-ID: <en002@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hi team,
+
+I've finished the first draft of the sovereign cloud article. Key points covered:
+
+- Spain's data center market grew 31% in 2023, fastest in the EU
+- Portugal positioning itself as an Atlantic connectivity hub
+- Italy's National Cybersecurity Strategy driving local cloud adoption
+- Greece attracting investment with new tax incentives
+
+The article references data from Synergy Research Group and interviews with three local providers. It runs about 2,200 words.
+
+Please review by Friday. I'd like to publish Monday morning.
+
+James Mitchell
+Senior Correspondent, cloudnews.tech
+
+From ewatson@cloudnews.tech Wed Jan 03 16:00:00 2024
+From: Emily Watson <ewatson@cloudnews.tech>
+To: James Mitchell <jmitchell@cloudnews.tech>
+Subject: Re: Article draft: The Rise of Sovereign Cloud in Southern Europe
+Date: Wed, 03 Jan 2024 16:00:00 +0100
+Message-ID: <en003@cloudnews.tech>
+In-Reply-To: <en002@cloudnews.tech>
+References: <en002@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+James,
+
+Great draft. A few suggestions:
+
+1. Add a comparison table of data center costs across EU capitals
+2. The Portugal section could mention the new Ellalink cable to Brazil
+3. Include a quote from the EU Commissioner for Digital Affairs
+
+Also, colorvivo.com published a related infographic yesterday on EU cloud market share.
+Check https://colorvivo.com/infographics/eu-cloud-2024/ - we could reference it.
+
+Emily
+
+From alerts@cloudnews.tech Wed Jan 03 18:00:00 2024
+From: CloudNews Alerts <alerts@cloudnews.tech>
+To: editors@cloudnews.tech
+Subject: [BREAKING] Major cloud outage affects three EU regions
+Date: Wed, 03 Jan 2024 18:00:00 +0100
+Message-ID: <en004@cloudnews.tech>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<h2 style="color:#cc3300;">BREAKING: Major Cloud Outage</h2>
+<p>A significant outage is affecting cloud services across <strong>three EU regions</strong>:</p>
+<ul>
+<li>Frankfurt (eu-central-1) - <span style="color:red;">DOWN</span> since 14:22 UTC</li>
+<li>Dublin (eu-west-1) - <span style="color:orange;">DEGRADED</span> since 14:35 UTC</li>
+<li>Paris (eu-west-3) - <span style="color:orange;">DEGRADED</span> since 14:40 UTC</li>
+</ul>
+<p>Affected services include compute, storage, and managed databases.</p>
+<p>This incident highlights the importance of <strong>multi-provider strategies</strong> and sovereign cloud alternatives.</p>
+<p>Live updates: <a href="https://cloudnews.tech/outage-tracker">cloudnews.tech/outage-tracker</a></p>
+<hr>
+<p style="font-size:0.8em;color:#666;">CloudNews Tech - Breaking Cloud Infrastructure News</p>
+</body></html>
+
+From dpark@techconference.example Thu Jan 04 02:00:00 2024
+From: David Park <dpark@techconference.example>
+To: speakers@cloudcon.example
+Subject: CloudCon Europe 2024: Speaker Confirmation
+Date: Thu, 04 Jan 2024 02:00:00 +0100
+Message-ID: <en005@techconference.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear Speaker,
+
+Thank you for accepting our invitation to CloudCon Europe 2024.
+
+Your session details:
+- Title: "Building Resilient Multi-Cloud Architectures"
+- Track: Infrastructure & Operations
+- Date: March 15, 2024
+- Time: 14:00 - 14:45 CET
+- Room: Grand Ballroom A, Brussels Convention Center
+
+Please submit your slides by March 8th via our speaker portal.
+
+Travel and accommodation will be covered as per our speaker agreement.
+
+Best regards,
+David Park
+Program Director, CloudCon Europe
+
+From digest@infra-weekly.example Thu Jan 04 06:00:00 2024
+From: Infrastructure Weekly <digest@infra-weekly.example>
+To: readers@infra-weekly.example
+Subject: Infra Weekly #147: Kubernetes 1.30, ARM servers, and liquid cooling
+Date: Thu, 04 Jan 2024 06:00:00 +0100
+Message-ID: <en006@infra-weekly.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+<div style="background:#0066cc;color:white;padding:20px;text-align:center;">
+<h1>Infrastructure Weekly #147</h1>
+<p>January 2024 | Your weekly dose of infrastructure news</p>
+</div>
+<div style="padding:20px;">
+<h3>Top Stories</h3>
+<ol>
+<li><strong>Kubernetes 1.30 Released</strong> - Sidecar containers go GA, improved Windows support</li>
+<li><strong>ARM Server Market Hits 15%</strong> - Ampere and AWS Graviton driving adoption</li>
+<li><strong>Liquid Cooling Goes Mainstream</strong> - New data centers choosing liquid over air</li>
+</ol>
+<h3>Worth Reading</h3>
+<p><a href="https://cloudnews.tech/kubernetes-130">Deep dive into K8s 1.30</a> by cloudnews.tech</p>
+<p><a href="https://colorvivo.com/datacenter-cooling">Visual guide to cooling technologies</a> by colorvivo.com</p>
+<h3>Numbers of the Week</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse;">
+<tr><th>Metric</th><th>Value</th><th>Change</th></tr>
+<tr><td>Global cloud spend</td><td>$73.6B</td><td>+19%</td></tr>
+<tr><td>EU data center capacity</td><td>11.2 GW</td><td>+22%</td></tr>
+<tr><td>Avg PUE (new builds)</td><td>1.18</td><td>-0.05</td></tr>
+</table>
+</div>
+<div style="background:#f0f0f0;padding:10px;text-align:center;font-size:0.8em;">
+<p>Unsubscribe: reply with STOP | <a href="https://infra-weekly.example">Archive</a></p>
+</div>
+</body></html>
+
+From rtaylor@sovereign-cloud.example Thu Jan 04 12:00:00 2024
+From: Robert Taylor <rtaylor@sovereign-cloud.example>
+To: partners@sovereign-cloud.example
+Subject: Partnership opportunity: European sovereign cloud consortium
+Date: Thu, 04 Jan 2024 12:00:00 +0100
+Message-ID: <en007@sovereign-cloud.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear partners,
+
+We are forming a consortium of European cloud providers to bid on the EU's Digital Europe Programme funding call DIGITAL-2024-CLOUD-01.
+
+The call focuses on:
+- Federated cloud infrastructure across at least 5 EU member states
+- GAIA-X compliant service delivery
+- Budget: EUR 50 million (EU co-funding 50%)
+
+We currently have partners in France, Germany, and the Netherlands. We need providers in Southern and Eastern Europe.
+
+If interested, please respond by January 31st with:
+1. Your company profile and certifications
+2. Data center locations and capacity
+3. Previous EU-funded project experience
+
+Timeline:
+- Feb 15: Consortium agreement signed
+- Mar 1: Proposal draft complete
+- Mar 30: Submission deadline
+
+Robert Taylor
+Director of European Partnerships
+
+From monitoring@ops.example Thu Jan 04 14:00:00 2024
+From: Monitoring Bot <monitoring@ops.example>
+To: oncall@ops.example
+Subject: [RESOLVED] Network latency spike on edge-node-eu-west-14
+Date: Thu, 04 Jan 2024 14:00:00 +0100
+Message-ID: <en008@ops.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== ALERT RESOLVED ===
+
+Status: RESOLVED (was WARNING)
+Host: edge-node-eu-west-14.cdn.example
+Metric: p99 latency
+Peak: 145ms (threshold: 100ms)
+Current: 12ms
+Duration: 23 minutes
+
+Root cause: BGP route flap on upstream provider AS174 (Cogent)
+Action: Traffic automatically rerouted via AS3356 (Lumen)
+Impact: Minor - 0.3% of requests saw elevated latency
+
+-- Prometheus AlertManager v2.51
+
+From landerson@cloudnews.tech Thu Jan 04 19:00:00 2024
+From: Lisa Anderson <landerson@cloudnews.tech>
+To: newsletter@cloudnews.tech
+Subject: Cloud Market Report Q4 2023: Key Findings
+Date: Thu, 04 Jan 2024 19:00:00 +0100
+Message-ID: <en009@cloudnews.tech>
+X-Gmail-Labels: Inbox,Cloud,Newsletter
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_en009_cloudnews.tech"
+
+------=_Part_en009_cloudnews.tech
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Hi all,
+
+Attached is the Q4 2023 cloud market data we compiled for the annual report.
+
+Highlights:
+- Global cloud infrastructure spending reached $73.6B in Q4
+- European market grew faster than global average (22% vs 19%)
+- Southern Europe showed the strongest growth at 31.2%
+- Sovereign cloud providers gained 3 percentage points of market share
+
+The full report will be published on cloudnews.tech next Monday.
+
+Lisa Anderson
+Market Research, cloudnews.tech
+------=_Part_en009_cloudnews.tech
+Content-Type: text/csv; name="cloud_market_q4_2023.csv"
+Content-Disposition: attachment; filename="cloud_market_q4_2023.csv"
+Content-Transfer-Encoding: base64
+
+UmVnaW9uLFNlcnZlcnMsUmV2ZW51ZV9FVVIsR3Jvd3RoX1BjdApFdXJvcGVfV2VzdCwxMjUwMCw4OTAwMDAwMDAsMTguNQpFdXJvcGVfTm9ydGgsNDIwMCwzMTAwMDAwMDAsMjIuMQpFdXJvcGVfU291dGgsMzgwMCwyNDUwMDAwMDAsMzEuMgpBc2lhX1BhY2lmaWMsODkwMCw2MjAwMDAwMDAsMTUuOApBbWVyaWNhcywxNTYwMCwxMTAwMDAwMDAwLDEyLjMK
+------=_Part_en009_cloudnews.tech--
+
+From tbradley@datacenter-mag.example Fri Jan 05 02:00:00 2024
+From: Tom Bradley <tbradley@datacenter-mag.example>
+To: contributors@datacenter-mag.example
+Subject: Call for articles: Special issue on edge computing in Europe
+Date: Fri, 05 Jan 2024 02:00:00 +0100
+Message-ID: <en010@datacenter-mag.example>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear contributors,
+
+We're preparing a special issue on edge computing deployment across Europe.
+
+Topics of interest:
+- 5G-enabled edge data centers
+- Industrial edge computing use cases
+- Edge sovereignty and data residency
+- Micro data centers for rural connectivity
+- Energy efficiency at the edge
+
+Submission guidelines:
+- Length: 1,500-2,500 words
+- Deadline: February 28, 2024
+- Include at least 2 real-world case studies
+- Reference recent industry data (Gartner, IDC, or equivalent)
+
+We pay EUR 500 per published article.
+
+Tom Bradley
+Managing Editor
+
+From news@aws-updates.example Fri Jan 05 05:00:00 2024
+From: AWS News <news@aws-updates.example>
+To: subscribers@aws-updates.example
+Subject: New AWS Region: Spain (eu-south-2) Now Generally Available
+Date: Fri, 05 Jan 2024 05:00:00 +0100
+Message-ID: <en011@aws-updates.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<h2>AWS Region Spain (eu-south-2) is Now Generally Available</h2>
+<p>We are excited to announce the general availability of the <strong>AWS Europe (Spain)</strong> Region in Aragon.</p>
+<h3>Available Services at Launch:</h3>
+<ul>
+<li>Amazon EC2 (including Graviton3 instances)</li>
+<li>Amazon S3, EBS, EFS</li>
+<li>Amazon RDS (MySQL, PostgreSQL, Aurora)</li>
+<li>Amazon EKS and ECS</li>
+<li>AWS Lambda and API Gateway</li>
+</ul>
+<h3>Key Benefits:</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;">
+<tr><th>Feature</th><th>Detail</th></tr>
+<tr><td>Availability Zones</td><td>3</td></tr>
+<tr><td>Latency to Madrid</td><td>&lt;5ms</td></tr>
+<tr><td>Renewable Energy</td><td>100% by 2025</td></tr>
+</table>
+<p>Learn more at <a href="https://aws.amazon.com/about-aws/global-infrastructure/">aws.amazon.com</a></p>
+</body></html>
+
+From rgreen@cloudnews.tech Fri Jan 05 09:00:00 2024
+From: Rachel Green <rgreen@cloudnews.tech>
+To: Sarah Chen <schen@cloudnews.tech>
+Subject: Interview transcript: CEO of Nordic Cloud Alliance
+Date: Fri, 05 Jan 2024 09:00:00 +0100
+Message-ID: <en012@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_en012_cloudnews.tech"
+
+------=_Part_en012_cloudnews.tech
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Sarah,
+
+Attached is the cleaned-up transcript from my interview with Erik Lindqvist, CEO of Nordic Cloud Alliance.
+
+Key quotes worth highlighting:
+- "The Nordics have a natural advantage for data centers: cold climate, abundant renewable energy, and strong privacy laws."
+- "We expect 40% of Nordic enterprises to adopt sovereign cloud by 2026."
+- "The relationship between colorvivo.com and our design team helped us visualize our green data center concept."
+
+I'll write the article this weekend. Target: 1,800 words for the Tuesday edition.
+
+Rachel
+------=_Part_en012_cloudnews.tech
+Content-Type: text/plain; name="interview_transcript.txt"
+Content-Disposition: attachment; filename="interview_transcript.txt"
+Content-Transfer-Encoding: base64
+
+PT09IFF1YXJ0ZXJseSBJbmZyYXN0cnVjdHVyZSBSZXBvcnQgUTEgMjAyNCA9PT0KVXB0aW1lOiA5OS45OTclCkluY2lkZW50czogMyAoYWxsIFAzLCByZXNvbHZlZCA8MzBtaW4pCk5ldyBkZXBsb3ltZW50czogNDcKQ2FwYWNpdHkgdXRpbGl6YXRpb246IDcyJQpOZXR3b3JrIHRocm91Z2hwdXQgcGVhazogODUgR2JwcwpTdG9yYWdlIGdyb3d0aDogKzE1IFRCCg==
+------=_Part_en012_cloudnews.tech--
+
+From editorial@cloudnews.tech Fri Jan 05 14:00:00 2024
+From: CloudNews Editorial <editorial@cloudnews.tech>
+To: schen@cloudnews.tech
+Cc: jmitchell@cloudnews.tech, rgreen@cloudnews.tech
+Subject: Editorial calendar update: February 2024
+Date: Fri, 05 Jan 2024 14:00:00 +0100
+Message-ID: <en013@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Team,
+
+Updated editorial calendar for February:
+
+Week 1 (Feb 5-9):
+- Monday: Sovereign Cloud in Southern Europe (James)
+- Wednesday: Nordic Cloud Alliance interview (Rachel)
+- Friday: Weekly Digest
+
+Week 2 (Feb 12-16):
+- Monday: EU Cloud Market Report Q4 2023 (Lisa)
+- Wednesday: Edge Computing Special (guest post)
+- Friday: Weekly Digest
+
+Week 3 (Feb 19-23):
+- Monday: GAIA-X Framework Analysis
+- Wednesday: Data Center Sustainability Report
+- Friday: Weekly Digest + Monthly Roundup
+
+Week 4 (Feb 26-Mar 1):
+- Monday: MWC Barcelona coverage
+- Wednesday: CloudCon Europe preview
+- Friday: Weekly Digest
+
+Please confirm your deadlines. No delays this month - we're building momentum.
+
+Sarah Chen
+Editor-in-Chief
+
+From redaccion@noticias.madrid Fri Jan 05 20:00:00 2024
+From: Noticias Madrid Digital <redaccion@noticias.madrid>
+To: press@cloudnews.tech
+Subject: Press release: Madrid invests EUR 200M in digital infrastructure
+Date: Fri, 05 Jan 2024 20:00:00 +0100
+Message-ID: <en014@noticias.madrid>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+FOR IMMEDIATE RELEASE
+
+Madrid Invests EUR 200 Million in Digital Infrastructure Plan 2024-2027
+
+MADRID, January 2024 - The Community of Madrid has announced a EUR 200 million investment plan to strengthen the region's position as Southern Europe's leading digital hub.
+
+Key initiatives:
+1. New fiber optic backbone connecting all municipalities (EUR 80M)
+2. Support for data center construction in the Henares Corridor (EUR 60M)
+3. Digital skills training program for 50,000 workers (EUR 35M)
+4. Smart city pilot projects in 15 municipalities (EUR 25M)
+
+"Madrid already hosts 65% of Spain's data center capacity. This investment will ensure we remain competitive with Amsterdam, Frankfurt, and Dublin," said the Regional Minister for Digital Transformation.
+
+Full coverage at https://noticias.madrid/infraestructura-digital-2024
+
+Contact: redaccion@noticias.madrid
+
+From newsletter@cloudsec.example Fri Jan 05 23:00:00 2024
+From: CloudSec Weekly <newsletter@cloudsec.example>
+To: subscribers@cloudsec.example
+Subject: CloudSec Bulletin: Zero-day in container runtime, NIS2 deadline approaches
+Date: Fri, 05 Jan 2024 23:00:00 +0100
+Message-ID: <en015@cloudsec.example>
+X-Gmail-Labels: Inbox,Security
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Georgia,serif;">
+<div style="border-bottom:3px solid #cc3300;padding-bottom:10px;">
+<h1 style="color:#cc3300;">CloudSec Weekly Bulletin</h1>
+</div>
+<h2>Critical: Container Runtime Zero-Day (CVE-2024-XXXX)</h2>
+<p>A critical vulnerability has been discovered in a widely-used container runtime affecting all versions prior to 1.7.12.</p>
+<p><strong>Impact:</strong> Container escape allowing host-level code execution.<br>
+<strong>CVSS Score:</strong> 9.8 (Critical)<br>
+<strong>Patch:</strong> Available - update immediately.</p>
+<h2>NIS2 Directive: 9 Months to Compliance</h2>
+<p>The EU's NIS2 directive becomes enforceable on <strong>October 17, 2024</strong>. Cloud providers classified as "essential entities" must:</p>
+<ul>
+<li>Implement risk management measures</li>
+<li>Report incidents within 24 hours</li>
+<li>Ensure supply chain security</li>
+<li>Conduct regular security audits</li>
+</ul>
+<p>Read our compliance guide at cloudnews.tech/nis2-guide</p>
+</body></html>
+
+From mchen@venture-cloud.example Sat Jan 06 07:00:00 2024
+From: Mike Chen <mchen@venture-cloud.example>
+To: investors@venture-cloud.example
+Subject: Investment memo: European cloud infrastructure landscape 2024
+Date: Sat, 06 Jan 2024 07:00:00 +0100
+Message-ID: <en016@venture-cloud.example>
+X-Gmail-Labels: Inbox,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Investors,
+
+Summary of our analysis of the European cloud infrastructure investment landscape:
+
+Market size: EUR 85B (2024E), growing at 22% CAGR
+Regulatory tailwinds: European Data Act, NIS2, GAIA-X
+Key growth segments:
+- Sovereign cloud: +45% YoY
+- Edge computing: +38% YoY
+- Green data centers: +30% YoY
+
+Top investment targets by region:
+1. Iberian Peninsula: High growth, lower costs, renewable energy abundance
+2. Nordics: Mature market, cooling advantages, strong talent pool
+3. Central Eastern Europe: Emerging, high growth potential, EU funds
+
+Notable deals this quarter:
+- CloudProvider X raised EUR 120M Series C
+- DataCenter Y acquired by infrastructure fund for EUR 450M
+- EdgeTech Z closed EUR 35M Series B
+
+Full memo attached to the shared drive. Meeting Thursday at 14:00 CET.
+
+Mike Chen
+Managing Partner
+
+From newsletter@colorvivo.com Sat Jan 06 11:00:00 2024
+From: ColorVivo Design <newsletter@colorvivo.com>
+To: subscribers@colorvivo.com
+Subject: New infographic: Global Cloud Market Share 2024
+Date: Sat, 06 Jan 2024 11:00:00 +0100
+Message-ID: <en017@colorvivo.com>
+X-Gmail-Labels: Inbox,Design
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_Related_en017_colorvivo.com"
+
+------=_Related_en017_colorvivo.com
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;">
+<div style="text-align:center;padding:20px;">
+<h2 style="color:#2c3e50;">New Infographic Available</h2>
+<h3>Global Cloud Market Share 2024</h3>
+<img src="cid:infographic001@colorvivo.com" alt="Cloud Market Infographic" style="max-width:100%;border:1px solid #ddd;">
+<p style="color:#666;font-size:0.9em;">Preview thumbnail - full resolution available on our site</p>
+</div>
+<div style="padding:20px;">
+<p>Our latest data visualization shows:</p>
+<ul>
+<li>AWS: 31% market share (down from 33%)</li>
+<li>Azure: 25% (up from 23%)</li>
+<li>Google Cloud: 11% (stable)</li>
+<li>European providers: 8% combined (up from 6%)</li>
+<li>Others: 25%</li>
+</ul>
+<p>Download the full infographic at <a href="https://colorvivo.com/infographics/cloud-market-2024">colorvivo.com</a></p>
+<p>Licensed under Creative Commons CC-BY-4.0 for editorial use.</p>
+</div>
+</body></html>
+------=_Related_en017_colorvivo.com
+Content-Type: image/png; name="cloud_infographic_thumb.png"
+Content-Transfer-Encoding: base64
+Content-ID: <infographic001@colorvivo.com>
+Content-Disposition: inline; filename="cloud_infographic_thumb.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAEElEQVR4nGNgSDtDGhp8GgAYd0yBAMLNyQAAAABJRU5ErkJggg==
+------=_Related_en017_colorvivo.com--
+
+From pwilliams@hosting-review.example Sat Jan 06 14:00:00 2024
+From: Peter Williams <pwilliams@hosting-review.example>
+To: schen@cloudnews.tech
+Subject: Guest post submission: Why SMBs are choosing local cloud providers
+Date: Sat, 06 Jan 2024 14:00:00 +0100
+Message-ID: <en018@hosting-review.example>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hi Sarah,
+
+I'd like to submit a guest post for cloudnews.tech on why European SMBs are increasingly choosing local cloud providers over hyperscalers.
+
+Key arguments:
+1. Data residency compliance without complexity
+2. Local language support and same-timezone SLAs
+3. Competitive pricing for predictable workloads
+4. Personal relationships and flexible contracts
+5. Supporting the local digital economy
+
+I have interviews with 5 SMB owners across Spain, France, and Germany who switched from hyperscalers to local providers. Real cost comparisons included.
+
+Word count: ~2,000. Can deliver by next Friday.
+
+Let me know if interested.
+
+Peter Williams
+Freelance Technology Writer
+
+From schen@cloudnews.tech Sat Jan 06 18:00:00 2024
+From: Sarah Chen <schen@cloudnews.tech>
+To: Peter Williams <pwilliams@hosting-review.example>
+Subject: Re: Guest post submission: Why SMBs are choosing local cloud providers
+Date: Sat, 06 Jan 2024 18:00:00 +0100
+Message-ID: <en019@cloudnews.tech>
+In-Reply-To: <en018@hosting-review.example>
+References: <en018@hosting-review.example>
+X-Gmail-Labels: Sent,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Peter,
+
+Love the angle. Yes, please submit.
+
+A few requests:
+- Include at least one case study with actual cost numbers
+- Mention the EU's Digital Europe Programme SMB cloud vouchers
+- Reference our earlier article on sovereign cloud: https://cloudnews.tech/sovereign-cloud-guide
+- Keep it under 2,200 words
+
+Payment: EUR 400 upon publication.
+
+Looking forward to it.
+
+Sarah
+
+From reports@cloudbench.example Sun Jan 07 00:00:00 2024
+From: Cloud Benchmarks <reports@cloudbench.example>
+To: subscribers@cloudbench.example
+Subject: January 2024 Performance Report: EU Cloud Providers
+Date: Sun, 07 Jan 2024 00:00:00 +0100
+Message-ID: <en020@cloudbench.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_en020_cloudbench.example"
+
+------=_Part_en020_cloudbench.example
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Monthly Cloud Performance Report - January 2024
+
+Top performers by region (compute, p99 latency):
+
+EU West:
+1. Provider A: 2.1ms avg, 99.998% uptime
+2. Provider B: 2.4ms avg, 99.995% uptime
+3. Provider C: 2.8ms avg, 99.992% uptime
+
+EU Central:
+1. Provider D: 1.8ms avg, 99.999% uptime
+2. Provider E: 2.2ms avg, 99.997% uptime
+
+EU South:
+1. Provider F: 2.5ms avg, 99.996% uptime
+2. Provider G: 2.9ms avg, 99.994% uptime
+
+Attached: detailed benchmark data in CSV format.
+
+Full interactive dashboard: https://cloudbench.example/dashboard/jan-2024
+
+Note: Methodology follows the CloudPerf v3.1 standard.
+------=_Part_en020_cloudbench.example
+Content-Type: text/csv; name="eu_cloud_benchmarks_jan2024.csv"
+Content-Disposition: attachment; filename="eu_cloud_benchmarks_jan2024.csv"
+Content-Transfer-Encoding: base64
+
+TW9udGgsQ2xvdWRfU3BlbmRfRVVSLE9uX1ByZW1fU3BlbmRfRVVSLFNhdmluZ3NfUGN0Ckphbl8yMDI0LDEyNTAwMCwxODAwMDAsMzAuNgpGZWJfMjAyNCwxMTgwMDAsMTgwMDAwLDM0LjQKTWFyXzIwMjQsMTMxMDAwLDE4MDAwMCwyNy4yCkFwcl8yMDI0LDEyMjAwMCwxNzUwMDAsMzAuMwo=
+------=_Part_en020_cloudbench.example--
+
+From info@greendc.example Sun Jan 07 05:00:00 2024
+From: GreenDC Initiative <info@greendc.example>
+To: members@greendc.example
+Subject: Sustainability Report: Carbon-neutral data centers in the EU
+Date: Sun, 07 Jan 2024 05:00:00 +0100
+Message-ID: <en021@greendc.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_Related_en021_greendc.example"
+
+------=_Related_en021_greendc.example
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<div style="text-align:center;">
+<img src="cid:logo@greendc.example" alt="GreenDC Logo">
+<h2>GreenDC Annual Sustainability Report 2023</h2>
+</div>
+<h3>Key Achievements:</h3>
+<ul>
+<li>42 data centers achieved carbon-neutral certification in 2023</li>
+<li>Average PUE improved from 1.35 to 1.22</li>
+<li>67% of member facilities now use 100% renewable energy</li>
+<li>Water usage effectiveness (WUE) reduced by 18%</li>
+</ul>
+<h3>2024 Targets:</h3>
+<p>The EU Energy Efficiency Directive requires all data centers above 500kW to report energy consumption by May 2024. Our members are well prepared.</p>
+<p>Full report: <a href="https://greendc.example/report-2023">greendc.example/report-2023</a></p>
+</body></html>
+------=_Related_en021_greendc.example
+Content-Type: image/png; name="greendc_logo.png"
+Content-Transfer-Encoding: base64
+Content-ID: <logo@greendc.example>
+Content-Disposition: inline; filename="greendc_logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEElEQVR4nGNgmGmMHQ0tCQDhJTMBNq5LywAAAABJRU5ErkJggg==
+------=_Related_en021_greendc.example--
+
+From jobs@techrecruit.example Sun Jan 07 08:00:00 2024
+From: TechRecruit Europe <jobs@techrecruit.example>
+To: talent-pool@techrecruit.example
+Subject: Hot jobs: Cloud architects needed across Europe
+Date: Sun, 07 Jan 2024 08:00:00 +0100
+Message-ID: <en022@techrecruit.example>
+X-Gmail-Labels: Inbox
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+This week's top cloud positions:
+
+1. Senior Cloud Architect - Madrid, Spain
+   Salary: EUR 65-80K | Hybrid | Sovereign cloud experience required
+
+2. Site Reliability Engineer - Amsterdam, Netherlands
+   Salary: EUR 75-95K | On-site | Kubernetes + Terraform
+
+3. Data Center Operations Manager - Frankfurt, Germany
+   Salary: EUR 70-90K | On-site | 24/7 operations experience
+
+4. Cloud Security Engineer - Warsaw, Poland
+   Salary: EUR 50-65K | Remote-first | ISO 27001 + SOC2
+
+5. DevOps Lead - Milan, Italy
+   Salary: EUR 55-70K | Hybrid | Multi-cloud expertise
+
+Apply at techrecruit.example/cloud-jobs
+
+Unsubscribe: reply STOP
+
+From info@cloudcon.example Sun Jan 07 15:00:00 2024
+From: CloudCon Organizing <info@cloudcon.example>
+To: attendees@cloudcon.example
+Subject: CloudCon Europe 2024: Full Schedule Released
+Date: Sun, 07 Jan 2024 15:00:00 +0100
+Message-ID: <en023@cloudcon.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<h1 style="color:#0066cc;">CloudCon Europe 2024</h1>
+<h2>March 14-16 | Brussels Convention Center</h2>
+<h3>Day 1 - March 14: Strategy & Vision</h3>
+<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">
+<tr style="background:#0066cc;color:white;"><th>Time</th><th>Session</th><th>Speaker</th></tr>
+<tr><td>09:00</td><td>Opening Keynote: The Future of European Cloud</td><td>EU Commissioner</td></tr>
+<tr><td>10:30</td><td>Panel: Sovereign Cloud Reality Check</td><td>5 CEOs</td></tr>
+<tr><td>14:00</td><td>Multi-Cloud Architecture Workshop</td><td>TBD</td></tr>
+</table>
+<h3>Day 2 - March 15: Technology Deep Dives</h3>
+<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">
+<tr style="background:#0066cc;color:white;"><th>Time</th><th>Session</th><th>Speaker</th></tr>
+<tr><td>09:00</td><td>Kubernetes at Scale: Lessons Learned</td><td>TBD</td></tr>
+<tr><td>11:00</td><td>Edge Computing: From Hype to Production</td><td>TBD</td></tr>
+<tr><td>14:00</td><td>Building Resilient Multi-Cloud Architectures</td><td>TBD</td></tr>
+</table>
+<p>Register now: <a href="https://cloudcon.example/register">cloudcon.example/register</a></p>
+<p>Early bird pricing ends February 15!</p>
+</body></html>
+
+From hub@gaia-x.example Sun Jan 07 19:00:00 2024
+From: GAIA-X Hub <hub@gaia-x.example>
+To: members@gaia-x.example
+Subject: GAIA-X Technical Committee: Meeting notes January 2024
+Date: Sun, 07 Jan 2024 19:00:00 +0100
+Message-ID: <en024@gaia-x.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear GAIA-X members,
+
+Meeting notes from the Technical Committee session of January 25, 2024:
+
+Agenda items discussed:
+1. Self-Description schema v4.0 - approved with minor amendments
+2. Federated Catalogue integration testing - 85% pass rate, target 95% by March
+3. Trust Framework alignment with eIDAS 2.0 - working group formed
+4. Interoperability testbed expansion - 3 new nodes approved (Madrid, Warsaw, Rome)
+
+Action items:
+- All: Review updated compliance checklist by Feb 10
+- Spanish hub: Deploy testbed node by March 1
+- French hub: Lead eIDAS integration working group
+
+Next meeting: February 22, 2024, 14:00 CET (hybrid)
+
+GAIA-X Hub Secretariat
+
+From editors@dcd.example Mon Jan 08 00:00:00 2024
+From: Data Center Dynamics <editors@dcd.example>
+To: contributors@dcd.example
+Subject: DCD Feature: Submarine cables and European connectivity
+Date: Mon, 08 Jan 2024 00:00:00 +0100
+Message-ID: <en025@dcd.example>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Contributors,
+
+We're developing a feature on submarine cable landing stations and their impact on data center location decisions in Europe.
+
+Key angles we're covering:
+- The new Ellalink cable (Portugal-Brazil) driving investment in Lisbon
+- 2Africa cable making Marseille and Barcelona strategic landing points
+- Ireland's position as transatlantic gateway
+- The planned Arctic Connect cable via Finland
+- Spain as hub connecting Europe, Africa, and Latin America
+
+We need:
+1. Expert opinions from data center operators near landing stations
+2. Investment data: how much new DC capacity correlates with cable landings
+3. Latency measurements between landing stations and major cloud regions
+
+If you can contribute, please reply with your area of expertise.
+
+Deadline: February 20, 2024.
+
+Editorial Team, Data Center Dynamics
+
+From tech@noticias.madrid Mon Jan 08 04:00:00 2024
+From: Noticias Madrid <tech@noticias.madrid>
+To: suscriptores@noticias.madrid
+Subject: Madrid Tech News: Data center boom continues in Henares Corridor
+Date: Mon, 08 Jan 2024 04:00:00 +0100
+Message-ID: <en026@noticias.madrid>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+MADRID TECH NEWS - Weekly Roundup
+
+TOP STORY: Data Center Boom in the Henares Corridor
+
+The Henares Corridor, stretching from Madrid to Guadalajara, is becoming Europe's fastest-growing data center cluster. Three new facilities were announced this week:
+
+1. NorthStar Data Centers: 40MW facility in Alcala de Henares (EUR 180M investment)
+2. Southern Cross DC: 25MW campus in Torrejón de Ardoz (EUR 95M)
+3. Atlas Infrastructure: 60MW hyperscale in Azuqueca de Henares (EUR 250M)
+
+These join the existing facilities from Equinix, Interxion, and local providers in the corridor.
+
+"The combination of available land, electrical grid capacity, fiber connectivity, and proximity to Madrid makes the Henares Corridor unbeatable," said a spokesperson for the regional government.
+
+More at https://noticias.madrid/tech/henares-datacenter-boom
+
+---
+noticias.madrid - Your source for Madrid tech news
+
+From news@openstack.example Mon Jan 08 10:00:00 2024
+From: OpenStack Foundation <news@openstack.example>
+To: operators@openstack.example
+Subject: OpenStack 2024.1 (Caracal) Release Candidate Available
+Date: Mon, 08 Jan 2024 10:00:00 +0100
+Message-ID: <en027@openstack.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear OpenStack operators,
+
+The release candidate for OpenStack 2024.1 (Caracal) is now available for testing.
+
+Notable changes:
+- Nova: Improved live migration performance (30% faster for large VMs)
+- Neutron: OVN driver becomes the default
+- Cinder: NVMe-oF support goes GA
+- Ironic: Better UEFI Secure Boot support
+- Keystone: OIDC federation improvements
+
+European operators: We're hosting a virtual release party on March 5 with demos from operators at CERN, Infomaniak, and OVHcloud.
+
+Upgrade guide: https://openstack.example/caracal-upgrade
+Release notes: https://openstack.example/caracal-relnotes
+
+The OpenStack Foundation
+
+From communications@enisa.example Mon Jan 08 15:00:00 2024
+From: ENISA <communications@enisa.example>
+To: stakeholders@enisa.example
+Subject: ENISA Cloud Security Certification Scheme: Public consultation opens
+Date: Mon, 08 Jan 2024 15:00:00 +0100
+Message-ID: <en028@enisa.example>
+X-Gmail-Labels: Inbox,Cloud,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear stakeholders,
+
+ENISA invites comments on the draft European Cloud Security Certification Scheme (EUCS).
+
+The scheme defines three assurance levels:
+- Basic: Self-assessment against baseline controls
+- Substantial: Third-party audit of technical controls
+- High: Comprehensive audit including sovereignty requirements
+
+Key sovereignty provisions in the "High" level:
+1. Data must remain within the EU/EEA at all times
+2. Operations managed by EU citizens/residents
+3. No foreign government access provisions
+4. Company ownership must not be subject to foreign control
+5. All subcontractors must meet the same requirements
+
+Public consultation period: January 30 - March 15, 2024
+Submit comments: https://enisa.example/eucs-consultation
+
+The final scheme is expected to be adopted by Q3 2024.
+
+ENISA Communications
+
+From schen@cloudnews.tech Mon Jan 08 17:00:00 2024
+From: Sarah Chen <schen@cloudnews.tech>
+To: editorial@cloudnews.tech
+Subject: Fwd: Madrid Tech News - great source for our Spain coverage
+Date: Mon, 08 Jan 2024 17:00:00 +0100
+Message-ID: <en029@cloudnews.tech>
+X-Gmail-Labels: Sent,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Team,
+
+Forwarding this from noticias.madrid - they consistently have great data on the Madrid data center market. Let's establish a content partnership.
+
+James - can you reach out? Their coverage of the Henares Corridor boom would complement your Southern Europe piece perfectly.
+
+Also, check the latest visualizations on colorvivo.com about EU data center growth. Their infographics are excellent and free to use with attribution.
+
+Sarah
+
+From webinars@cloud-academy.example Mon Jan 08 21:00:00 2024
+From: Webinar Series <webinars@cloud-academy.example>
+To: registered@cloud-academy.example
+Subject: Webinar recording available: Terraform at Scale for Multi-Cloud
+Date: Mon, 08 Jan 2024 21:00:00 +0100
+Message-ID: <en030@cloud-academy.example>
+X-Gmail-Labels: Inbox,Training
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<h2>Webinar Recording Now Available</h2>
+<h3>Terraform at Scale: Managing Multi-Cloud Infrastructure</h3>
+<p><strong>Duration:</strong> 1 hour 23 minutes<br>
+<strong>Presenter:</strong> Anna Kowalski, Platform Engineering Lead</p>
+<p>Topics covered:</p>
+<ol>
+<li>Terraform workspace strategies for 50+ environments</li>
+<li>Module design patterns for multi-cloud deployments</li>
+<li>State management at enterprise scale</li>
+<li>CI/CD integration with Atlantis and Spacelift</li>
+<li>Cost optimization with Infracost</li>
+</ol>
+<p><a href="https://cloud-academy.example/webinar/terraform-scale" style="background:#0066cc;color:white;padding:10px 20px;text-decoration:none;display:inline-block;">Watch Recording</a></p>
+<p>Next webinar: "Kubernetes Cost Optimization" - February 20, 14:00 CET</p>
+</body></html>
+
+From policy@eu-digital.example Tue Jan 09 02:00:00 2024
+From: EU Digital Policy <policy@eu-digital.example>
+To: industry@eu-digital.example
+Subject: Digital Decade 2030: Cloud adoption targets for member states
+Date: Tue, 09 Jan 2024 02:00:00 +0100
+Message-ID: <en031@eu-digital.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear industry stakeholders,
+
+The European Commission has updated the Digital Decade 2030 cloud targets:
+
+By 2030, at least 75% of EU enterprises should use:
+- Cloud computing services (currently: 34%)
+- Big data analytics (currently: 14%)
+- AI solutions (currently: 8%)
+
+Member state obligations:
+- Annual progress reporting starting 2024
+- National cloud strategies due by June 2024
+- Investment roadmaps for sovereign cloud infrastructure
+
+Funding mechanisms:
+- Digital Europe Programme: EUR 1.3B for cloud/edge
+- Connecting Europe Facility: EUR 2B for connectivity
+- Recovery and Resilience Facility: cloud-related measures across 22 member states
+
+Next policy dialogue: February 28, 2024 in Brussels.
+
+EU Digital Policy Unit
+
+From events@cloudnative-eu.example Tue Jan 09 05:00:00 2024
+From: CloudNative EU <events@cloudnative-eu.example>
+To: community@cloudnative-eu.example
+Subject: KubeCon EU 2024: European Cloud Provider Track announced
+Date: Tue, 09 Jan 2024 05:00:00 +0100
+Message-ID: <en032@cloudnative-eu.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hey cloud native community,
+
+Exciting news: KubeCon EU 2024 in Paris will feature a dedicated European Cloud Provider Track!
+
+Selected talks include:
+- "Running Kubernetes for 500+ customers on bare metal" - OVHcloud
+- "Building a GAIA-X compliant Kubernetes platform" - Ionos
+- "Sovereign container registries for the EU" - OpenNebula
+- "Multi-cluster management across European regions" - Exoscale
+
+Maintainer sessions:
+- Cluster API SIG meeting
+- European Kubernetes operator patterns
+- Cloud provider interface standardization
+
+Early bird tickets available until February 1: https://cloudnative-eu.example/kubecon
+
+See you in Paris!
+CloudNative EU Committee
+
+From mstevens@analyst-group.example Tue Jan 09 12:00:00 2024
+From: Mark Stevens <mstevens@analyst-group.example>
+To: clients@analyst-group.example
+Subject: Analyst Note: European cloud M&A activity heating up
+Date: Tue, 09 Jan 2024 12:00:00 +0100
+Message-ID: <en033@analyst-group.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+ANALYST NOTE - CONFIDENTIAL
+
+European Cloud M&A: Q4 2023 Review and 2024 Outlook
+
+Q4 2023 Deals:
+- 47 cloud-related M&A transactions in the EU (up 23% YoY)
+- Total deal value: EUR 3.8B
+- Largest: Infrastructure fund acquires French DC operator (EUR 890M)
+
+Trends:
+1. Private equity consolidating smaller EU cloud providers
+2. US hyperscalers acquiring European AI/ML startups
+3. Telcos spinning off data center assets
+4. Cross-border consolidation in Nordic and Benelux regions
+
+2024 Predictions:
+- Deal volume to increase 15-20%
+- Sovereign cloud providers will command premium valuations
+- At least 2 European cloud IPOs expected
+
+Key targets to watch: 5 European providers with EUR 50-200M revenue.
+
+Mark Stevens
+Senior Analyst, Infrastructure & Cloud
+
+From alerts@monitoring.example Tue Jan 09 14:00:00 2024
+From: Monitoring System <alerts@monitoring.example>
+To: ops-team@company.example
+Subject: [WARNING] Disk usage above 80% on backup-storage-03
+Date: Tue, 09 Jan 2024 14:00:00 +0100
+Message-ID: <en034@monitoring.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== ALERT: WARNING ===
+
+Host: backup-storage-03.dc2.example
+Metric: Disk Usage
+Current: 82.4% (threshold: 80%)
+Trend: +2.1% per week
+
+Volume details:
+  /data/backups: 82.4% used (41.2 TB of 50 TB)
+  /data/snapshots: 67.8% used (13.6 TB of 20 TB)
+
+Recommended actions:
+1. Review backup retention policy
+2. Purge snapshots older than 90 days
+3. Consider expanding storage capacity
+
+Next threshold: CRITICAL at 90%
+Estimated time to critical: ~4 weeks at current growth rate
+
+-- Prometheus + Grafana Alerting
+
+From forum@digsov.example Tue Jan 09 19:00:00 2024
+From: Digital Sovereignty Forum <forum@digsov.example>
+To: participants@digsov.example
+Subject: Recap: Digital Sovereignty Forum January 2024 session
+Date: Tue, 09 Jan 2024 19:00:00 +0100
+Message-ID: <en035@digsov.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear participants,
+
+Thank you for attending the January 2024 Digital Sovereignty Forum session.
+
+Key takeaways:
+
+1. Panel: "Beyond GAIA-X - What's Next?"
+   - GAIA-X needs to deliver concrete products, not just frameworks
+   - Catena-X (automotive) is the most mature GAIA-X use case
+   - Healthcare data spaces gaining momentum
+
+2. Presentation: "Cost of Sovereignty"
+   - Sovereign cloud is 15-30% more expensive than hyperscaler equivalents
+   - Gap is closing as European providers scale up
+   - TCO analysis shows sovereignty premium offset by compliance savings
+
+3. Workshop: "Building sovereign CI/CD pipelines"
+   - Using GitLab (EU-based) over GitHub
+   - European container registries
+   - Air-gapped deployment patterns
+
+Recording available for 30 days at https://digsov.example/recordings/jan-2024
+
+Next session: February 22, 2024
+Topic: "AI Sovereignty: Training models on European infrastructure"
+
+Forum Secretariat
+
+From weekly@colorvivo.com Tue Jan 09 22:00:00 2024
+From: ColorVivo Weekly <weekly@colorvivo.com>
+To: members@colorvivo.com
+Subject: ColorVivo Weekly: Best data visualizations of the week
+Date: Tue, 09 Jan 2024 22:00:00 +0100
+Message-ID: <en036@colorvivo.com>
+X-Gmail-Labels: Inbox,Design
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_Related_en036_colorvivo.com"
+
+------=_Related_en036_colorvivo.com
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Helvetica,sans-serif;">
+<div style="text-align:center;background:#f8f9fa;padding:20px;">
+<img src="cid:banner@colorvivo.com" alt="ColorVivo">
+<h2>This Week's Best Data Visualizations</h2>
+</div>
+<div style="padding:20px;">
+<h3>1. EU Cloud Market Growth Map</h3>
+<p>Interactive choropleth showing cloud adoption rates across all 27 EU member states. Southern and Eastern Europe showing fastest growth.</p>
+<p><a href="https://colorvivo.com/viz/eu-cloud-growth-2024">View visualization</a></p>
+
+<h3>2. Global Submarine Cable Network</h3>
+<p>Updated map of all submarine cables with bandwidth capacity and ownership data. Features the new 2Africa cable.</p>
+<p><a href="https://colorvivo.com/viz/submarine-cables-2024">View visualization</a></p>
+
+<h3>3. Data Center PUE Trends (2015-2024)</h3>
+<p>Animated timeline showing how power usage effectiveness improved across different regions.</p>
+<p><a href="https://colorvivo.com/viz/pue-trends">View visualization</a></p>
+
+<p style="color:#666;font-size:0.8em;">colorvivo.com - Making data beautiful since 2018</p>
+</div>
+</body></html>
+------=_Related_en036_colorvivo.com
+Content-Type: image/png; name="colorvivo_banner.png"
+Content-Transfer-Encoding: base64
+Content-ID: <banner@colorvivo.com>
+Content-Disposition: inline; filename="colorvivo_banner.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAEElEQVR4nGNgSDtDGhp8GgAYd0yBAMLNyQAAAABJRU5ErkJggg==
+------=_Related_en036_colorvivo.com--
+
+From jreed@cloudnews.tech Wed Jan 10 00:00:00 2024
+From: Jonathan Reed <jreed@cloudnews.tech>
+To: schen@cloudnews.tech
+Subject: Re: Fwd: Madrid Tech News - great source for our Spain coverage
+Date: Wed, 10 Jan 2024 00:00:00 +0100
+Message-ID: <en037@cloudnews.tech>
+In-Reply-To: <en029@cloudnews.tech>
+References: <en029@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Sarah,
+
+Good call on the noticias.madrid partnership. I've reached out to their editorial team.
+
+Also found some great stats from revistacloud.com about the Spanish market:
+- Spain added 45MW of new DC capacity in H2 2023
+- Madrid region alone accounts for 137MW total
+- Foreign investment in Spanish DCs up 40% YoY
+
+Will incorporate into the article. The colorvivo.com EU growth map is fantastic - already got permission to embed it.
+
+Jonathan
+
+From news@edge-alliance.example Wed Jan 10 05:00:00 2024
+From: Edge Computing Alliance <news@edge-alliance.example>
+To: members@edge-alliance.example
+Subject: Edge deployment milestone: 1,000 nodes across EU
+Date: Wed, 10 Jan 2024 05:00:00 +0100
+Message-ID: <en038@edge-alliance.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Members,
+
+We're proud to announce that the Edge Computing Alliance has reached a milestone: 1,000 edge nodes deployed across the European Union.
+
+Breakdown by country:
+- Germany: 210 nodes
+- France: 185 nodes
+- Spain: 120 nodes
+- Italy: 95 nodes
+- Netherlands: 85 nodes
+- Poland: 75 nodes
+- Others: 230 nodes
+
+Use cases driving deployment:
+1. Industrial IoT (35%)
+2. Smart city applications (25%)
+3. Content delivery (20%)
+4. Connected vehicles (12%)
+5. Healthcare (8%)
+
+Average latency achieved: 4.2ms (target was <10ms)
+
+Press release embargoed until February 1 at 09:00 CET.
+
+Edge Computing Alliance
+
+From aharper@cloudnews.tech Wed Jan 10 09:00:00 2024
+From: Alice Harper <aharper@cloudnews.tech>
+To: editorial@cloudnews.tech
+Subject: Draft ready: Interview with ENISA Executive Director on EUCS
+Date: Wed, 10 Jan 2024 09:00:00 +0100
+Message-ID: <en039@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Team,
+
+My interview article with ENISA's Executive Director about the European Cloud Security Certification Scheme is ready for review.
+
+Key revelations:
+- The "High" assurance level WILL include sovereignty requirements
+- US cloud providers are lobbying heavily against it
+- Compromise solution: "High" and "High+" levels being considered
+- Timeline may slip to Q4 2024
+
+Word count: 2,100. Includes 3 direct quotes from the interview.
+
+I've cross-referenced facts with the official ENISA consultation document and our earlier coverage on cloudnews.tech.
+
+Please review by tomorrow noon.
+
+Alice
+
+From redaccion@revistacloud.com Wed Jan 10 14:00:00 2024
+From: =?UTF-8?B?UmVkYWNjacOzbiBSZXZpc3RhQ2xvdWQ=?= <redaccion@revistacloud.com>
+To: colaboradores@revistacloud.com
+Subject: =?UTF-8?B?Q29udm9jYXRvcmlhIGRlIGFydMOtY3Vsb3M6IEVzcGVjaWFsIHNvYmVyYW7DrWEgZGlnaXRhbA==?=
+Date: Wed, 10 Jan 2024 14:00:00 +0100
+Message-ID: <es001@revistacloud.com>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Estimados colaboradores,
+
+En revistacloud.com estamos preparando un número especial dedicado a la soberanía digital en Europa.
+
+Buscamos artículos sobre:
+- Marco regulatorio europeo: Data Act, NIS2, EUCS
+- Experiencias reales de migración a cloud soberano
+- Comparativa de costes: cloud soberano vs hiperescalar
+- Centros de datos sostenibles en España
+- El papel de las ciudades medias en la infraestructura digital
+
+Condiciones:
+- Extensión: 1.500-2.500 palabras
+- Fecha límite: 15 de febrero de 2024
+- Honorarios: 300 EUR por artículo publicado
+- Incluir datos y fuentes verificables
+
+Enviar propuestas a redaccion@revistacloud.com
+
+Un saludo,
+Equipo Editorial
+revistacloud.com
+
+From cmendez@revistacloud.com Wed Jan 10 18:00:00 2024
+From: =?UTF-8?B?Q2FybG9zIE3DqW5kZXo=?= <cmendez@revistacloud.com>
+To: redaccion@revistacloud.com
+Subject: =?UTF-8?B?QXJ0w61jdWxvIGVudmlhZG86IEVsIG1lcmNhZG8gY2xvdWQgZXNwYcOxb2wgZW4gY2lmcmFz?=
+Date: Wed, 10 Jan 2024 18:00:00 +0100
+Message-ID: <es002@revistacloud.com>
+In-Reply-To: <es001@revistacloud.com>
+References: <es001@revistacloud.com>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hola equipo,
+
+Os envío mi artículo "El mercado cloud español en cifras: radiografía de un sector en explosión".
+
+Datos clave incluidos:
+- España tiene 210 MW de capacidad instalada en centros de datos
+- Madrid concentra el 65% (137 MW)
+- La inversión extranjera creció un 40% en 2023
+- Se estiman 4.200 empleos directos en el sector
+
+He referenciado fuentes de ONTSI, Synergy Research y el Observatorio Español de Data Centers.
+
+El artículo tiene 2.100 palabras. Espero vuestros comentarios.
+
+Carlos Méndez
+Analista de Mercado
+
+From tech@noticias.madrid Wed Jan 10 21:00:00 2024
+From: Noticias Madrid Tech <tech@noticias.madrid>
+To: suscriptores@noticias.madrid
+Subject: =?UTF-8?B?TWFkcmlkIGFwcnVlYmEgcGxhbiBkZSBkaWdpdGFsaXphY2nDs24gcG9yIDIwMCBtaWxsb25lcw==?=
+Date: Wed, 10 Jan 2024 21:00:00 +0100
+Message-ID: <es003@noticias.madrid>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Georgia,serif;">
+<h1 style="color:#003366;">noticias.madrid</h1>
+<h2>Madrid aprueba plan de digitalización por 200 millones de euros</h2>
+<p><strong>Madrid, enero 2024</strong> - La Comunidad de Madrid ha aprobado un plan de inversión de 200 millones de euros para infraestructura digital durante el periodo 2024-2027.</p>
+<h3>Ejes principales:</h3>
+<ul>
+<li><strong>Fibra óptica:</strong> 80M EUR para conectar todos los municipios</li>
+<li><strong>Centros de datos:</strong> 60M EUR en incentivos para el Corredor del Henares</li>
+<li><strong>Formación:</strong> 35M EUR para capacitar a 50.000 trabajadores</li>
+<li><strong>Smart cities:</strong> 25M EUR para 15 municipios piloto</li>
+</ul>
+<p>"Madrid ya alberga el 65% de la capacidad de centros de datos de España. Esta inversión asegura nuestra competitividad frente a Ámsterdam, Fráncfort y Dublín", señaló la Consejera de Transformación Digital.</p>
+<p>Más información en <a href="https://noticias.madrid/plan-digital-2024">noticias.madrid</a></p>
+</body></html>
+
+From erodriguez@actualitecloud.com Thu Jan 11 03:00:00 2024
+From: =?UTF-8?B?RWxlbmEgUm9kcsOtZ3Vleg==?= <erodriguez@actualitecloud.com>
+To: redaccion@revistacloud.com
+Subject: =?UTF-8?B?Q29sYWJvcmFjacOzbiBlbnRyZSByZXZpc3RhY2xvdWQuY29tIHkgYWN0dWFsaXRlY2xvdWQuY29t?=
+Date: Thu, 11 Jan 2024 03:00:00 +0100
+Message-ID: <es004@actualitecloud.com>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hola equipo de revistacloud.com,
+
+Soy Elena Rodríguez, editora en actualitecloud.com (nuestra edición francesa del sector cloud).
+
+Os propongo una colaboración editorial:
+- Traducción cruzada de artículos destacados entre ambas publicaciones
+- Cobertura conjunta de eventos europeos (CloudCon, KubeCon)
+- Serie compartida sobre soberanía digital vista desde Francia y España
+
+Nuestros lectores tienen mucho interés en el mercado español, especialmente después de los últimos datos de crecimiento publicados en revistacloud.com.
+
+¿Podemos agendar una videollamada la próxima semana?
+
+Saludos,
+Elena Rodríguez
+Editora, actualitecloud.com
+
+From info@cloudespana.example Thu Jan 11 08:00:00 2024
+From: =?UTF-8?B?QXNvY2lhY2nDs24gQ2xvdWQgRXNwYcOxYQ==?= <info@cloudespana.example>
+To: miembros@cloudespana.example
+Subject: =?UTF-8?B?QXNhbWJsZWEgYW51YWw6IENsb3VkIEVzcGHDsWEgMjAyNA==?=
+Date: Thu, 11 Jan 2024 08:00:00 +0100
+Message-ID: <es005@cloudespana.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Estimados miembros,
+
+Convocamos la Asamblea Anual de Cloud España para el 22 de febrero de 2024.
+
+Orden del día:
+1. Memoria de actividades 2023
+2. Cuentas anuales y presupuesto 2024
+3. Posicionamiento ante el European Data Act
+4. Plan de acción: promoción del cloud soberano español
+5. Nuevas adhesiones
+6. Ruegos y preguntas
+
+Lugar: Auditorio CEOE, Madrid
+Hora: 10:00 - 14:00
+
+Tras la asamblea, almuerzo de networking patrocinado por colorvivo.com.
+
+Confirmad asistencia antes del 15 de febrero.
+
+Secretaría General
+Asociación Cloud España
+
+From analytics@revistacloud.com Thu Jan 11 12:00:00 2024
+From: RevistaCloud Analytics <analytics@revistacloud.com>
+To: redaccion@revistacloud.com
+Subject: =?UTF-8?B?SW5mb3JtZSBkZSB0csOhZmljbyBlbmVybyAyMDI0OiByw6ljb3JkIGRlIHZpc2l0YXM=?=
+Date: Thu, 11 Jan 2024 12:00:00 +0100
+Message-ID: <es006@revistacloud.com>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_es006_revistacloud.com"
+
+------=_Part_es006_revistacloud.com
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Equipo,
+
+Adjunto el informe de tráfico de revistacloud.com en enero 2024.
+
+Resumen:
+- Visitas únicas: 145.000 (récord, +35% vs enero 2023)
+- Páginas vistas: 380.000
+- Tiempo medio de sesión: 4:32 minutos
+- Tasa de rebote: 38%
+
+Artículos más leídos:
+1. "Soberanía digital en Europa" - 12.400 visitas
+2. "Centros de datos en España: mapa actualizado" - 9.800 visitas
+3. "GAIA-X: ¿realidad o utopía?" - 7.200 visitas
+
+País de origen de las visitas:
+- España: 62%
+- Latinoamérica: 18%
+- Resto de Europa: 15%
+- Otros: 5%
+
+Buen trabajo a todos. ¡Seguimos creciendo!
+
+Departamento de Analytics
+------=_Part_es006_revistacloud.com
+Content-Type: text/csv; name="trafico_enero_2024.csv"
+Content-Disposition: attachment; filename="trafico_enero_2024.csv"
+Content-Transfer-Encoding: base64
+
+TW9udGgsQ2xvdWRfU3BlbmRfRVVSLE9uX1ByZW1fU3BlbmRfRVVSLFNhdmluZ3NfUGN0Ckphbl8yMDI0LDEyNTAwMCwxODAwMDAsMzAuNgpGZWJfMjAyNCwxMTgwMDAsMTgwMDAwLDM0LjQKTWFyXzIwMjQsMTMxMDAwLDE4MDAwMCwyNy4yCkFwcl8yMDI0LDEyMjAwMCwxNzUwMDAsMzAuMwo=
+------=_Part_es006_revistacloud.com--
+
+From foro@madrid-cloud.example Thu Jan 11 15:00:00 2024
+From: Foro Cloud Madrid <foro@madrid-cloud.example>
+To: participantes@madrid-cloud.example
+Subject: =?UTF-8?B?TWVzYSByZWRvbmRhOiBJQSBnZW5lcmF0aXZhIHkgY2xvdWQgY29tcHV0aW5nIGVuIEVzcGHDsWE=?=
+Date: Thu, 11 Jan 2024 15:00:00 +0100
+Message-ID: <es007@madrid-cloud.example>
+X-Gmail-Labels: Inbox,Events,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Invitación: Mesa redonda
+
+"IA generativa y cloud computing: oportunidades para el ecosistema español"
+
+Fecha: 8 de febrero de 2024, 18:00-20:00
+Lugar: Google for Startups Campus, Madrid
+
+Ponentes:
+- Dra. Ana Martínez (Universidad Politécnica de Madrid)
+- Roberto Sánchez (Director de IA, Telefónica)
+- Laura Gómez (CTO, startup de IA española)
+- Moderadora: Patricia Ruiz (periodista, noticias.madrid)
+
+Temas:
+- Infraestructura GPU necesaria para entrenar modelos de IA
+- ¿Puede España competir en IA generativa?
+- El papel de los proveedores cloud locales
+- Formación de talento en IA
+
+Aforo limitado a 80 personas. Registro gratuito.
+
+Organiza: Foro Cloud Madrid
+
+From pnavarro@datacenter-es.example Thu Jan 11 21:00:00 2024
+From: Pedro Navarro <pnavarro@datacenter-es.example>
+To: sector@cloud-es.example
+Subject: =?UTF-8?B?SW5mb3JtZTogQ29uc3VtbyBlbmVyZ8OpdGljbyBkZSBjZW50cm9zIGRlIGRhdG9zIGVuIEVzcGHDsWEgMjAyMw==?=
+Date: Thu, 11 Jan 2024 21:00:00 +0100
+Message-ID: <es008@datacenter-es.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Estimados colegas,
+
+Comparto los datos principales de nuestro informe sobre consumo energético:
+
+Consumo total del sector en España: 1.850 GWh (2023)
+- Equivalente al consumo de una ciudad de 350.000 habitantes
+- Crecimiento interanual: +18%
+- Porcentaje renovable: 62% (objetivo 2025: 80%)
+
+Eficiencia (PUE medio):
+- Instalaciones nuevas (post-2020): 1.25
+- Instalaciones existentes: 1.55
+- Media ponderada: 1.38
+
+Iniciativas de mejora:
+1. Refrigeración líquida directa: 12 instalaciones ya la usan
+2. Reutilización de calor residual: 3 proyectos piloto en Madrid
+3. PPAs solares: cubren ya el 35% del consumo del sector
+
+El informe completo se publicará en revistacloud.com la próxima semana.
+
+Pedro Navarro
+Director, Observatorio de Data Centers de España
+
+From espana@colorvivo.com Fri Jan 12 01:00:00 2024
+From: =?UTF-8?B?Q29sb3JWaXZvIEVzcGHDsWE=?= <espana@colorvivo.com>
+To: clientes@colorvivo.com
+Subject: =?UTF-8?B?TnVldmEgaW5mb2dyYWbDrWEgZGlzcG9uaWJsZTogTWFwYSBkZSBjZW50cm9zIGRlIGRhdG9zIGVuIEVzcGHDsWE=?=
+Date: Fri, 12 Jan 2024 01:00:00 +0100
+Message-ID: <es009@colorvivo.com>
+X-Gmail-Labels: Inbox,Design
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_Related_es009_colorvivo.com"
+
+------=_Related_es009_colorvivo.com
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<div style="text-align:center;padding:20px;">
+<h2 style="color:#2c3e50;">Nueva infografía de colorvivo.com</h2>
+<h3>Mapa interactivo: Centros de datos en España 2024</h3>
+<img src="cid:mapa@colorvivo.com" alt="Miniatura del mapa" style="border:1px solid #ddd;">
+</div>
+<div style="padding:20px;">
+<p>Hemos actualizado nuestro mapa de centros de datos en España con los datos de enero 2024:</p>
+<ul>
+<li><strong>Madrid:</strong> 137 MW - 28 instalaciones</li>
+<li><strong>Barcelona:</strong> 38 MW - 12 instalaciones</li>
+<li><strong>Bilbao:</strong> 12 MW - 4 instalaciones</li>
+<li><strong>Valencia:</strong> 9 MW - 3 instalaciones</li>
+</ul>
+<p>Descarga gratuita en alta resolución: <a href="https://colorvivo.com/mapas/datacenters-espana-2024">colorvivo.com</a></p>
+<p>Licencia CC-BY-4.0 para uso editorial. Ideal para presentaciones y artículos.</p>
+<p style="font-size:0.8em;color:#666;">Datos: revistacloud.com, ONTSI, elaboración propia</p>
+</div>
+</body></html>
+------=_Related_es009_colorvivo.com
+Content-Type: image/png; name="mapa_dc_thumb.png"
+Content-Transfer-Encoding: base64
+Content-ID: <mapa@colorvivo.com>
+Content-Disposition: inline; filename="mapa_dc_thumb.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGM4Y8wARwzEcQCrYw/xOER/ngAAAABJRU5ErkJggg==
+------=_Related_es009_colorvivo.com--
+
+From formacion@cloud-academy-es.example Fri Jan 12 04:00:00 2024
+From: =?UTF-8?B?Rm9ybWFjacOzbiBDbG91ZA==?= <formacion@cloud-academy-es.example>
+To: alumnos@cloud-academy-es.example
+Subject: Nuevo curso: Kubernetes para administradores de sistemas
+Date: Fri, 12 Jan 2024 04:00:00 +0100
+Message-ID: <es010@cloud-academy-es.example>
+X-Gmail-Labels: Inbox,Training
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hola,
+
+Abrimos inscripción para nuestro curso de Kubernetes:
+
+KUBERNETES PARA ADMINISTRADORES DE SISTEMAS
+- Duración: 40 horas (8 semanas, 5h/semana)
+- Modalidad: Online en directo + grabaciones
+- Inicio: 4 de marzo de 2024
+- Precio: 450 EUR (descuento del 20% para socios de Cloud España)
+
+Temario:
+1. Arquitectura de Kubernetes y componentes
+2. Despliegue y gestión de pods
+3. Networking: Services, Ingress, Network Policies
+4. Almacenamiento: PV, PVC, StorageClasses
+5. Seguridad: RBAC, Pod Security Standards
+6. Monitorización con Prometheus y Grafana
+7. Proyecto final: despliegue multi-nodo
+
+Requisitos previos: conocimientos de Linux y Docker.
+
+Más info: cloud-academy-es.example/kubernetes
+
+Un saludo,
+Equipo de Formación
+
+From redaccion@revistacloud.com Fri Jan 12 10:00:00 2024
+From: =?UTF-8?B?UmV2aXN0YUNsb3VkIFJlZGFjY2nDs24=?= <redaccion@revistacloud.com>
+To: colaboradores@revistacloud.com
+Subject: =?UTF-8?B?UHVibGljYWRvOiBFc3BlY2lhbCBzb2JlcmFuw61hIGRpZ2l0YWwgLSBGZWJyZXJvIDIwMjQ=?=
+Date: Fri, 12 Jan 2024 10:00:00 +0100
+Message-ID: <es011@revistacloud.com>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Estimados colaboradores,
+
+Ya está publicado el especial sobre soberanía digital en revistacloud.com:
+
+CONTENIDOS:
+1. "El mercado cloud español en cifras" - Carlos Méndez
+   https://revistacloud.com/mercado-cloud-espanol-cifras-2024/
+
+2. "GAIA-X desde la perspectiva española" - Ana López
+   https://revistacloud.com/gaia-x-perspectiva-espanola/
+
+3. "Centros de datos sostenibles" - Pedro Navarro
+   https://revistacloud.com/centros-datos-sostenibles-espana/
+
+4. "Entrevista: El CIO del BBVA habla de cloud soberano"
+   https://revistacloud.com/entrevista-cio-bbva-cloud-soberano/
+
+Datos iniciales: 25.000 visitas en las primeras 24 horas.
+
+Agradecemos a colorvivo.com las infografías que acompañan los artículos.
+
+¡Gran trabajo de todos!
+
+Redacción, revistacloud.com
+
+From alertas@monitoring-es.example Fri Jan 12 12:00:00 2024
+From: =?UTF-8?B?QWxlcnRhIE1vbml0b3JpemFjacOzbg==?= <alertas@monitoring-es.example>
+To: equipo-ops@empresa.example
+Subject: [RESUELTA] Alerta: Latencia elevada en cluster Madrid-1
+Date: Fri, 12 Jan 2024 12:00:00 +0100
+Message-ID: <es012@monitoring-es.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== ALERTA RESUELTA ===
+
+Estado: RESUELTA (fue ADVERTENCIA)
+Host: cluster-madrid-1.prod.example
+Métrica: Latencia p99
+Pico: 89ms (umbral: 50ms)
+Actual: 8ms
+Duración: 15 minutos
+
+Causa raíz: Rebalanceo automático de Ceph tras añadir nuevo OSD
+Acción: Completado satisfactoriamente, 1.8 TB redistribuidos
+Impacto: Sin impacto en clientes
+
+-- Sistema de Monitorización (Prometheus + AlertManager)
+
+From bsilva@cloudnews-br.example Fri Jan 12 17:00:00 2024
+From: Bruno Silva <bsilva@cloudnews-br.example>
+To: redacao@cloudnews-br.example
+Subject: Mercado de cloud no Brasil: crescimento recorde em 2023
+Date: Fri, 12 Jan 2024 17:00:00 +0100
+Message-ID: <pt001@cloudnews-br.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Olá equipe,
+
+Os números do mercado de cloud brasileiro superaram todas as expectativas em 2023:
+
+- Receita total: R$ 28,5 bilhões (+32% vs 2022)
+- Número de data centers: 85 instalações comerciais
+- Capacidade instalada: 320 MW
+- Principais hubs: São Paulo (65%), Rio de Janeiro (15%), Fortaleza (8%)
+
+O cabo submarino Ellalink (Brasil-Portugal) está impulsionando novas oportunidades de conectividade com a Europa. Já vemos empresas brasileiras usando provedores europeus para compliance com LGPD.
+
+Vou preparar um artigo detalhado com análise de mercado para a próxima edição. O pessoal do cloudnews.tech também vai publicar uma versão em inglês.
+
+Abraços,
+Bruno Silva
+Analista de Mercado Cloud
+
+From fcosta@datacenter-br.example Fri Jan 12 20:00:00 2024
+From: Fernanda Costa <fcosta@datacenter-br.example>
+To: bsilva@cloudnews-br.example
+Subject: Re: Mercado de cloud no Brasil: crescimento recorde em 2023
+Date: Fri, 12 Jan 2024 20:00:00 +0100
+Message-ID: <pt002@datacenter-br.example>
+In-Reply-To: <pt001@cloudnews-br.example>
+References: <pt001@cloudnews-br.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Bruno,
+
+Excelentes dados! Posso complementar com informações sobre Fortaleza:
+
+A cidade está se tornando um hub estratégico por causa dos cabos submarinos:
+- Ellalink (Fortaleza-Sines, Portugal)
+- SACS (Fortaleza-Luanda, Angola)
+- Monet (Fortaleza-Miami)
+
+Novos investimentos anunciados para 2024:
+- EdgeConnex: novo data center de 20 MW
+- V.tal: expansão de rede de fibra no Nordeste
+- Equinix: primeiro data center em Fortaleza previsto para Q3 2024
+
+O governo do Ceará oferece incentivos fiscais para data centers. A energia eólica da região garante preços competitivos.
+
+Podemos incluir isso no artigo conjunto com cloudnews.tech?
+
+Fernanda Costa
+Diretora de Operações, DataCenter Brasil
+
+From eventos@techsummit-br.example Sat Jan 13 02:00:00 2024
+From: Tech Summit Brasil <eventos@techsummit-br.example>
+To: participantes@techsummit-br.example
+Subject: =?UTF-8?B?VGVjaCBTdW1taXQgU8OjbyBQYXVsbyAyMDI0OiBQcm9ncmFtYcOnw6NvIGNvbmZpcm1hZGE=?=
+Date: Sat, 13 Jan 2024 02:00:00 +0100
+Message-ID: <pt003@techsummit-br.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;">
+<div style="background:#00875a;color:white;padding:20px;text-align:center;">
+<h1>Tech Summit São Paulo 2024</h1>
+<h3>12-14 de Março | Expo Center Norte</h3>
+</div>
+<div style="padding:20px;">
+<h3>Trilha: Cloud & Infraestrutura</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+<tr style="background:#00875a;color:white;"><th>Horário</th><th>Palestra</th></tr>
+<tr><td>09:00</td><td>Abertura: O futuro da nuvem soberana na América Latina</td></tr>
+<tr><td>10:30</td><td>Painel: Conectividade Brasil-Europa via Ellalink</td></tr>
+<tr><td>14:00</td><td>Workshop: Kubernetes em produção com alta disponibilidade</td></tr>
+<tr><td>16:00</td><td>Mesa redonda: LGPD e cloud - desafios práticos</td></tr>
+</table>
+<p><strong>Palestrantes confirmados</strong> de AWS, Azure, OVHcloud, Huawei Cloud, e provedores locais.</p>
+<p>Ingressos: <a href="https://techsummit-br.example/ingressos">techsummit-br.example</a></p>
+</div>
+</body></html>
+
+From roliveira@cloud-br.example Sat Jan 13 06:00:00 2024
+From: Ricardo Oliveira <roliveira@cloud-br.example>
+To: equipe@cloud-br.example
+Subject: =?UTF-8?B?UmVsYXTDs3JpbyBzZW1hbmFsIGRlIG9wZXJhw6fDtWVzIC0gU2VtYW5hIDQ=?=
+Date: Sat, 13 Jan 2024 06:00:00 +0100
+Message-ID: <pt004@cloud-br.example>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Equipe,
+
+Relatório semanal:
+
+DISPONIBILIDADE:
+- Cloud privado: 99.999% (meta: 99.99%)
+- Rede: 100%
+- Armazenamento: 99.998%
+
+NOVOS CLIENTES:
+- 5 novos contratos assinados esta semana
+- Destaque: banco digital com 2M de usuários migrou para nossa plataforma
+- Pipeline: 18 propostas em negociação
+
+INFRAESTRUTURA:
+- Expansão da sala 3 em São Paulo concluída (+ 200 racks)
+- Novo link de 100 Gbps com São Paulo IX ativado
+- PUE médio do mês: 1.48 (meta: 1.40)
+
+PENDÊNCIAS:
+- Aguardando aprovação de orçamento para Fortaleza
+- Contratação de 3 engenheiros de cloud em andamento
+
+Ricardo Oliveira
+Gerente de Operações
+
+From jmendes@lgpd-br.example Sat Jan 13 11:00:00 2024
+From: Juliana Mendes <jmendes@lgpd-br.example>
+To: compliance@cloud-br.example
+Subject: =?UTF-8?B?QXR1YWxpemHDp8OjbyBMR1BEOiBub3ZhcyBkaXJldHJpemVzIGRhIEFOUEQgcGFyYSBjbG91ZA==?=
+Date: Sat, 13 Jan 2024 11:00:00 +0100
+Message-ID: <pt005@lgpd-br.example>
+X-Gmail-Labels: Inbox,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Prezados,
+
+A ANPD (Autoridade Nacional de Proteção de Dados) publicou novas diretrizes para provedores de cloud:
+
+1. TRANSFERÊNCIA INTERNACIONAL:
+   - Necessário avaliar nível de proteção do país destinatário
+   - UE e UK reconhecidos como adequados
+   - EUA: requer cláusulas contratuais padrão
+
+2. RELATÓRIO DE IMPACTO:
+   - Obrigatório para serviços de cloud que tratam dados sensíveis
+   - Deve incluir avaliação de riscos e medidas mitigatórias
+   - Prazo: 90 dias após publicação (abril de 2024)
+
+3. NOTIFICAÇÃO DE INCIDENTES:
+   - Prazo reduzido para 72 horas (antes era "prazo razoável")
+   - Deve incluir número de titulares afetados
+   - Comunicação direta ao titular quando houver risco alto
+
+Recomendo reunião para alinhar nosso plano de adequação.
+
+Juliana Mendes
+Consultora de Privacidade e Proteção de Dados
+
+From newsletter@cloudnews-br.example Sat Jan 13 15:00:00 2024
+From: CloudNews Brasil <newsletter@cloudnews-br.example>
+To: assinantes@cloudnews-br.example
+Subject: =?UTF-8?B?Q2xvdWROZXdzIEJSOiBTw6NvIFBhdWxvIGNvbW8gaHViIGRlIElBIG5hIEFtw6lyaWNhIExhdGluYQ==?=
+Date: Sat, 13 Jan 2024 15:00:00 +0100
+Message-ID: <pt006@cloudnews-br.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== CLOUDNEWS BRASIL - Edição Semanal ===
+
+DESTAQUE: São Paulo se posiciona como hub de IA na América Latina
+
+Com 4 dos 5 maiores data centers da região e conexão direta com Europa via Ellalink, São Paulo atrai investimentos em infraestrutura de IA:
+
+- NVIDIA planeja centro de excelência em IA no Brasil
+- Google anuncia expansão de cloud com GPUs A100 em São Paulo
+- Microsoft investe R$ 1 bilhão em data center com foco em IA
+
+MAIS NOTÍCIAS:
+
+[1] OVHcloud inaugura data center em São Paulo
+    Primeira presença direta na América Latina do provedor francês.
+
+[2] Novo marco legal de IA avança no Congresso
+    PL 2.338/2023 deve ser votado em março.
+
+[3] Edge computing cresce 45% no Brasil
+    Operadoras de telecom lideram implantação de nós edge.
+
+Leia mais: cloudnews-br.example
+
+From psantos@ellalink.example Sat Jan 13 21:00:00 2024
+From: Paulo Santos <psantos@ellalink.example>
+To: parceiros@ellalink.example
+Subject: =?UTF-8?B?RWxsYWxpbms6IHJlbGF0w7NyaW8gZGUgdHLDoWZlZ28gZSBub3ZhcyByb3RhcyAyMDI0?=
+Date: Sat, 13 Jan 2024 21:00:00 +0100
+Message-ID: <pt007@ellalink.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Caros parceiros,
+
+Compartilho os dados de tráfego do cabo Ellalink em 2023:
+
+TRÁFEGO:
+- Volume médio: 4.2 Tbps (capacidade total: 72 Tbps)
+- Crescimento mensal: +8%
+- Latência Fortaleza-Sines: 59ms (RTT)
+- Disponibilidade: 99.9998%
+
+NOVOS DESENVOLVIMENTOS 2024:
+- Extensão terrestre até Madrid concluída (Sines-Madrid via fibra)
+- Acordo de peering com DE-CIX e Espanix
+- Novo ponto de presença em Marselha previsto para Q3
+
+O cabo está atraindo empresas brasileiras que querem usar provedores europeus de cloud soberano, especialmente para cumprir exigências de clientes na UE.
+
+A colorvivo.com criou um mapa interativo do Ellalink que está disponível em: https://colorvivo.com/mapas/ellalink-2024
+
+Paulo Santos
+Diretor Comercial, Ellalink
+
+From ablima@fintech-br.example Sun Jan 14 01:00:00 2024
+From: Ana Beatriz Lima <ablima@fintech-br.example>
+To: cloud-br@provedor.example
+Subject: =?UTF-8?B?Q2FzbyBkZSBzdWNlc3NvOiBtaWdyYcOnw6NvIGRlIGZpbnRlY2ggcGFyYSBjbG91ZCBzb2JlcmFubw==?=
+Date: Sun, 14 Jan 2024 01:00:00 +0100
+Message-ID: <pt008@fintech-br.example>
+X-Gmail-Labels: Inbox,Work,Starred
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Prezada equipe,
+
+Gostaria de compartilhar os resultados da nossa migração:
+
+CONTEXTO:
+- Fintech com 3 milhões de clientes
+- Regulamentação do Banco Central exige dados no Brasil
+- Necessidade de certificação PCI DSS e SOC 2
+
+RESULTADO:
+- Migração concluída em 8 semanas
+- Custo reduzido em 28% (vs provedor anterior)
+- Latência reduzida de 45ms para 12ms
+- Zero downtime durante a migração
+
+Autorizamos o uso deste caso de sucesso em materiais comerciais e em publicações como cloudnews.tech e revistacloud.com.
+
+Ana Beatriz Lima
+CTO, FinPay Brasil
+
+From redaction@actualitecloud.com Sun Jan 14 06:00:00 2024
+From: =?UTF-8?B?UsOpZGFjdGlvbiBBY3R1YWxpdMOpQ2xvdWQ=?= <redaction@actualitecloud.com>
+To: abonnes@actualitecloud.com
+Subject: =?UTF-8?B?w4lkaXRpb24gc3DDqWNpYWxlIDogTGEgc291dmVyYWluZXTDqSBudW3DqXJpcXVlIGVuIEZyYW5jZQ==?=
+Date: Sun, 14 Jan 2024 06:00:00 +0100
+Message-ID: <fr001@actualitecloud.com>
+X-Gmail-Labels: Inbox,Cloud,Newsletter
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:'Segoe UI',Arial,sans-serif;">
+<div style="background:#002654;color:white;padding:20px;text-align:center;">
+<h1>actualitecloud.com</h1>
+<h2>Édition Spéciale : Souveraineté Numérique</h2>
+</div>
+<div style="padding:20px;">
+<h3>À la une</h3>
+<p><strong>La France investit 1,8 milliard d'euros dans le cloud souverain</strong></p>
+<p>Le plan "Cloud de confiance" du gouvernement français entre dans sa phase opérationnelle avec trois axes prioritaires :</p>
+<ol>
+<li>Certification SecNumCloud renforcée</li>
+<li>Financement de 5 projets cloud souverains</li>
+<li>Formation de 10 000 experts cloud d'ici 2027</li>
+</ol>
+<h3>Analyses</h3>
+<ul>
+<li><a href="https://actualitecloud.com/secnumcloud-2024">SecNumCloud : le label qui change la donne</a></li>
+<li><a href="https://actualitecloud.com/ovhcloud-expansion">OVHcloud : stratégie d'expansion européenne</a></li>
+<li><a href="https://actualitecloud.com/ia-souveraine">IA souveraine : pourquoi la France mise sur Mistral</a></li>
+</ul>
+<p style="font-size:0.8em;color:#666;">actualitecloud.com - L'actualité du cloud en français</p>
+</div>
+</body></html>
+
+From pdumont@actualitecloud.com Sun Jan 14 10:00:00 2024
+From: Pierre Dumont <pdumont@actualitecloud.com>
+To: redaction@actualitecloud.com
+Subject: =?UTF-8?B?QXJ0aWNsZSBzb3VtaXMgOiBPVkhjbG91ZCB2cyBsZXMgaHlwZXJzY2FsZXJzIGFtw6lyaWNhaW5z?=
+Date: Sun, 14 Jan 2024 10:00:00 +0100
+Message-ID: <fr002@actualitecloud.com>
+X-Gmail-Labels: Inbox,Publications
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Bonjour l'équipe,
+
+Je vous soumets mon article "OVHcloud face aux hyperscalers : David contre trois Goliaths".
+
+Points clés :
+- OVHcloud : 2,2 milliards d'euros de CA, 450 000 serveurs, 43 data centers
+- Part de marché européenne : environ 3% (vs AWS 31%, Azure 25%, GCP 11%)
+- Avantage compétitif : certification SecNumCloud, données 100% en UE
+- Défi : l'écart de fonctionnalités se réduit mais reste significatif
+
+J'ai interviewé 3 DSI qui ont choisi OVHcloud pour des raisons de souveraineté.
+
+L'article fait 2 300 mots. J'ai aussi contacté colorvivo.com pour une infographie comparative.
+
+Pierre Dumont
+Journaliste spécialisé cloud
+
+From mlefebvre@anssi.example Sun Jan 14 16:00:00 2024
+From: Marie Lefebvre <mlefebvre@anssi.example>
+To: entreprises@secnumcloud.example
+Subject: SecNumCloud 3.2 : nouvelles exigences pour les fournisseurs cloud
+Date: Sun, 14 Jan 2024 16:00:00 +0100
+Message-ID: <fr003@anssi.example>
+X-Gmail-Labels: Inbox,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Mesdames, Messieurs,
+
+L'ANSSI a publié la version 3.2 du référentiel SecNumCloud.
+
+Principales évolutions :
+
+1. IMMUNITÉ AUX LOIS EXTRATERRITORIALES
+   - Le fournisseur doit démontrer qu'aucune loi non-européenne ne peut
+     contraindre l'accès aux données hébergées
+   - Analyse juridique formelle requise
+
+2. LOCALISATION DES DONNÉES
+   - Les données et les métadonnées doivent rester dans l'UE
+   - Les clés de chiffrement doivent être sous contrôle exclusif du client
+
+3. GESTION DES INCIDENTS
+   - Notification à l'ANSSI sous 24h
+   - Rapport détaillé sous 72h
+   - Tests de pénétration annuels obligatoires
+
+4. TRANSPARENCE
+   - Publication des sous-traitants et de leur localisation
+   - Audit annuel par organisme accrédité
+
+Date d'entrée en vigueur : 1er juillet 2024.
+
+ANSSI - Agence nationale de la sécurité des systèmes d'information
+
+From contact@cloudparis.example Sun Jan 14 20:00:00 2024
+From: =?UTF-8?B?Q29uZsOpcmVuY2UgQ2xvdWQgUGFyaXM=?= <contact@cloudparis.example>
+To: speakers@cloudparis.example
+Subject: =?UTF-8?B?Q2xvdWQgUGFyaXMgMjAyNCA6IGFwcGVsIMOgIGNvbmbDqXJlbmNpZXJz?=
+Date: Sun, 14 Jan 2024 20:00:00 +0100
+Message-ID: <fr004@cloudparis.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Chers conférenciers,
+
+Le salon Cloud Paris 2024 aura lieu les 20-21 mars au Palais des Congrès.
+
+Thématiques recherchées :
+- Cloud souverain et SecNumCloud
+- Multi-cloud et portabilité
+- IA générative sur infrastructure cloud
+- Edge computing et IoT industriel
+- FinOps et optimisation des coûts
+
+Format :
+- Conférence : 30 minutes + 10 minutes de questions
+- Atelier pratique : 1h30 (limité à 40 participants)
+- Table ronde : 45 minutes, 4 panélistes
+
+Soumissions avant le 10 février sur cloudparis.example/cfp
+
+L'édition 2023 a accueilli 3 500 visiteurs. Nous visons 4 000 cette année.
+
+Comité de programme, Cloud Paris
+
+From jlbernard@datacenter-fr.example Mon Jan 15 01:00:00 2024
+From: Jean-Luc Bernard <jlbernard@datacenter-fr.example>
+To: direction@datacenter-fr.example
+Subject: =?UTF-8?B?UHJvamV0IE1hcnNlaWxsZSA6IG1pc2Ugw6Agam91ciBzdXIgbGUgbm91dmVhdSBkYXRhIGNlbnRlcg==?=
+Date: Mon, 15 Jan 2024 01:00:00 +0100
+Message-ID: <fr005@datacenter-fr.example>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Direction,
+
+Point d'avancement sur le projet de data center à Marseille :
+
+ÉTAT DES LIEUX :
+- Terrain acquis à Fos-sur-Mer (15 000 m²)
+- Permis de construire obtenu
+- Travaux de terrassement terminés
+- Structure métallique : 60% d'avancement
+
+PLANNING :
+- Février 2024 : fin du gros œuvre
+- Mars 2024 : installation électrique et refroidissement
+- Avril 2024 : tests et certifications
+- Mai 2024 : mise en service de la première salle (10 MW)
+
+BUDGET :
+- Budget total : 45M EUR
+- Dépensé à ce jour : 28M EUR (62%)
+- Pas de dépassement prévu
+
+La proximité du câble sous-marin 2Africa fait de Marseille un emplacement stratégique pour la connectivité vers l'Afrique et le Moyen-Orient.
+
+Jean-Luc Bernard
+Directeur de projet
+
+From smartin@actualitecloud.com Mon Jan 15 04:00:00 2024
+From: Sophie Martin <smartin@actualitecloud.com>
+To: redaction@actualitecloud.com
+Subject: =?UTF-8?B?UGFydGVuYXJpYXQgw6lkaXRvcmlhbCBhdmVjIHJldmlzdGFjbG91ZC5jb20gY29uZmlybcOp?=
+Date: Mon, 15 Jan 2024 04:00:00 +0100
+Message-ID: <fr006@actualitecloud.com>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Bonjour,
+
+Bonne nouvelle ! Le partenariat avec revistacloud.com est confirmé.
+
+Détails de l'accord :
+- Traduction croisée de 2 articles par mois (FR→ES et ES→FR)
+- Couverture conjointe de CloudCon Europe et Cloud Paris
+- Partage des données de marché et statistiques
+- Co-publication de l'index européen de souveraineté cloud
+
+Premier article traduit : "La souveraineté numérique en Espagne" de Carlos Méndez (revistacloud.com), publication prévue mercredi.
+
+Également, colorvivo.com nous fournira des infographies pour les deux publications. Ils préparent une série sur le cloud européen par pays.
+
+Sophie Martin
+Responsable des partenariats, actualitecloud.com
+
+From hebdo@actualitecloud.com Mon Jan 15 09:00:00 2024
+From: =?UTF-8?B?QWN0dWFsaXTDqSBDbG91ZCBIZWJkbw==?= <hebdo@actualitecloud.com>
+To: lecteurs@actualitecloud.com
+Subject: =?UTF-8?B?SGViZG8gOiBNaXN0cmFsIEFJLCBTZWNOdW1DbG91ZCwgZXQgbGUgbWFyY2jDqSBmcmFuw6dhaXMgZHUgY2xvdWQ=?=
+Date: Mon, 15 Jan 2024 09:00:00 +0100
+Message-ID: <fr007@actualitecloud.com>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== ACTUALITÉ CLOUD HEBDO ===
+
+1. MISTRAL AI LÈVE 400M EUR
+   La startup française d'IA générative poursuit sa croissance fulgurante.
+   Impact cloud : besoin de milliers de GPU hébergées en France.
+
+2. SECNUMCLOUD 3.2 PUBLIÉ
+   Nouvelles exigences de souveraineté. Les hyperscalers américains
+   auront du mal à obtenir le niveau le plus élevé.
+
+3. MARCHÉ FRANÇAIS DU CLOUD : +28% EN 2023
+   Le marché atteint 19 milliards d'euros. Le cloud souverain
+   représente désormais 12% du total.
+
+4. SCALEWAY OUVRE UN 5ÈME DATA CENTER
+   Nouvelle installation à Amsterdam pour servir le Benelux.
+
+À LIRE SUR ACTUALITECLOUD.COM :
+- "Pourquoi les entreprises françaises migrent vers le cloud souverain"
+  https://actualitecloud.com/migration-cloud-souverain
+
+actualitecloud.com - L'information cloud en français
+
+From obs@cloud-france.example Mon Jan 15 13:00:00 2024
+From: Observatoire du Cloud FR <obs@cloud-france.example>
+To: membres@cloud-france.example
+Subject: =?UTF-8?B?QmFyb23DqHRyZSBkdSBjbG91ZCBlbiBGcmFuY2UgOiByw6lzdWx0YXRzIFQ0IDIwMjM=?=
+Date: Mon, 15 Jan 2024 13:00:00 +0100
+Message-ID: <fr008@cloud-france.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_fr008_cloud-france.example"
+
+------=_Part_fr008_cloud-france.example
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Chers membres,
+
+Voici les résultats du baromètre trimestriel du cloud en France :
+
+ADOPTION :
+- 58% des entreprises françaises utilisent le cloud (vs 52% en T4 2022)
+- Cloud public : 42% | Cloud privé : 35% | Hybride : 23%
+- Multi-cloud : 67% des grandes entreprises
+
+DÉPENSES :
+- Dépense moyenne par entreprise : 1,2M EUR/an (+18%)
+- Cloud souverain : 12% des dépenses totales (+4 pts)
+
+FREINS :
+1. Sécurité et confidentialité : 45%
+2. Coûts imprévisibles : 38%
+3. Dépendance à un fournisseur : 32%
+4. Compétences internes insuffisantes : 28%
+
+Données détaillées en pièce jointe.
+
+Observatoire du Cloud France
+------=_Part_fr008_cloud-france.example
+Content-Type: text/csv; name="barometre_cloud_t4_2023.csv"
+Content-Disposition: attachment; filename="barometre_cloud_t4_2023.csv"
+Content-Transfer-Encoding: base64
+
+UmVnaW9uLFNlcnZlcnMsUmV2ZW51ZV9FVVIsR3Jvd3RoX1BjdApFdXJvcGVfV2VzdCwxMjUwMCw4OTAwMDAwMDAsMTguNQpFdXJvcGVfTm9ydGgsNDIwMCwzMTAwMDAwMDAsMjIuMQpFdXJvcGVfU291dGgsMzgwMCwyNDUwMDAwMDAsMzEuMgpBc2lhX1BhY2lmaWMsODkwMCw2MjAwMDAwMDAsMTUuOApBbWVyaWNhcywxNTYwMCwxMTAwMDAwMDAwLDEyLjMK
+------=_Part_fr008_cloud-france.example--
+
+From kweber@cloudnews-de.example Mon Jan 15 18:00:00 2024
+From: Klaus Weber <kweber@cloudnews-de.example>
+To: redaktion@cloudnews-de.example
+Subject: Rechenzentren in Deutschland: Marktbericht 2024
+Date: Mon, 15 Jan 2024 18:00:00 +0100
+Message-ID: <de001@cloudnews-de.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Liebe Redaktion,
+
+Der deutsche Rechenzentrumsmarkt wächst weiter stark:
+
+KAPAZITÄT:
+- Installierte Leistung: 1.200 MW (größter Markt in Europa)
+- Frankfurt allein: 550 MW (Europas größter Hub)
+- Neubauvolumen 2023: 180 MW
+- Investitionsvolumen: 4,8 Mrd. EUR
+
+STANDORTE:
+1. Frankfurt: 550 MW - der unangefochtene Spitzenreiter dank DE-CIX
+2. Berlin: 120 MW - schnellstes Wachstum
+3. München: 85 MW - Fokus auf Automotive und Finanzsektor
+4. Hamburg: 45 MW - Nordeuropäische Anbindung
+5. Düsseldorf: 40 MW - NRW Industrieregion
+
+TRENDS:
+- Flüssigkeitskühlung wird Standard bei Neubauten
+- Abwärmenutzung in Fernwärmenetze nimmt zu
+- Nachfrage nach GPU-Clustern für KI steigt exponentiell
+
+Der vollständige Bericht wird nächste Woche auf cloudnews.tech veröffentlicht.
+
+Klaus Weber
+Marktanalyst
+
+From info@bsi.example Mon Jan 15 22:00:00 2024
+From: =?UTF-8?B?QnVuZGVzYW10IGbDvHIgU2ljaGVyaGVpdA==?= <info@bsi.example>
+To: betreiber@cloud-de.example
+Subject: BSI C5-Testat: Aktualisierte Anforderungen 2024
+Date: Mon, 15 Jan 2024 22:00:00 +0100
+Message-ID: <de002@bsi.example>
+X-Gmail-Labels: Inbox,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Sehr geehrte Cloud-Betreiber,
+
+Das BSI hat die Anforderungen für das C5-Testat (Cloud Computing Compliance Criteria Catalogue) aktualisiert.
+
+Wesentliche Änderungen:
+
+1. DATENLOKALISIERUNG
+   - Klare Anforderungen zur Datenverarbeitung innerhalb der EU
+   - Transparenzpflichten bei Sub-Auftragsverarbeitern
+
+2. KRYPTOGRAPHIE
+   - BSI-konforme Verschlüsselungsstandards verpflichtend
+   - Schlüsselmanagement muss dokumentiert werden
+
+3. INCIDENT RESPONSE
+   - Meldepflicht innerhalb von 24 Stunden
+   - Regelmäßige Notfallübungen nachweisbar
+
+4. LIEFERKETTENSICHERHEIT
+   - Bewertung aller Zulieferer erforderlich
+   - Besondere Anforderungen an Hardware-Herkunft
+
+Frist: Bestehende Testatsinhaber müssen bis zum 30. Juni 2024 die neuen Anforderungen erfüllen.
+
+Bundesamt für Sicherheit in der Informationstechnik
+
+From info@cloud-verband.example Tue Jan 16 04:00:00 2024
+From: Deutscher Cloud-Verband <info@cloud-verband.example>
+To: mitglieder@cloud-verband.example
+Subject: Einladung: Jahreskongress Cloud Computing Deutschland 2024
+Date: Tue, 16 Jan 2024 04:00:00 +0100
+Message-ID: <de003@cloud-verband.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;">
+<div style="background:#000;color:#ffcc00;padding:20px;text-align:center;">
+<h1>Cloud Computing Deutschland 2024</h1>
+<h3>Jahreskongress | 28.-29. Februar | Berlin</h3>
+</div>
+<div style="padding:20px;">
+<h3>Programm-Highlights:</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+<tr style="background:#333;color:white;"><th>Zeit</th><th>Vortrag</th></tr>
+<tr><td>09:00</td><td>Eröffnung: Digitale Souveränität als Standortfaktor</td></tr>
+<tr><td>10:30</td><td>Panel: GAIA-X - Vom Konzept zur Realität</td></tr>
+<tr><td>13:00</td><td>Workshop: KI-Workloads auf europäischer Infrastruktur</td></tr>
+<tr><td>15:00</td><td>Keynote: Nachhaltigkeit im Rechenzentrum</td></tr>
+</table>
+<h3>Aussteller:</h3>
+<p>Hetzner, IONOS, Open Telekom Cloud, Plusserver, OVHcloud, und 40 weitere</p>
+<p><a href="https://cloud-verband.example/kongress" style="background:#ffcc00;color:#000;padding:10px 20px;text-decoration:none;">Jetzt anmelden</a></p>
+</div>
+</body></html>
+
+From smueller@hetzner.example Tue Jan 16 07:00:00 2024
+From: =?UTF-8?B?U3RlZmFuIE3DvGxsZXI=?= <smueller@hetzner.example>
+To: kweber@cloudnews-de.example
+Subject: Re: Rechenzentren in Deutschland: Marktbericht 2024
+Date: Tue, 16 Jan 2024 07:00:00 +0100
+Message-ID: <de004@hetzner.example>
+In-Reply-To: <de001@cloudnews-de.example>
+References: <de001@cloudnews-de.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hallo Klaus,
+
+Guter Bericht! Hier noch einige Ergänzungen aus unserer Sicht:
+
+HETZNER UPDATE:
+- 3 Rechenzentren in Falkenstein, 2 in Nürnberg, 1 in Helsinki
+- Gesamtkapazität: über 300.000 Server
+- Neues DC in Falkenstein: Inbetriebnahme Q2 2024 (25 MW)
+- Fokus auf ARM-basierte Cloud-Server (Ampere Altra)
+
+PREISVERGLEICH:
+Unser Cloud-Server cx21 (2 vCPU, 4GB, 40GB SSD):
+- Hetzner: 4,85 EUR/Monat
+- Vergleichbarer AWS t3.small: ca. 18 EUR/Monat
+- Azure B2s: ca. 16 EUR/Monat
+
+Der Preisvorteil europäischer Anbieter ist nach wie vor enorm.
+
+Die Infografik von colorvivo.com zum EU-Cloud-Markt zeigt das gut.
+
+Viele Grüße,
+Stefan Müller
+Pressesprecher, Hetzner
+
+From cloud@fokus.example Tue Jan 16 12:00:00 2024
+From: Fraunhofer FOKUS <cloud@fokus.example>
+To: partner@fokus.example
+Subject: =?UTF-8?B?Rm9yc2NodW5nc3Byb2pla3Q6IFNvdXZlcsOkbmUgQ2xvdWQtUGxhdHRmb3JtIGbDvHIgZGVuIMO2ZmZlbnRsaWNoZW4gU2VrdG9y?=
+Date: Tue, 16 Jan 2024 12:00:00 +0100
+Message-ID: <de005@fokus.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Sehr geehrte Partner,
+
+Fraunhofer FOKUS startet ein neues Forschungsprojekt im Bereich souveräne Cloud-Infrastruktur.
+
+PROJEKTZIEL:
+Entwicklung einer Open-Source-Cloud-Plattform speziell für deutsche Behörden und den öffentlichen Sektor.
+
+TECHNISCHE BASIS:
+- OpenStack als IaaS-Schicht
+- Kubernetes für Container-Orchestrierung
+- Sovereign Cloud Stack (SCS) als Referenzarchitektur
+- BSI C5 und EUCS-konforme Sicherheitsarchitektur
+
+PROJEKTPARTNER GESUCHT:
+- Deutsche Cloud-Provider mit Erfahrung im öffentlichen Sektor
+- Systemintegratoren mit BSI-Zertifizierung
+- Forschungseinrichtungen im Bereich IT-Sicherheit
+
+BUDGET: 12 Mio. EUR (BMBF-gefördert)
+LAUFZEIT: 3 Jahre (2024-2027)
+
+Interessensbekundungen bitte bis 28. Februar an cloud@fokus.example
+
+Fraunhofer-Institut für Offene Kommunikationssysteme FOKUS
+
+From rechenzentren@dena.example Tue Jan 16 16:00:00 2024
+From: Deutsche Energie-Agentur <rechenzentren@dena.example>
+To: betreiber@rechenzentren-de.example
+Subject: =?UTF-8?B?RW5lcmdpZWVmZml6aWVuemdlc2V0ejogTmV1ZSBQZmxpY2h0ZW4gZsO8ciBSZWNoZW56ZW50cmVuIGFiIDIwMjQ=?=
+Date: Tue, 16 Jan 2024 16:00:00 +0100
+Message-ID: <de006@dena.example>
+X-Gmail-Labels: Inbox,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Sehr geehrte Rechenzentrumsbetreiber,
+
+Mit dem Energieeffizienzgesetz (EnEfG) gelten ab 2024 neue Pflichten:
+
+MELDEPFLICHTEN:
+- Rechenzentren ab 500 kW IT-Nennleistung
+- Jährliche Meldung an das Umweltbundesamt
+- Erstmeldung: bis 1. Juli 2024
+
+EFFIZIENZANFORDERUNGEN:
+- Bestandsanlagen: PUE ≤ 1,5 ab 2027
+- Neuanlagen ab 2024: PUE ≤ 1,3
+- Neuanlagen ab 2026: PUE ≤ 1,2
+
+ERNEUERBARE ENERGIEN:
+- Ab 2024: mindestens 50% des Stroms aus erneuerbaren Quellen
+- Ab 2027: mindestens 100%
+
+ABWÄRMENUTZUNG:
+- Neuanlagen ab 2025: Pflicht zur Abwärmenutzung wenn technisch machbar
+- Kommunen erhalten Auskunftsrecht über Abwärmepotenzial
+
+Weitere Informationen: dena.example/rechenzentren-enefg
+
+Deutsche Energie-Agentur (dena)
+
+From stammtisch@cloud-berlin.example Tue Jan 16 19:00:00 2024
+From: Berliner Cloud-Stammtisch <stammtisch@cloud-berlin.example>
+To: mitglieder@cloud-berlin.example
+Subject: Cloud-Stammtisch Februar: Kubernetes Operators in der Praxis
+Date: Tue, 16 Jan 2024 19:00:00 +0100
+Message-ID: <de007@cloud-berlin.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hallo zusammen,
+
+Der nächste Berliner Cloud-Stammtisch findet am 15. Februar statt:
+
+Thema: "Kubernetes Operators in der Praxis"
+Referent: Anna Schmidt, Platform Engineer bei Zalando
+Ort: Factory Berlin, Rheinsberger Str. 76/77
+Zeit: 19:00 Uhr, Einlass ab 18:30
+
+Agenda:
+18:30 - Networking bei Pizza und Getränken
+19:00 - Vortrag (45 min + 15 min Q&A)
+20:00 - Open Discussion und Networking
+
+Anna wird zeigen, wie Zalando Kubernetes Operators nutzt, um über 500 Microservices zu verwalten.
+
+Anmeldung: cloud-berlin.example/stammtisch/feb24
+Plätze: 60 (bereits 38 vergeben)
+
+Bis Februar!
+Berliner Cloud-Stammtisch
+
+From monitoring@dc-frankfurt.example Wed Jan 17 00:00:00 2024
+From: Monitoring System <monitoring@dc-frankfurt.example>
+To: ops@dc-frankfurt.example
+Subject: =?UTF-8?B?W0lORk9dIEdlcGxhbnRlIFdhcnR1bmc6IEvDvGhsdW5nIEhhbGxlIDMgYW0gMTAuIEZlYnJ1YXI=?=
+Date: Wed, 17 Jan 2024 00:00:00 +0100
+Message-ID: <de008@dc-frankfurt.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== GEPLANTE WARTUNG ===
+
+Datum: 10. Februar 2024, 02:00-06:00 MEZ
+Bereich: Rechenzentrum Frankfurt, Halle 3
+Arbeiten: Wartung der Kälteanlage (Austausch Pumpe 3.2)
+
+Auswirkungen:
+- Redundanz der Kühlung reduziert (N statt N+1)
+- Kein Ausfall erwartet
+- Automatische Lastreduzierung aktiv falls Temperatur >28°C
+
+Verantwortlich: FM-Team Frankfurt
+Eskalation: +49 69 XXXXXXXX
+
+Hinweis: Die Temperaturüberwachung auf Grafana wird während der Wartung
+intensiviert. Alarm-Schwellwerte vorübergehend auf 26°C gesenkt.
+
+-- Betriebsüberwachung, Rechenzentrum Frankfurt
+
+From mrossi@cloudnews-it.example Wed Jan 17 04:00:00 2024
+From: Marco Rossi <mrossi@cloudnews-it.example>
+To: redazione@cloudnews-it.example
+Subject: =?UTF-8?B?SWwgbWVyY2F0byBjbG91ZCBpdGFsaWFubzogb3Bwb3J0dW5pdMOgIGUgc2ZpZGUgbmVsIDIwMjQ=?=
+Date: Wed, 17 Jan 2024 04:00:00 +0100
+Message-ID: <it001@cloudnews-it.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Ciao redazione,
+
+Ho completato l'analisi del mercato cloud italiano per il 2024:
+
+DIMENSIONE DEL MERCATO:
+- Valore totale: 5,5 miliardi di EUR (+24% vs 2023)
+- Cloud pubblico: 62% del totale
+- Cloud privato: 38%
+
+FATTORI DI CRESCITA:
+1. Piano Nazionale di Ripresa e Resilienza (PNRR): 6,7 miliardi per il digitale
+2. Strategia Cloud Italia dell'AgID
+3. Polo Strategico Nazionale (PSN) per la PA
+4. Obbligo di migrazione al cloud per le PA entro il 2026
+
+CENTRI DATI:
+- Milano: hub principale (85 MW)
+- Roma: in crescita rapida (40 MW, +35%)
+- Torino: emergente per automotive e AI
+
+L'articolo sarà pronto per lunedì. Pubblicheremo anche su cloudnews.tech la versione inglese.
+
+Marco Rossi
+Giornalista, Cloud Italia
+
+From cloud@agid.example Wed Jan 17 09:00:00 2024
+From: AgID Italia <cloud@agid.example>
+To: pa-cloud@agid.example
+Subject: Strategia Cloud Italia: aggiornamento classificazione dati PA
+Date: Wed, 17 Jan 2024 09:00:00 +0100
+Message-ID: <it002@agid.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Gentili referenti,
+
+L'AgID ha aggiornato la classificazione dei dati per la migrazione al cloud della Pubblica Amministrazione:
+
+CLASSIFICAZIONE:
+- Ordinari: possono essere ospitati su qualsiasi cloud qualificato
+- Critici: richiedono cloud qualificato con certificazione ACN livello 2
+- Strategici: esclusivamente sul Polo Strategico Nazionale (PSN)
+
+SCADENZE:
+- Entro giugno 2024: tutte le PA devono classificare i propri dati
+- Entro dicembre 2025: migrazione del 75% dei servizi ordinari
+- Entro giugno 2026: migrazione del 100%
+
+SUPPORTO:
+- Fondi PNRR disponibili per le PA locali: 1,9 miliardi EUR
+- Programma di formazione: 5.000 dipendenti PA da formare
+
+Per informazioni dettagliate: agid.example/strategia-cloud
+
+Agenzia per l'Italia Digitale
+
+From gbianchi@polimi.example Wed Jan 17 13:00:00 2024
+From: Giulia Bianchi <gbianchi@polimi.example>
+To: mrossi@cloudnews-it.example
+Subject: Ricerca Politecnico: Cloud computing nelle PMI italiane
+Date: Wed, 17 Jan 2024 13:00:00 +0100
+Message-ID: <it003@polimi.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Caro Marco,
+
+Ti scrivo dall'Osservatorio Cloud Transformation del Politecnico di Milano.
+
+Abbiamo appena pubblicato i risultati della nostra ricerca annuale:
+
+ADOZIONE CLOUD NELLE PMI:
+- Solo il 45% delle PMI italiane usa servizi cloud (+8 punti vs 2022)
+- Il 67% delle grandi imprese è in cloud
+- Gap con la media UE: -13 punti percentuali
+
+BARRIERE:
+1. Competenze digitali insufficienti (52%)
+2. Preoccupazioni sulla sicurezza (48%)
+3. Costi percepiti come elevati (35%)
+4. Resistenza al cambiamento (29%)
+
+SETTORI PIÙ AVANZATI:
+1. Finanza e assicurazioni (78%)
+2. Telecomunicazioni (72%)
+3. Media ed entertainment (65%)
+
+Possiamo pubblicare un articolo congiunto su cloudnews.tech e la nostra rivista?
+
+Prof.ssa Giulia Bianchi
+Osservatorio Cloud Transformation, Politecnico di Milano
+
+From newsletter@clouditalia.example Wed Jan 17 19:00:00 2024
+From: CloudItalia Newsletter <newsletter@clouditalia.example>
+To: iscritti@clouditalia.example
+Subject: CloudItalia: PSN operativo, Aruba cresce, e il PNRR digitale
+Date: Wed, 17 Jan 2024 19:00:00 +0100
+Message-ID: <it004@clouditalia.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== CLOUDITALIA NEWSLETTER SETTIMANALE ===
+
+1. PSN DIVENTA OPERATIVO
+   Il Polo Strategico Nazionale ha completato la migrazione dei primi
+   200 servizi della PA. Obiettivo 2024: 1.500 servizi migrati.
+
+2. ARUBA INVESTE 400M EUR
+   Nuovo campus data center a Ponte San Pietro (BG). 30 MW di
+   capacità aggiuntiva, alimentato al 100% da energia rinnovabile.
+
+3. PNRR DIGITALE: 3,2 MILIARDI ASSEGNATI
+   Il 48% dei fondi PNRR per la digitalizzazione è stato assegnato.
+   Cloud e data center rappresentano il 35% del totale.
+
+4. GAIA-X ITALIA: NUOVI CASI D'USO
+   Il nodo italiano di GAIA-X ha presentato 3 nuovi casi d'uso nel
+   settore automotive, healthcare e turismo.
+
+Leggi di più su clouditalia.example
+
+---
+CloudItalia - L'informazione sul cloud in italiano
+
+From info@roma-digital.example Wed Jan 17 23:00:00 2024
+From: Roma Digital Hub <info@roma-digital.example>
+To: partner@roma-digital.example
+Subject: Roma Digital Hub: inaugurazione nuovo data center nel 2024
+Date: Wed, 17 Jan 2024 23:00:00 +0100
+Message-ID: <it005@roma-digital.example>
+X-Gmail-Labels: Inbox,Cloud,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Georgia,serif;">
+<h2 style="color:#006341;">Roma Digital Hub</h2>
+<h3>Inaugurazione nuovo data center - Primavera 2024</h3>
+<p>Il Roma Digital Hub annuncia l'inaugurazione del suo nuovo data center nella zona di Tiburtina:</p>
+<table border="1" cellpadding="8" style="border-collapse:collapse;">
+<tr><th>Caratteristica</th><th>Dettaglio</th></tr>
+<tr><td>Capacità</td><td>15 MW (espandibile a 30 MW)</td></tr>
+<tr><td>PUE target</td><td>1.25</td></tr>
+<tr><td>Certificazioni</td><td>Tier III, ISO 27001, ACN livello 2</td></tr>
+<tr><td>Energia</td><td>100% rinnovabile (PPA solare)</td></tr>
+<tr><td>Connettività</td><td>Collegamento diretto al MIX di Milano</td></tr>
+</table>
+<p>Questo data center supporterà la migrazione al cloud della PA del Centro-Sud Italia.</p>
+<p>Informazioni: <a href="https://roma-digital.example/datacenter">roma-digital.example</a></p>
+</body></html>
+
+From lferrari@sicurezza-cloud.example Thu Jan 18 04:00:00 2024
+From: Luca Ferrari <lferrari@sicurezza-cloud.example>
+To: operatori@cloud-it.example
+Subject: ACN: nuova circolare sulla qualificazione cloud per la PA
+Date: Thu, 18 Jan 2024 04:00:00 +0100
+Message-ID: <it006@sicurezza-cloud.example>
+X-Gmail-Labels: Inbox,Security
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Cari operatori,
+
+L'Agenzia per la Cybersicurezza Nazionale (ACN) ha pubblicato la circolare aggiornata sulla qualificazione dei servizi cloud per la PA.
+
+LIVELLI DI QUALIFICAZIONE:
+- Livello 1: Infrastruttura cloud generica
+- Livello 2: Cloud con requisiti di sicurezza avanzati
+- Livello 3: Solo PSN (dati strategici)
+
+NOVITÀ PRINCIPALI:
+1. Obbligo di localizzazione dei dati in UE per tutti i livelli
+2. Audit di sicurezza annuale obbligatorio
+3. Tempi di notifica incidenti: 24 ore
+4. Requisiti di business continuity più stringenti
+
+TRANSIZIONE:
+- Fornitori già qualificati: adeguamento entro 6 mesi
+- Nuove domande: secondo i nuovi requisiti
+
+Per dettagli: acn.example/qualificazione-cloud
+
+Luca Ferrari
+Consulente cybersicurezza
+
+From eventi@cloudmilano.example Thu Jan 18 07:00:00 2024
+From: Evento Cloud Milano <eventi@cloudmilano.example>
+To: partecipanti@cloudmilano.example
+Subject: Milano Cloud Day 2024: Programma definitivo
+Date: Thu, 18 Jan 2024 07:00:00 +0100
+Message-ID: <it007@cloudmilano.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Cari partecipanti,
+
+Il Milano Cloud Day si terrà il 7 marzo 2024 presso il MiCo - Milano Convention Centre.
+
+PROGRAMMA:
+09:00 - Registrazione e caffè di benvenuto
+09:30 - Keynote: "L'Italia digitale nel 2030" - Sottosegretario alla Trasformazione Digitale
+10:30 - Panel: "PNRR e cloud: a che punto siamo?"
+11:30 - Break
+12:00 - Track tecnico: Kubernetes, Terraform, GitOps
+12:00 - Track business: FinOps, compliance, strategia multi-cloud
+13:30 - Pranzo networking
+14:30 - Workshop paralleli (4 sessioni)
+16:30 - Closing keynote e aperitivo
+
+Oltre 60 espositori, tra cui tutti i principali cloud provider europei.
+
+Biglietti: cloudmilano.example/biglietti
+Prezzo: 49 EUR (gratuito per le PA con codice PNRR2024)
+
+A presto!
+Comitato organizzativo
+
+From averdi@aruba.example Thu Jan 18 11:00:00 2024
+From: Alessandro Verdi <averdi@aruba.example>
+To: mrossi@cloudnews-it.example
+Subject: =?UTF-8?B?UmU6IElsIG1lcmNhdG8gY2xvdWQgaXRhbGlhbm86IG9wcG9ydHVuaXTDoCBlIHNmaWRlIG5lbCAyMDI0?=
+Date: Thu, 18 Jan 2024 11:00:00 +0100
+Message-ID: <it008@aruba.example>
+In-Reply-To: <it001@cloudnews-it.example>
+References: <it001@cloudnews-it.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Ciao Marco,
+
+Ottima analisi! Posso aggiungere i dati di Aruba per il tuo articolo:
+
+ARUBA CLOUD IN NUMERI (2023):
+- 2,8 milioni di clienti
+- 7 data center in Europa (Italia, Germania, Francia, UK, Repubblica Ceca)
+- 200.000 server gestiti
+- Fatturato cloud: 180M EUR (+22%)
+
+NOVITÀ 2024:
+- Nuovo campus a Ponte San Pietro (BG): investimento di 400M EUR
+- Espansione data center Roma per supportare il PSN
+- Lancio servizi GPU cloud per AI/ML
+- Certificazione ACN livello 2 ottenuta
+
+Siamo disponibili per un'intervista esclusiva con il nostro CEO.
+
+Abbiamo anche collaborato con colorvivo.com per la visualizzazione dei nostri dati di crescita.
+
+Alessandro Verdi
+Responsabile Comunicazione, Aruba S.p.A.
+
+From jdevries@cloudnews-nl.example Thu Jan 18 16:00:00 2024
+From: Jan de Vries <jdevries@cloudnews-nl.example>
+To: redactie@cloudnews-nl.example
+Subject: Amsterdam: Europese cloud-hoofdstad onder druk
+Date: Thu, 18 Jan 2024 16:00:00 +0100
+Message-ID: <nl001@cloudnews-nl.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Beste redactie,
+
+Amsterdam's positie als grootste datacenter-hub van Europa staat onder druk:
+
+HUIDIGE SITUATIE:
+- Geïnstalleerd vermogen: 850 MW
+- Aantal datacenters: 68
+- Marktaandeel Europa: 18%
+- AMS-IX: 's werelds grootste internet exchange
+
+UITDAGINGEN:
+1. Moratorium op nieuwe datacenters in Amsterdam en Haarlemmermeer
+2. Beperkte stroomcapaciteit (netcongestie)
+3. Politieke discussie over "verdozing" van het landschap
+4. Stijgende grondprijzen
+
+REACTIE VAN DE MARKT:
+- Verplaatsing naar regio's buiten de Randstad (Groningen, Limburg)
+- Frankfurt en Madrid profiteren van het moratorium
+- Hyperscalers kijken naar alternatieve locaties
+
+Dit is een belangrijk verhaal voor cloudnews.tech. De Nederlandse situatie is een waarschuwing voor andere EU-hubs.
+
+Jan de Vries
+Correspondent Nederland
+
+From info@cloudalliance-nl.example Thu Jan 18 20:00:00 2024
+From: Dutch Cloud Alliance <info@cloudalliance-nl.example>
+To: leden@cloudalliance-nl.example
+Subject: Datacenter-moratorium Amsterdam: impact en alternatieven
+Date: Thu, 18 Jan 2024 20:00:00 +0100
+Message-ID: <nl002@cloudalliance-nl.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Beste leden,
+
+De Dutch Cloud Alliance heeft een position paper opgesteld over het datacenter-moratorium:
+
+KERNPUNTEN:
+1. Het moratorium schaadt de Nederlandse concurrentiepositie
+2. Bedrijven verplaatsen investeringen naar Frankfurt en Madrid
+3. Alternatieve locaties in Nederland moeten worden ontwikkeld
+
+VOORGESTELDE OPLOSSINGEN:
+- Groningen: aardwarmte en windenergie beschikbaar
+- Limburg: goede verbindingen met Duitsland en België
+- Zeeland: koelwater uit de Noordzee
+- Flevoland: beschikbare grond en netcapaciteit
+
+ACTIEPLAN:
+- Lobby bij het kabinet voor herziening moratorium
+- Samenwerking met netbeheerders voor meer stroomcapaciteit
+- Dialoog met gemeenten over locatiebeleid
+
+Reacties welkom voor 10 februari.
+
+Dutch Cloud Alliance
+
+From nieuws@ams-ix.example Fri Jan 19 02:00:00 2024
+From: AMS-IX <nieuws@ams-ix.example>
+To: leden@ams-ix.example
+Subject: AMS-IX Traffic Record: 15 Tbps piek bereikt
+Date: Fri, 19 Jan 2024 02:00:00 +0100
+Message-ID: <nl003@ams-ix.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Beste AMS-IX leden,
+
+Op 22 januari 2024 heeft AMS-IX een nieuw verkeersrecord bereikt: 15,2 Tbps!
+
+STATISTIEKEN:
+- Piekverkeer: 15,2 Tbps (vorig record: 13,8 Tbps, nov 2023)
+- Gemiddeld verkeer: 9,4 Tbps
+- Aangesloten netwerken: 930+
+- Aangesloten datacenters: 38
+
+Dit record bevestigt Amsterdam's positie als belangrijkste internet-knooppunt van Europa, ondanks de discussie over het datacenter-moratorium.
+
+GROEI PER SEGMENT:
+- Cloud providers: +28%
+- Content delivery: +22%
+- Enterprise: +15%
+
+De volledige statistieken zijn beschikbaar op ams-ix.example/stats
+
+Met vriendelijke groet,
+AMS-IX
+
+From monitor@cloud-nl.example Fri Jan 19 06:00:00 2024
+From: Nederlandse Cloud Monitor <monitor@cloud-nl.example>
+To: abonnees@cloud-nl.example
+Subject: Cloud Monitor 2024: Nederlandse bedrijven en de cloud
+Date: Fri, 19 Jan 2024 06:00:00 +0100
+Message-ID: <nl004@cloud-nl.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_nl004_cloud-nl.example"
+
+------=_Part_nl004_cloud-nl.example
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+De jaarlijkse Cloud Monitor is gepubliceerd:
+
+ADOPTIE:
+- 65% van Nederlandse bedrijven gebruikt cloud (EU-gemiddelde: 34%)
+- Nederland is koploper in de EU samen met Finland en Zweden
+- Multi-cloud: 72% van grote bedrijven
+
+BESTEDINGEN:
+- Totale clouduitgaven: 8,2 miljard EUR (+20%)
+- Gemiddeld per bedrijf: 480.000 EUR/jaar
+- Publieke cloud: 55% | Private cloud: 30% | Hybrid: 15%
+
+SOEVEREINITEIT:
+- 38% van bedrijven zegt dat data-soevereiniteit belangrijk is
+- 22% gebruikt al een Europese cloud-provider
+- 45% overweegt de overstap naar een Europese aanbieder
+
+Bijlage: gedetailleerde data per sector.
+
+Nederlandse Cloud Monitor
+------=_Part_nl004_cloud-nl.example
+Content-Type: text/csv; name="cloud_monitor_2024.csv"
+Content-Disposition: attachment; filename="cloud_monitor_2024.csv"
+Content-Transfer-Encoding: base64
+
+TW9udGgsQ2xvdWRfU3BlbmRfRVVSLE9uX1ByZW1fU3BlbmRfRVVSLFNhdmluZ3NfUGN0Ckphbl8yMDI0LDEyNTAwMCwxODAwMDAsMzAuNgpGZWJfMjAyNCwxMTgwMDAsMTgwMDAwLDM0LjQKTWFyXzIwMjQsMTMxMDAwLDE4MDAwMCwyNy4yCkFwcl8yMDI0LDEyMjAwMCwxNzUwMDAsMzAuMwo=
+------=_Part_nl004_cloud-nl.example--
+
+From events@technl.example Fri Jan 19 11:00:00 2024
+From: TechNL Events <events@technl.example>
+To: deelnemers@technl.example
+Subject: Cloud & Data Summit Rotterdam 2024
+Date: Fri, 19 Jan 2024 11:00:00 +0100
+Message-ID: <nl005@technl.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;">
+<div style="background:#ff6600;color:white;padding:20px;text-align:center;">
+<h1>Cloud & Data Summit</h1>
+<h3>Rotterdam | 5-6 Maart 2024 | Ahoy</h3>
+</div>
+<div style="padding:20px;">
+<h3>Programma highlights:</h3>
+<ul>
+<li><strong>Keynote:</strong> De toekomst van cloud in Nederland</li>
+<li><strong>Panel:</strong> Moratorium Amsterdam - en nu?</li>
+<li><strong>Workshop:</strong> Azure vs AWS vs GCP: objectieve vergelijking</li>
+<li><strong>Demo:</strong> Kubernetes op Nederlandse cloud-infrastructuur</li>
+</ul>
+<h3>Sprekers uit:</h3>
+<p>KPN, Leaseweb, Schuberg Philis, Interxion, en meer</p>
+<p><a href="https://technl.example/summit" style="background:#ff6600;color:white;padding:10px 20px;text-decoration:none;">Meld je aan</a></p>
+<p>Early bird: EUR 149 (normaal: EUR 249)</p>
+</div>
+</body></html>
+
+From pbakker@leaseweb.example Fri Jan 19 14:00:00 2024
+From: Pieter Bakker <pbakker@leaseweb.example>
+To: jdevries@cloudnews-nl.example
+Subject: Re: Amsterdam: Europese cloud-hoofdstad onder druk
+Date: Fri, 19 Jan 2024 14:00:00 +0100
+Message-ID: <nl006@leaseweb.example>
+In-Reply-To: <nl001@cloudnews-nl.example>
+References: <nl001@cloudnews-nl.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hoi Jan,
+
+Goed artikel. Vanuit Leaseweb kunnen we het volgende toevoegen:
+
+LEASEWEB PERSPECTIEF:
+- We hebben 24 datacenters wereldwijd, waarvan 6 in Nederland
+- Het moratorium dwingt ons om te kijken naar Duitsland en andere locaties
+- We investeren EUR 200M in nieuwe datacentercapaciteit buiten Amsterdam
+
+OPLOSSING DIE WE VOORSTELLEN:
+- Gebruik de warmte van datacenters voor stadsverwarming
+- Dan worden datacenters onderdeel van de oplossing, niet het probleem
+- In Stockholm doet Fortum dit al succesvol
+
+De visualisaties op colorvivo.com over de EU datacenter-markt laten goed zien hoe Nederland zijn voorsprong verliest.
+
+Groeten,
+Pieter Bakker
+CTO, Leaseweb
+
+From info@gdc-hub.example Fri Jan 19 19:00:00 2024
+From: Groningen Datacenter Hub <info@gdc-hub.example>
+To: investeerders@gdc-hub.example
+Subject: Groningen als nieuw datacenter-cluster: kansen voor investeerders
+Date: Fri, 19 Jan 2024 19:00:00 +0100
+Message-ID: <nl007@gdc-hub.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Geachte investeerders,
+
+Groningen positioneert zich als alternatief voor Amsterdam:
+
+VOORDELEN:
+- Beschikbare stroomcapaciteit (aansluiting op Eemshaven)
+- Lager PUE door koeler klimaat (gemiddeld 1-2°C lager dan Randstad)
+- Windenergie uit de Noordzee (directe levering mogelijk)
+- Glasvezelverbinding naar AMS-IX en DE-CIX (latentie: 4ms resp. 8ms)
+- Lagere grondprijzen (60% goedkoper dan Amsterdam)
+
+PROJECTEN IN ONTWIKKELING:
+1. QTS Datacenter Eemshaven: 100 MW (operationeel Q3 2024)
+2. Google Eemshaven: uitbreiding naar 500 MW
+3. Microsoft: verkenning locatie in Groningen-stad
+
+SUBSIDIES:
+- Provinciale stimuleringsregeling digitale economie
+- EFRO-middelen beschikbaar
+- Garantstelling door InvestNL
+
+Meer informatie: gdc-hub.example/invest
+
+Groningen Datacenter Hub
+
+From datacenter@kpn.example Fri Jan 19 21:00:00 2024
+From: KPN Datacenter Services <datacenter@kpn.example>
+To: klanten@kpn.example
+Subject: Onderhoud gepland: KPN Datacenter Amsterdam Zuidoost
+Date: Fri, 19 Jan 2024 21:00:00 +0100
+Message-ID: <nl008@kpn.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Beste klant,
+
+GEPLAND ONDERHOUD
+
+Datum: 11 februari 2024
+Tijd: 02:00 - 06:00 CET
+Locatie: KPN Datacenter Amsterdam Zuidoost
+
+Werkzaamheden:
+- Vervanging UPS-module in ruimte B2.3
+- Firmware-update netwerkswitches (redundant, geen uitval verwacht)
+- Inspectie koelsystemen
+
+Verwachte impact: GEEN
+- Alle werkzaamheden worden uitgevoerd met volledige redundantie
+- Automatische failover getest en bevestigd
+
+Contactpersoon: NOC KPN, +31 70 XXXXXXX (24/7)
+
+KPN Datacenter Services
+
+From tkowalski@cloudnews-pl.example Sat Jan 20 02:00:00 2024
+From: Tomasz Kowalski <tkowalski@cloudnews-pl.example>
+To: redakcja@cloudnews-pl.example
+Subject: Polski rynek chmury obliczeniowej: raport 2024
+Date: Sat, 20 Jan 2024 02:00:00 +0100
+Message-ID: <pl001@cloudnews-pl.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Cześć redakcjo,
+
+Przygotowałem raport o polskim rynku chmury obliczeniowej:
+
+WIELKOŚĆ RYNKU:
+- Wartość: 2,8 mld EUR (+35% rok do roku)
+- Polska jest najszybciej rosnącym rynkiem cloud w Europie Środkowej
+- Centra danych: 42 obiekty komercyjne
+- Zainstalowana moc: 180 MW
+
+GŁÓWNE CENTRA:
+1. Warszawa: 95 MW (53% rynku)
+2. Kraków: 25 MW (rosnący hub IT)
+3. Wrocław: 20 MW (centrum outsourcingu)
+4. Poznań: 15 MW
+
+CZYNNIKI WZROSTU:
+- Fundusze UE z KPO (Krajowy Plan Odbudowy)
+- Nearshoring z Europy Zachodniej
+- Rosnący sektor fintech i gamedev
+- Wykwalifikowana kadra IT (450 000 programistów)
+
+Artykuł jest gotowy do publikacji na cloudnews.tech w wersji angielskiej.
+
+Tomasz Kowalski
+Analityk rynku IT
+
+From chmura@mc.example Sat Jan 20 06:00:00 2024
+From: Ministerstwo Cyfryzacji <chmura@mc.example>
+To: operatorzy@chmura-pl.example
+Subject: Strategia chmury obliczeniowej dla administracji publicznej
+Date: Sat, 20 Jan 2024 06:00:00 +0100
+Message-ID: <pl002@mc.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Szanowni Państwo,
+
+Ministerstwo Cyfryzacji ogłasza Strategię Chmury Obliczeniowej dla Administracji Publicznej na lata 2024-2030.
+
+GŁÓWNE CELE:
+1. Migracja 80% usług administracji do chmury do 2027 roku
+2. Budowa Rządowej Chmury Obliczeniowej (RChO)
+3. Certyfikacja krajowych dostawców chmury
+4. Szkolenie 20 000 urzędników w zakresie technologii chmurowych
+
+BUDŻET:
+- Łączny budżet: 1,2 mld PLN (280 mln EUR)
+- Źródła: KPO (60%), budżet państwa (25%), fundusze UE (15%)
+
+WYMAGANIA DLA DOSTAWCÓW:
+- Dane muszą być przechowywane na terenie UE
+- Certyfikacja zgodna z Krajowym Schematem Cyberbezpieczeństwa
+- Zgodność z RODO i ustawą o cyberbezpieczeństwie
+
+Więcej informacji: mc.example/strategia-chmura
+
+Ministerstwo Cyfryzacji RP
+
+From info@izba-cloud.example Sat Jan 20 12:00:00 2024
+From: Polska Izba Cloud <info@izba-cloud.example>
+To: czlonkowie@izba-cloud.example
+Subject: Konferencja Cloud Poland 2024: Zaproszenie
+Date: Sat, 20 Jan 2024 12:00:00 +0100
+Message-ID: <pl003@izba-cloud.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;">
+<div style="background:#dc143c;color:white;padding:20px;text-align:center;">
+<h1>Cloud Poland 2024</h1>
+<h3>7-8 marca | Centrum Konferencyjne POLIN | Warszawa</h3>
+</div>
+<div style="padding:20px;">
+<h3>Program konferencji:</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+<tr style="background:#dc143c;color:white;"><th>Godzina</th><th>Temat</th></tr>
+<tr><td>09:00</td><td>Otwarcie: Polska cyfrowa 2030</td></tr>
+<tr><td>10:30</td><td>Panel: Suwerenność cyfrowa w Europie Środkowej</td></tr>
+<tr><td>13:00</td><td>Workshop: Kubernetes w polskich bankach</td></tr>
+<tr><td>15:00</td><td>Case study: Migracja do chmury w sektorze publicznym</td></tr>
+</table>
+<p><strong>Prelegenci:</strong> przedstawiciele OVHcloud, Chmury Krajowej, Oktawave, oraz eksperci z cloudnews.tech</p>
+<p><a href="https://izba-cloud.example/konferencja" style="background:#dc143c;color:white;padding:10px 20px;text-decoration:none;">Zarejestruj się</a></p>
+</div>
+</body></html>
+
+From anowak@chmura-krajowa.example Sat Jan 20 15:00:00 2024
+From: Anna Nowak <anowak@chmura-krajowa.example>
+To: tkowalski@cloudnews-pl.example
+Subject: Re: Polski rynek chmury obliczeniowej: raport 2024
+Date: Sat, 20 Jan 2024 15:00:00 +0100
+Message-ID: <pl004@chmura-krajowa.example>
+In-Reply-To: <pl001@cloudnews-pl.example>
+References: <pl001@cloudnews-pl.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Cześć Tomasz,
+
+Świetny raport! Z perspektywy Chmury Krajowej mogę dodać:
+
+CHMURA KRAJOWA W LICZBACH:
+- 500+ klientów biznesowych
+- 3 centra danych w Polsce (Warszawa, Wrocław, Katowice)
+- Partnerstwo z Google Cloud (technologia Anthos)
+- Certyfikacja: ISO 27001, SOC 2, w trakcie C5
+
+NOWE USŁUGI 2024:
+- GPU cloud (NVIDIA A100/H100) dla AI/ML
+- Sovereign Kubernetes as a Service
+- Disaster Recovery as a Service z replikacją do UE
+
+Polski rynek rośnie szybko, ale brakuje nam jeszcze rozpoznawalności na poziomie europejskim. Artykuł na cloudnews.tech byłby bardzo pomocny.
+
+Pozdrawiam,
+Anna Nowak
+Dyrektor Marketingu, Chmura Krajowa
+
+From cert@nask.example Sat Jan 20 17:00:00 2024
+From: NASK <cert@nask.example>
+To: operatorzy@cert-pl.example
+Subject: =?UTF-8?B?Q0VSVCBQb2xza2E6IEFsZXJ0IGJlenBpZWN6ZcWEc3R3YSAtIHBvZGF0bm/Fm8SHIHcgc3lzdGVtYWNoIGNsb3Vk?=
+Date: Sat, 20 Jan 2024 17:00:00 +0100
+Message-ID: <pl005@nask.example>
+X-Gmail-Labels: Inbox,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== ALERT BEZPIECZEŃSTWA ===
+
+Identyfikator: CERT-PL-2024-0142
+Poziom zagrożenia: WYSOKI
+
+OPIS:
+Wykryto krytyczną podatność w popularnym narzędziu do zarządzania kontenerami.
+
+DOTYCZY:
+- Wszystkie wersje poniżej 1.7.12
+- Systemy produkcyjne z bezpośrednim dostępem sieciowym
+
+RYZYKO:
+- Ucieczka z kontenera (container escape)
+- Wykonanie kodu na poziomie hosta
+- Potencjalny dostęp do danych innych kontenerów
+
+REKOMENDACJE:
+1. Natychmiastowa aktualizacja do wersji 1.7.12 lub nowszej
+2. Przegląd logów pod kątem nieautoryzowanych operacji
+3. Weryfikacja uprawnień kontenerów (PodSecurityPolicy/PSS)
+
+Szczegóły techniczne: cert.pl/advisory/2024-0142
+
+CERT Polska, NASK
+
+From info@wroclaw-it.example Sat Jan 20 22:00:00 2024
+From: =?UTF-8?B?V3JvY8WCYXcgSVQgSHVi?= <info@wroclaw-it.example>
+To: firmy@wroclaw-it.example
+Subject: =?UTF-8?B?V3JvY8WCYXc6IG5vd2UgY2VudHJ1bSBkYW55Y2ggaSBzdHJlZnkgZWtvbm9taWN6bmUgZGxhIElU?=
+Date: Sat, 20 Jan 2024 22:00:00 +0100
+Message-ID: <pl006@wroclaw-it.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Szanowni Państwo,
+
+Wrocław kontynuuje rozwój jako hub technologiczny:
+
+NOWE CENTRUM DANYCH:
+- Lokalizacja: Wrocław Technology Park
+- Moc: 15 MW (faza 1), docelowo 40 MW
+- Inwestor: fundusz infrastrukturalny z Londynu
+- Planowane otwarcie: Q4 2024
+
+STREFA EKONOMICZNA:
+- Specjalna Strefa Ekonomiczna dla firm IT i data centers
+- Ulgi podatkowe: CIT 15% zamiast 19% przez 10 lat
+- Dofinansowanie zatrudnienia: do 12 000 PLN/pracownika
+
+EKOSYSTEM:
+- 120 000 studentów na 23 uczelniach
+- 50 000 specjalistów IT w regionie
+- Obecność: IBM, Nokia, Credit Suisse, Opera, Dolby
+
+Więcej: wroclaw-it.example/invest
+
+Wrocław IT Hub
+
+From newsletter@cloudnews-pl.example Sun Jan 21 02:00:00 2024
+From: CloudNews Polska <newsletter@cloudnews-pl.example>
+To: subskrybenci@cloudnews-pl.example
+Subject: =?UTF-8?B?Q2xvdWROZXdzIFBMOiBBSSB3IGNobXVyemUsIGNlbnRyYSBkYW55Y2ggaSBjeWJlcmJlenBpZWN6ZcWEc3R3bw==?=
+Date: Sun, 21 Jan 2024 02:00:00 +0100
+Message-ID: <pl007@cloudnews-pl.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== CLOUDNEWS POLSKA - TYGODNIK ===
+
+1. CHMURA KRAJOWA URUCHAMIA USŁUGI GPU
+   Partnerstwo z NVIDIA umożliwia polskim firmom dostęp do
+   kart A100 i H100 bez wysyłania danych za granicę.
+
+2. NOWY DATACENTER W WARSZAWIE
+   Equinix otwiera trzeci datacenter w Polsce: WA3, 25 MW.
+
+3. FUNDUSZE KPO NA CYFRYZACJĘ
+   Polska otrzyma 2,4 mld EUR z KPO na transformację cyfrową.
+   30% na cloud i centra danych.
+
+4. RANSOMWARE ATAKUJE POLSKIE SZPITALE
+   CERT Polska ostrzega przed kampanią ransomware skierowaną
+   na sektor zdrowia. Backup w chmurze chroni przed utratą danych.
+
+Czytaj więcej: cloudnews-pl.example
+
+Informacje o rynku hiszpańskim: revistacloud.com (po hiszpańsku)
+Rynek francuski: actualitecloud.com (po francusku)
+
+From meetup@krakow-tech.example Sun Jan 21 05:00:00 2024
+From: =?UTF-8?B?S3Jha8OzdyBUZWNoIENvbW11bml0eQ==?= <meetup@krakow-tech.example>
+To: uczestnicy@krakow-tech.example
+Subject: =?UTF-8?B?TWVldHVwOiBDbG91ZCBOYXRpdmUgS3Jha8OzdyAtIGx1dHkgMjAyNA==?=
+Date: Sun, 21 Jan 2024 05:00:00 +0100
+Message-ID: <pl008@krakow-tech.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hej społeczności!
+
+Zapraszamy na kolejny meetup Cloud Native Kraków:
+
+DATA: 14 lutego 2024, 18:00
+MIEJSCE: Hub:raum (Rynek Główny 28, Kraków)
+
+AGENDA:
+18:00 - Pizza i networking
+18:30 - "Service Mesh w praktyce: Istio vs Linkerd" - Paweł Zieliński (Allegro)
+19:15 - "Monitoring cloud-native z OpenTelemetry" - Maja Wiśniewska (CD Projekt)
+20:00 - Lightning talks (5 min każdy)
+20:30 - Networking i dyskusje
+
+REJESTRACJA: krakow-tech.example/meetup/feb24
+WOLNE MIEJSCA: 35/80
+
+Do zobaczenia!
+Cloud Native Kraków
+
+From mjkim@cloudnews-kr.example Sun Jan 21 10:00:00 2024
+From: =?UTF-8?B?6rmA66+87KSA?= <mjkim@cloudnews-kr.example>
+To: editorial@cloudnews-kr.example
+Subject: =?UTF-8?B?7Jyg65+9IO2BtOudvOyasOuTnCDsi5zsnqUg67aE7ISdOiDrlJTsp4DthLgg7KO86raM7J2YIOu2gOyDgQ==?=
+Date: Sun, 21 Jan 2024 10:00:00 +0100
+Message-ID: <kr001@cloudnews-kr.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+편집팀 여러분,
+
+유럽 클라우드 시장 분석 기사를 준비했습니다.
+
+주요 내용:
+
+1. 시장 규모
+   - 유럽 클라우드 시장: 850억 유로 (2024년 예상)
+   - 연평균 성장률: 22%
+   - 디지털 주권 클라우드: 전년 대비 45% 성장
+
+2. 주요 동향
+   - GAIA-X 프레임워크 확산
+   - European Data Act 시행 준비
+   - 유럽 자체 클라우드 인프라 투자 확대
+   - AI 워크로드를 위한 GPU 클라우드 수요 증가
+
+3. 한국 기업에 미치는 영향
+   - EU 데이터 규제 강화로 현지 클라우드 서비스 필요
+   - 삼성SDS, NHN Cloud 등 유럽 진출 기회
+   - cloudnews.tech에서 자세한 분석 확인 가능
+
+기사는 월요일에 게재 예정입니다.
+
+김민준
+유럽 특파원
+
+From sypark@cloud-kr.example Sun Jan 21 14:00:00 2024
+From: =?UTF-8?B?67CV7ISc7Jew?= <sypark@cloud-kr.example>
+To: mjkim@cloudnews-kr.example
+Subject: =?UTF-8?B?UmU6IOycoOufvSDtgbTrnbzsmrDrk5wg7Iuc7J6lIOu2hOyEnTog65SU7KeA7YS4IOyjvOq2jOydmCDrtoDsg4E=?=
+Date: Sun, 21 Jan 2024 14:00:00 +0100
+Message-ID: <kr002@cloud-kr.example>
+In-Reply-To: <kr001@cloudnews-kr.example>
+References: <kr001@cloudnews-kr.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+민준님,
+
+좋은 기사입니다. 한국 시장과의 비교 데이터를 추가하면 좋겠습니다:
+
+한국 클라우드 시장 현황:
+- 시장 규모: 약 5조원 (35억 유로)
+- 성장률: 18% (유럽보다 낮음)
+- 주요 업체: AWS (32%), Azure (22%), NHN Cloud (12%), KT Cloud (10%)
+
+유럽과의 차이점:
+- 한국은 디지털 주권보다 성능과 가격을 우선시
+- 데이터 3법 개정으로 규제는 강화 추세
+- 클라우드 보안 인증(CSAP) 의무화 시행 중
+
+colorvivo.com에서 아시아-유럽 클라우드 시장 비교 인포그래픽을 만들었다고 합니다.
+확인해보시겠어요?
+
+박서연
+클라우드 시장 분석가
+
+From info@kcloud.example Sun Jan 21 20:00:00 2024
+From: =?UTF-8?B?7ZWc6rWt7YG065287Jqw65Oc7IKw7JeF7ZiR7ZqM?= <info@kcloud.example>
+To: 회원@kcloud.example
+Subject: =?UTF-8?B?7YG065287Jqw65OcIOy9lOumrOyVhCAyMDI0IOy7qO2NvOufsOyKpCDslYjrgrQ=?=
+Date: Sun, 21 Jan 2024 20:00:00 +0100
+Message-ID: <kr003@kcloud.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:'Malgun Gothic',Arial,sans-serif;">
+<div style="background:#003478;color:white;padding:20px;text-align:center;">
+<h1>클라우드 코리아 2024</h1>
+<h3>3월 20-21일 | 코엑스 | 서울</h3>
+</div>
+<div style="padding:20px;">
+<h3>주요 세션:</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+<tr style="background:#003478;color:white;"><th>시간</th><th>세션</th></tr>
+<tr><td>09:00</td><td>기조연설: AI 시대의 클라우드 인프라</td></tr>
+<tr><td>10:30</td><td>패널: 유럽의 디지털 주권과 한국의 대응</td></tr>
+<tr><td>13:00</td><td>워크숍: 쿠버네티스 보안 모범 사례</td></tr>
+<tr><td>15:00</td><td>사례 발표: 금융권 클라우드 마이그레이션</td></tr>
+</table>
+<h3>전시 기업:</h3>
+<p>NHN Cloud, KT Cloud, 삼성SDS, AWS, Azure, GCP, OVHcloud 외 50개사</p>
+<p><a href="https://kcloud.example/conference" style="background:#003478;color:white;padding:10px 20px;text-decoration:none;">등록하기</a></p>
+</div>
+</body></html>
+
+From jhlee@datacenter-kr.example Mon Jan 22 00:00:00 2024
+From: =?UTF-8?B?7J207KSA7Zi4?= <jhlee@datacenter-kr.example>
+To: team@datacenter-kr.example
+Subject: =?UTF-8?B?7KO86rCEIOuNsOydtO2EsOyEvO2EsCDsmrTsmIEg67O06rOg7ISc?=
+Date: Mon, 22 Jan 2024 00:00:00 +0100
+Message-ID: <kr004@datacenter-kr.example>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+팀 여러분,
+
+주간 운영 보고서:
+
+가용성:
+- 서버 가동률: 99.999%
+- 네트워크: 100%
+- 스토리지: 99.998%
+
+주요 이벤트:
+- 신규 고객 3건 온보딩 완료 (핀테크 2건, 게임 1건)
+- UPS 모듈 교체 작업 완료 (가산 IDC)
+- GPU 서버 20대 추가 배치 (판교 IDC)
+
+용량 현황:
+- 서버 사용률: 76%
+- 스토리지: 68%
+- 네트워크 대역폭: 최대 45 Gbps / 100 Gbps
+
+다음 주 예정:
+- 화요일: 전력 시스템 점검 (새벽 2-5시)
+- 목요일: 신규 고객 데이터 마이그레이션
+
+이준호
+데이터센터 운영팀장
+
+From newsletter@cloudnews-kr.example Mon Jan 22 05:00:00 2024
+From: =?UTF-8?B?7YG065287Jqw65Oc64m07IqkIOy9lOumrOyVhA==?= <newsletter@cloudnews-kr.example>
+To: 구독자@cloudnews-kr.example
+Subject: =?UTF-8?B?7YG065287Jqw65Oc64m07IqkOiBBSSDtgbTrnbzsmrDrk5wsIOuNsOydtO2EsOyEvO2EsCwg67O07JWIIOuPme2WpQ==?=
+Date: Mon, 22 Jan 2024 05:00:00 +0100
+Message-ID: <kr005@cloudnews-kr.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== 클라우드뉴스 코리아 주간 브리핑 ===
+
+1. NHN CLOUD, GPU 클라우드 서비스 출시
+   NVIDIA H100 기반 클라우드 서비스로 AI 스타트업 공략.
+   유럽 시장 진출도 검토 중.
+
+2. KT 클라우드, 공공 시장 점유율 1위 달성
+   정부 클라우드 전환 사업 대규모 수주.
+
+3. 데이터센터 전력 사용량 사상 최대
+   2023년 국내 데이터센터 전력 소비: 8.2 TWh (+25%)
+
+4. CSAP 3.0 인증 기준 강화
+   클라우드 보안 인증 기준이 EU의 EUCS와 유사한 수준으로 강화.
+
+해외 소식:
+- 유럽: cloudnews.tech (영문)
+- 스페인: revistacloud.com (스페인어)
+- 프랑스: actualitecloud.com (프랑스어)
+
+클라우드뉴스 코리아
+
+From djeong@security-kr.example Mon Jan 22 07:00:00 2024
+From: =?UTF-8?B?7KCV64uk7J2A?= <djeong@security-kr.example>
+To: 관리자@cloud-kr.example
+Subject: =?UTF-8?B?W+q4tOq4iV0g7Luo7YWM7J2064SIIOufsO2DgOyehCDst6jslb3soJAg7Yyo7LmYIOyViOuCtA==?=
+Date: Mon, 22 Jan 2024 07:00:00 +0100
+Message-ID: <kr006@security-kr.example>
+X-Gmail-Labels: Inbox,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== 긴급 보안 공지 ===
+
+취약점 ID: CVE-2024-XXXX
+심각도: 긴급 (CVSS 9.8)
+
+영향 범위:
+- 컨테이너 런타임 1.7.12 미만 모든 버전
+- 쿠버네티스 클러스터에서 실행 중인 모든 워크로드
+
+위험:
+- 컨테이너 탈출(escape) 가능
+- 호스트 시스템 코드 실행
+- 다른 컨테이너 데이터 접근
+
+조치사항:
+1. 즉시 1.7.12 이상으로 업데이트
+2. 비정상 프로세스 실행 여부 확인
+3. Pod Security Standards 검토
+
+패치 적용 후 보고 부탁드립니다.
+
+정다은
+정보보안팀
+
+From meetup@seoul-cloud.example Mon Jan 22 11:00:00 2024
+From: =?UTF-8?B?7ISc7Jq4IO2BtOudvOyasOuTnCDrsIvsl4U=?= <meetup@seoul-cloud.example>
+To: 참가자@seoul-cloud.example
+Subject: =?UTF-8?B?7ISc7Jq4IO2BtOudvOyasOuTnCDrsIvsl4U6IOupgO2LsO2BtOudvOyasOuTnCDsoITrnrUg7Iuk7KCEIOyCrOuhgA==?=
+Date: Mon, 22 Jan 2024 11:00:00 +0100
+Message-ID: <kr007@seoul-cloud.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+안녕하세요!
+
+2월 서울 클라우드 밋업을 안내드립니다.
+
+주제: 멀티클라우드 전략 실전 사례
+일시: 2024년 2월 22일 목요일 19:00
+장소: 강남 위워크 삼성점
+
+발표:
+19:00 - "카카오의 멀티클라우드 운영 경험" - 최영수 (카카오)
+19:40 - "게임 서비스의 하이브리드 클라우드" - 김하늘 (넷마블)
+20:20 - 네트워킹 및 자유 토론
+
+참가 신청: seoul-cloud.example/meetup/feb24
+참가비: 무료 (음료 제공)
+정원: 50명
+
+많은 참여 부탁드립니다!
+
+From tanaka@cloudnews-jp.example Mon Jan 22 16:00:00 2024
+From: =?UTF-8?B?55Sw5Lit5aSq6YOO?= <tanaka@cloudnews-jp.example>
+To: henshu@cloudnews-jp.example
+Subject: =?UTF-8?B?5qyn5bee44Kv44Op44Km44OJ5biC5aC044Os44Od44O844OI77ya44OH44K444K/44Or5Li75qip44Gu5pyA5paw5YuV5ZCR?=
+Date: Mon, 22 Jan 2024 16:00:00 +0100
+Message-ID: <jp001@cloudnews-jp.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+編集部の皆様、
+
+欧州クラウド市場のレポートを作成しました。
+
+主要ポイント：
+
+1. 市場規模と成長
+   - 欧州クラウド市場：850億ユーロ（2024年予測）
+   - 年間成長率：22%
+   - デジタル主権クラウド：前年比45%増
+
+2. 規制環境
+   - European Data Act：2025年9月施行予定
+   - NIS2指令：2024年10月施行
+   - GAIA-X：コンプライアンスフレームワーク更新
+
+3. 日本企業への影響
+   - EU進出企業はデータローカライゼーション対応が必須
+   - NTTデータ、富士通はEU現地DCで対応済み
+   - cloudnews.techで詳細分析を英語で公開予定
+
+田中太郎
+欧州特派員
+
+From suzuki@cloud-jp.example Mon Jan 22 20:00:00 2024
+From: =?UTF-8?B?6Yi05pyo6Iqx5a2Q?= <suzuki@cloud-jp.example>
+To: tanaka@cloudnews-jp.example
+Subject: =?UTF-8?B?UmU6IOasp+W3nuOCr+ODqeOCpuODieW4guWgtOODrOODneODvOODiO+8muODh+OCuOOCv+ODq+S4u+aoqeOBruacgOaWsOWLleWQkQ==?=
+Date: Mon, 22 Jan 2024 20:00:00 +0100
+Message-ID: <jp002@cloud-jp.example>
+In-Reply-To: <jp001@cloudnews-jp.example>
+References: <jp001@cloudnews-jp.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+田中さん、
+
+素晴らしいレポートです。以下を追加してはいかがでしょうか：
+
+日本のクラウド市場との比較：
+- 市場規模：約5兆円（330億ユーロ）
+- 成長率：20%（欧州とほぼ同水準）
+- AWS：30%、Azure：23%、GCP：10%、国内勢：15%
+
+日欧クラウド協力の動き：
+- 日EU デジタルパートナーシップ（2022年締結）
+- NTTデータのEU事業拡大（ドイツ、スペイン）
+- さくらインターネットの海外展開検討
+- 富士通のGAIA-X参加
+
+colorvivo.comにアジア・欧州クラウド市場の比較インフォグラフィックが掲載されています。
+
+鈴木花子
+クラウド市場アナリスト
+
+From info@jcloud.example Tue Jan 23 02:00:00 2024
+From: =?UTF-8?B?5pel5pys44Kv44Op44Km44OJ55Sj5qWt5Y2U5Lya?= <info@jcloud.example>
+To: 会員@jcloud.example
+Subject: =?UTF-8?B?44Kv44Op44Km44OJ44K444Oj44OR44OzMjAyNOOCq+ODs+ODleOCoeODrOODs+OCuemWi+WCrOOBruOBiuefpeOCieOBmw==?=
+Date: Tue, 23 Jan 2024 02:00:00 +0100
+Message-ID: <jp003@jcloud.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:'Hiragino Sans',Arial,sans-serif;">
+<div style="background:#bc002d;color:white;padding:20px;text-align:center;">
+<h1>クラウドジャパン 2024</h1>
+<h3>3月25-26日 | 東京ビッグサイト</h3>
+</div>
+<div style="padding:20px;">
+<h3>プログラム：</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+<tr style="background:#bc002d;color:white;"><th>時間</th><th>セッション</th></tr>
+<tr><td>09:00</td><td>基調講演：AIとクラウドの融合</td></tr>
+<tr><td>10:30</td><td>パネル：デジタル主権と日本の戦略</td></tr>
+<tr><td>13:00</td><td>ワークショップ：Kubernetes運用のベストプラクティス</td></tr>
+<tr><td>15:00</td><td>事例紹介：金融機関のクラウド移行</td></tr>
+</table>
+<h3>出展企業：</h3>
+<p>AWS、Azure、GCP、NTTコミュニケーションズ、さくらインターネット、IIJ 他50社</p>
+<p><a href="https://jcloud.example/conference" style="background:#bc002d;color:white;padding:10px 20px;text-decoration:none;">参加登録</a></p>
+</div>
+</body></html>
+
+From yamamoto@datacenter-jp.example Tue Jan 23 06:00:00 2024
+From: =?UTF-8?B?5bGx5pys5YGl5LiA?= <yamamoto@datacenter-jp.example>
+To: team@datacenter-jp.example
+Subject: =?UTF-8?B?6YCx5qyh44OH44O844K/44K744Oz44K/44O86YGL55So44Os44Od44O844OI?=
+Date: Tue, 23 Jan 2024 06:00:00 +0100
+Message-ID: <jp004@datacenter-jp.example>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+チームの皆さん、
+
+週次運用レポート：
+
+稼働率：
+- サーバー：99.999%
+- ネットワーク：100%
+- ストレージ：99.998%
+
+主要イベント：
+- 新規顧客2件のオンボーディング完了（フィンテック、製造業）
+- 空調設備の定期メンテナンス実施（大手町DC）
+- GPU サーバー15台追加配備（印西DC）
+
+キャパシティ：
+- サーバー利用率：74%
+- ストレージ：71%
+- ネットワーク帯域：ピーク38 Gbps / 100 Gbps
+
+来週の予定：
+- 月曜：電源系統の切替テスト
+- 水曜：新規ラック設置工事
+
+山本健一
+データセンター運用マネージャー
+
+From weekly@cloudnews-jp.example Tue Jan 23 11:00:00 2024
+From: =?UTF-8?B?44Kv44Op44Km44OJ44OL44Ol44O844K5IEphcGFu?= <weekly@cloudnews-jp.example>
+To: 読者@cloudnews-jp.example
+Subject: =?UTF-8?B?6YCx5YiK44Kv44Op44Km44OJ44OL44Ol44O844K577yaQUnjgq/jg6njgqbjg4njgIHjg4fjg7zjgr/jgrvjg7Pjgr/jg7zjgIHjgrvjgq3jg6Xjg6rjg4bjgqM=?=
+Date: Tue, 23 Jan 2024 11:00:00 +0100
+Message-ID: <jp005@cloudnews-jp.example>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== 週刊クラウドニュース ===
+
+1. さくらインターネット、GPU クラウド事業を本格展開
+   経済安全保障の観点から国産GPUクラウドに政府も注目。
+   補助金150億円を受け、大規模GPU基盤を構築へ。
+
+2. NTTデータ、欧州事業を拡大
+   ドイツとスペインでデータセンターを増設。
+   GAIA-Xフレームワークへの対応を強化。
+
+3. 国内データセンター市場、2兆円を突破
+   2023年の市場規模は前年比23%増の2.1兆円。
+   印西・多摩エリアでの新規建設が加速。
+
+4. ISMAP認定制度の更新
+   政府クラウド調達基準ISMAPが更新。
+   海外プロバイダーへの要件が厳格化。
+
+海外ニュース：
+- 欧州：cloudnews.tech（英語）
+- スペイン：revistacloud.com（スペイン語）
+- フランス：actualitecloud.com（フランス語）
+
+クラウドニュース Japan 編集部
+
+From msato@security-jp.example Tue Jan 23 13:00:00 2024
+From: =?UTF-8?B?5L2Q6Jek576O5ZKy?= <msato@security-jp.example>
+To: admin@cloud-jp.example
+Subject: =?UTF-8?B?44CQ57eK5oCl44CR44Kz44Oz44OG44OK44Op44Oz44K/44Kk44Og6ISG5byx5oCn44G444Gu5a++5b+c44Gr44Gk44GE44Gm?=
+Date: Tue, 23 Jan 2024 13:00:00 +0100
+Message-ID: <jp006@security-jp.example>
+X-Gmail-Labels: Inbox,Security,Important
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== 緊急セキュリティ通知 ===
+
+脆弱性ID：CVE-2024-XXXX
+深刻度：緊急（CVSS 9.8）
+
+影響範囲：
+- コンテナランタイム バージョン1.7.12未満
+- Kubernetesクラスター上の全ワークロード
+
+リスク：
+- コンテナエスケープの可能性
+- ホストレベルでのコード実行
+- 他コンテナのデータへのアクセス
+
+対応手順：
+1. 直ちにバージョン1.7.12以上にアップデート
+2. 不審なプロセスの確認
+3. Pod Security Standardsの見直し
+
+パッチ適用完了後、報告をお願いします。
+
+佐藤美咲
+情報セキュリティ部
+
+From meetup@tokyo-cloud.example Tue Jan 23 17:00:00 2024
+From: =?UTF-8?B?5p2x5Lqs44Kv44Op44Km44OJ5YuJ5by35Lya?= <meetup@tokyo-cloud.example>
+To: 参加者@tokyo-cloud.example
+Subject: =?UTF-8?B?5p2x5Lqs44Kv44Op44Km44OJ5YuJ5by35Lya77ya44Oe44Or44OB44Kv44Op44Km44OJ5oim55Wl44Gu5a6f6Le1?=
+Date: Tue, 23 Jan 2024 17:00:00 +0100
+Message-ID: <jp007@tokyo-cloud.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+皆さんこんにちは！
+
+2月の東京クラウド勉強会のご案内です。
+
+テーマ：マルチクラウド戦略の実践
+日時：2024年2月28日（水）19:00〜21:00
+場所：渋谷 WeWork（道玄坂）
+
+プログラム：
+19:00 - 「メルカリのマルチクラウド戦略」- 中村さん（メルカリ）
+19:40 - 「ゲームサービスのハイブリッドクラウド」- 石井さん（スクエニ）
+20:20 - LT大会（5分×4本）
+20:45 - 懇親会
+
+参加登録：tokyo-cloud.example/meetup/feb24
+参加費：無料（ドリンク付き）
+定員：60名
+
+お待ちしています！
+
+From schen@cloudnews.tech Tue Jan 23 23:00:00 2024
+From: Sarah Chen <schen@cloudnews.tech>
+To: editorial@cloudnews.tech
+Subject: February wrap-up: Best performing articles and March planning
+Date: Tue, 23 Jan 2024 23:00:00 +0100
+Message-ID: <en040@cloudnews.tech>
+X-Gmail-Labels: Inbox,Work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Team,
+
+February performance review for cloudnews.tech:
+
+TOP ARTICLES BY TRAFFIC:
+1. "The Rise of Sovereign Cloud in Southern Europe" - 18,400 views
+2. "ENISA Interview: The Future of EU Cloud Certification" - 14,200 views
+3. "EU Cloud Outage Analysis: Lessons Learned" - 12,800 views
+4. "Edge Computing Hits 1,000 Nodes in the EU" - 9,600 views
+5. "Why SMBs Are Choosing Local Cloud Providers" - 8,100 views
+
+SUBSCRIBER GROWTH: +12% (now at 45,000)
+
+PARTNERSHIPS:
+- revistacloud.com: content exchange active, 3 articles translated
+- actualitecloud.com: partnership signed, first co-publication next week
+- colorvivo.com: infographic licensing agreement in place
+- noticias.madrid: data sharing agreement for Madrid tech coverage
+
+MARCH PRIORITIES:
+1. CloudCon Europe coverage (March 14-16)
+2. KubeCon EU Paris coverage (March 19-22)
+3. Cloud Paris salon (March 20-21)
+4. Quarterly market report
+
+Let's make March our biggest month yet.
+
+Sarah
+
+From info@eu-infra.example Wed Jan 24 04:00:00 2024
+From: EU Digital Infrastructure <info@eu-infra.example>
+To: stakeholders@eu-infra.example
+Subject: Important European Digital Infrastructure Act: Key Provisions
+Date: Wed, 24 Jan 2024 04:00:00 +0100
+Message-ID: <en041@eu-infra.example>
+X-Gmail-Labels: Inbox,Cloud,Important
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_en041_eu-infra.example"
+
+------=_Part_en041_eu-infra.example
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Dear stakeholders,
+
+The proposed European Digital Infrastructure Act contains several key provisions affecting cloud providers:
+
+1. MINIMUM CONNECTIVITY STANDARDS
+   - All EU citizens to have access to 1 Gbps by 2030
+   - 5G coverage in all populated areas by 2030
+
+2. CLOUD INFRASTRUCTURE REQUIREMENTS
+   - At least 3 EU-based cloud providers per member state by 2027
+   - Government data must be stored in EU-sovereign infrastructure
+   - Mandatory interconnection between national clouds
+
+3. SUSTAINABILITY MANDATES
+   - New data centers must achieve PUE below 1.3
+   - 100% renewable energy by 2030
+   - Waste heat recovery plans mandatory for facilities above 1MW
+
+4. INVESTMENT FRAMEWORK
+   - EUR 10B in EU funding for digital infrastructure
+   - Tax incentives for green data centers
+   - Fast-track permitting for strategic digital projects
+
+Attached: Q1 2024 infrastructure status report.
+
+EU Digital Infrastructure Directorate
+------=_Part_en041_eu-infra.example
+Content-Type: text/plain; name="q1_2024_report.txt"
+Content-Disposition: attachment; filename="q1_2024_report.txt"
+Content-Transfer-Encoding: base64
+
+PT09IFF1YXJ0ZXJseSBJbmZyYXN0cnVjdHVyZSBSZXBvcnQgUTEgMjAyNCA9PT0KVXB0aW1lOiA5OS45OTclCkluY2lkZW50czogMyAoYWxsIFAzLCByZXNvbHZlZCA8MzBtaW4pCk5ldyBkZXBsb3ltZW50czogNDcKQ2FwYWNpdHkgdXRpbGl6YXRpb246IDcyJQpOZXR3b3JrIHRocm91Z2hwdXQgcGVhazogODUgR2JwcwpTdG9yYWdlIGdyb3d0aDogKzE1IFRCCg==
+------=_Part_en041_eu-infra.example--
+
+From alerts@monitoring.example Wed Jan 24 07:00:00 2024
+From: Monitoring Bot <alerts@monitoring.example>
+To: global-ops@company.example
+Subject: [INFO] Weekly infrastructure health summary
+Date: Wed, 24 Jan 2024 07:00:00 +0100
+Message-ID: <en042@monitoring.example>
+X-Gmail-Labels: Inbox,Alerts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+=== WEEKLY HEALTH SUMMARY ===
+Period: Feb 5-11, 2024
+
+GLOBAL UPTIME: 99.9987%
+
+BY REGION:
+  EU-West (Amsterdam):  99.999%  | 0 incidents
+  EU-Central (Frankfurt): 99.998% | 1 P3 incident
+  EU-South (Madrid):    99.999%  | 0 incidents
+  US-East (Virginia):   99.997%  | 1 P3 incident
+  APAC (Tokyo):         99.999%  | 0 incidents
+
+TOP ALERTS (resolved):
+  - Feb 7: CPU spike on storage-node-07 (Ceph rebalance) - 47min
+  - Feb 9: Network flap AS174 in Frankfurt - 12min
+
+CAPACITY WARNINGS:
+  - backup-storage-03: 82.4% disk (trending up)
+  - gpu-cluster-eu-1: 94% GPU utilization (consider expansion)
+
+PLANNED MAINTENANCE NEXT WEEK:
+  - Feb 13: KPN Amsterdam UPS replacement (02:00-06:00 CET)
+  - Feb 15: Frankfurt cooling maintenance (02:00-06:00 CET)
+
+-- Global Operations Dashboard
+
+From strategy@enterprise.example Wed Jan 24 14:00:00 2024
+From: Cloud Strategy Team <strategy@enterprise.example>
+To: executive-team@enterprise.example
+Subject: Multi-cloud strategy review: Recommendations for 2024
+Date: Wed, 24 Jan 2024 14:00:00 +0100
+Message-ID: <en043@enterprise.example>
+X-Gmail-Labels: Inbox,Work,Important,Starred
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Executive Team,
+
+Following our quarterly review, here are our multi-cloud strategy recommendations:
+
+CURRENT STATE:
+- AWS: 55% of workloads (primary)
+- Azure: 30% (secondary, mainly Microsoft ecosystem)
+- European provider: 15% (sovereign/regulated workloads)
+
+RECOMMENDED CHANGES FOR 2024:
+
+1. Increase European cloud allocation to 25%
+   Rationale: European Data Act compliance, client requirements
+   Timeline: Gradual migration Q2-Q4 2024
+   Cost impact: +5% initially, break-even by Q3 2025
+
+2. Implement cloud-agnostic abstraction layer
+   Technology: Terraform + Crossplane
+   Benefit: Reduce provider lock-in, faster migrations
+   Investment: EUR 200K in tooling and training
+
+3. Establish GPU cloud strategy
+   Need: AI/ML workloads growing 300% YoY
+   Options: AWS (p5 instances), CoreWeave, European GPU cloud
+   Recommendation: Split between AWS and European provider
+
+4. FinOps program expansion
+   Current waste estimate: 22% of cloud spend
+   Target: Reduce to 10% by year-end
+   Savings: EUR 1.2M annually
+
+Full analysis document shared via the internal portal.
+
+Cloud Strategy Team
+
+From booking@techpod.example Wed Jan 24 18:00:00 2024
+From: Tech Podcast Network <booking@techpod.example>
+To: guests@techpod.example
+Subject: Podcast invitation: The State of European Cloud Infrastructure
+Date: Wed, 24 Jan 2024 18:00:00 +0100
+Message-ID: <en044@techpod.example>
+X-Gmail-Labels: Inbox,Events
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hi there,
+
+We'd like to invite you as a guest on "Cloud Conversations", our weekly podcast with 25,000 monthly listeners.
+
+Episode topic: "The State of European Cloud Infrastructure in 2024"
+
+Topics we'd cover:
+- Why is Europe building its own cloud infrastructure?
+- What does GAIA-X actually deliver today?
+- How do European providers compete with hyperscalers?
+- What role does sustainability play in data center decisions?
+- The impact of AI on European cloud demand
+
+Format: 45-minute recorded interview (remote via Riverside.fm)
+Preferred date: Week of February 19
+Publication: Following Monday on all major podcast platforms
+
+Previous guests include CTOs from OVHcloud, Hetzner, Scaleway, and senior analysts from Gartner and IDC.
+
+Let us know if you're interested!
+
+Tech Podcast Network
+
+From team@colorvivo.com Wed Jan 24 23:00:00 2024
+From: ColorVivo Team <team@colorvivo.com>
+To: partners@colorvivo.com
+Subject: New visualization series: European Digital Infrastructure Atlas
+Date: Wed, 24 Jan 2024 23:00:00 +0100
+Message-ID: <en045@colorvivo.com>
+X-Gmail-Labels: Inbox,Design
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----=_Related_en045_colorvivo.com"
+
+------=_Related_en045_colorvivo.com
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body style="font-family:Helvetica,sans-serif;">
+<div style="background:#2c3e50;color:white;padding:20px;text-align:center;">
+<img src="cid:atlas@colorvivo.com" alt="Atlas Preview">
+<h2>European Digital Infrastructure Atlas</h2>
+<p>A new visualization series by colorvivo.com</p>
+</div>
+<div style="padding:20px;">
+<p>We're launching a comprehensive data visualization series covering:</p>
+<ol>
+<li><strong>Data Center Map</strong> - Interactive map of all EU data centers by capacity</li>
+<li><strong>Submarine Cable Network</strong> - Landing stations and bandwidth</li>
+<li><strong>Cloud Market Share</strong> - Provider breakdown by country</li>
+<li><strong>Energy Dashboard</strong> - PUE trends, renewable energy adoption</li>
+<li><strong>Investment Tracker</strong> - New builds and M&A activity</li>
+</ol>
+<p>Data sources: cloudnews.tech, revistacloud.com, actualitecloud.com, noticias.madrid, and official EU statistics.</p>
+<p>Preview: <a href="https://colorvivo.com/atlas/preview">colorvivo.com/atlas</a></p>
+<p>Licensed CC-BY-4.0 for editorial use. Premium versions available.</p>
+</div>
+</body></html>
+------=_Related_en045_colorvivo.com
+Content-Type: image/png; name="atlas_preview.png"
+Content-Transfer-Encoding: base64
+Content-ID: <atlas@colorvivo.com>
+Content-Disposition: inline; filename="atlas_preview.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEElEQVR4nGNgmGmMHQ0tCQDhJTMBNq5LywAAAABJRU5ErkJggg==
+------=_Related_en045_colorvivo.com--
+
+From announce@oscf.example Thu Jan 25 05:00:00 2024
+From: Open Source Cloud Foundation <announce@oscf.example>
+To: members@oscf.example
+Subject: Sovereign Cloud Stack 6.0 Release Announcement
+Date: Thu, 25 Jan 2024 05:00:00 +0100
+Message-ID: <en046@oscf.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Dear community,
+
+We are pleased to announce the release of Sovereign Cloud Stack (SCS) 6.0.
+
+SCS is an open-source cloud computing stack designed for European digital sovereignty.
+
+KEY FEATURES IN 6.0:
+- OpenStack 2024.1 (Caracal) integration
+- Kubernetes 1.29 cluster API
+- GAIA-X compliance out of the box
+- Improved federation support between SCS installations
+- Hardware security module (HSM) integration
+- Automated compliance reporting for EUCS and C5
+
+ADOPTERS:
+- 12 European cloud providers now run SCS in production
+- 3 German state governments use SCS for their cloud
+- Evaluation ongoing in Spain, France, and Poland
+
+GET STARTED:
+Documentation: scs.community/docs
+GitHub: github.com/SovereignCloudStack
+Community chat: chat.scs.community
+
+This release was made possible by contributions from 45 developers across 15 organizations.
+
+Open Source Cloud Foundation
+
+From network@cloudcfo.example Thu Jan 25 09:00:00 2024
+From: Cloud CFO Network <network@cloudcfo.example>
+To: members@cloudcfo.example
+Subject: FinOps benchmark: Cloud spending across European enterprises
+Date: Thu, 25 Jan 2024 09:00:00 +0100
+Message-ID: <en047@cloudcfo.example>
+X-Gmail-Labels: Inbox,Cloud
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_en047_cloudcfo.example"
+
+------=_Part_en047_cloudcfo.example
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+FinOps Benchmark Report - European Enterprises 2024
+
+AVERAGE CLOUD SPEND:
+- Large enterprise (>5000 employees): EUR 4.2M/year
+- Mid-market (500-5000): EUR 680K/year
+- SMB (<500): EUR 85K/year
+
+WASTE ANALYSIS:
+- Average overprovisioning: 27%
+- Unused reserved instances: 14%
+- Orphaned resources: 8%
+- Total waste: ~32% of cloud spend
+
+COST OPTIMIZATION RESULTS:
+- Companies with FinOps practice: 18% less waste
+- Automated rightsizing: saves avg 22% on compute
+- Reserved instance optimization: saves avg 35% vs on-demand
+
+TOP COST DRIVERS:
+1. Compute (48%)
+2. Storage (22%)
+3. Data transfer (15%)
+4. Managed services (12%)
+5. Support plans (3%)
+
+Detailed data attached. Dashboard: cloudcfo.example/benchmark
+
+Cloud CFO Network
+------=_Part_en047_cloudcfo.example
+Content-Type: text/csv; name="finops_benchmark_2024.csv"
+Content-Disposition: attachment; filename="finops_benchmark_2024.csv"
+Content-Transfer-Encoding: base64
+
+UmVnaW9uLFNlcnZlcnMsUmV2ZW51ZV9FVVIsR3Jvd3RoX1BjdApFdXJvcGVfV2VzdCwxMjUwMCw4OTAwMDAwMDAsMTguNQpFdXJvcGVfTm9ydGgsNDIwMCwzMTAwMDAwMDAsMjIuMQpFdXJvcGVfU291dGgsMzgwMCwyNDUwMDAwMDAsMzEuMgpBc2lhX1BhY2lmaWMsODkwMCw2MjAwMDAwMDAsMTUuOApBbWVyaWNhcywxNTYwMCwxMTAwMDAwMDAwLDEyLjMK
+------=_Part_en047_cloudcfo.example--
+
+From resumen@noticias.madrid Thu Jan 25 12:00:00 2024
+From: Noticias Madrid Resumen <resumen@noticias.madrid>
+To: suscriptores@noticias.madrid
+Subject: Weekly tech roundup from Madrid: Cloud, AI, and startups
+Date: Thu, 25 Jan 2024 12:00:00 +0100
+Message-ID: <en048@noticias.madrid>
+X-Gmail-Labels: Inbox,Newsletter
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+NOTICIAS.MADRID - Weekly Tech Roundup (English Edition)
+
+1. MADRID DATA CENTER CAPACITY REACHES 150MW
+   Three new facilities announced in the Henares Corridor this month.
+   Total investment: EUR 525M. Full story at noticias.madrid/tech
+
+2. SPANISH CLOUD MARKET GROWS 31%
+   Fastest growth in the EU according to latest data from revistacloud.com.
+   Sovereign cloud demand driving most of the increase.
+
+3. AI STARTUP ECOSYSTEM EXPANDS
+   Madrid now hosts 120+ AI startups, up from 75 a year ago.
+   GPU cloud demand from these startups drives local infrastructure investment.
+
+4. MOBILE WORLD CONGRESS PREVIEW
+   MWC Barcelona (Feb 26 - Feb 29) expected to feature major cloud announcements.
+   cloudnews.tech will provide live coverage.
+
+5. MADRID-LISBON DIGITAL CORRIDOR
+   New initiative to create a joint digital infrastructure zone between
+   Spain and Portugal. Supported by Ellalink cable connectivity.
+
+---
+noticias.madrid - English edition published weekly
+
+From eu@csa.example Thu Jan 25 17:00:00 2024
+From: Cloud Security Alliance EU <eu@csa.example>
+To: members@csa.example
+Subject: CSA EU Chapter: 2024 cloud security priorities and threat landscape
+Date: Thu, 25 Jan 2024 17:00:00 +0100
+Message-ID: <en049@csa.example>
+X-Gmail-Labels: Inbox,Security
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<h2>CSA EU Chapter: 2024 Cloud Security Priorities</h2>
+<h3>Top Threats to Cloud Computing 2024:</h3>
+<ol>
+<li><strong>Misconfiguration and inadequate change control</strong> - Still #1 after 3 years</li>
+<li><strong>Identity and access management failures</strong> - Growing with multi-cloud</li>
+<li><strong>Insecure APIs and interfaces</strong> - Supply chain attacks via APIs</li>
+<li><strong>AI-powered attacks</strong> - NEW: adversarial ML, deepfake social engineering</li>
+<li><strong>Data sovereignty violations</strong> - Unintended cross-border data flows</li>
+</ol>
+<h3>Priority Actions for EU Cloud Providers:</h3>
+<table border="1" cellpadding="8" style="border-collapse:collapse;">
+<tr><th>Priority</th><th>Action</th><th>Deadline</th></tr>
+<tr><td>Critical</td><td>NIS2 compliance preparation</td><td>Oct 2024</td></tr>
+<tr><td>High</td><td>EUCS certification readiness</td><td>Q4 2024</td></tr>
+<tr><td>High</td><td>Zero Trust architecture adoption</td><td>Ongoing</td></tr>
+<tr><td>Medium</td><td>AI security framework implementation</td><td>2025</td></tr>
+</table>
+<p>Full report: <a href="https://csa.example/eu-threats-2024">csa.example/eu-threats-2024</a></p>
+</body></html>

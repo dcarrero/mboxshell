@@ -6,6 +6,7 @@
 *.swo
 *~
 *.mboxshell.idx
+*.mboxshell-*.idx
 *.mbox-tui.idx
 CLAUDE.md
 PROMPT-*.md
