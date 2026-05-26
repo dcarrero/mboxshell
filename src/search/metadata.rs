@@ -13,17 +13,42 @@ use super::query::{DateFilter, SearchField, SearchOperator, SearchQuery, SearchT
 ///
 /// Applies date/size/attachment filters first (cheapest), then text terms.
 /// Uses short-circuit evaluation for AND queries.
+///
+/// `All` (free-text) terms are matched against metadata only (subject, from,
+/// to). To let them also match the message body, use
+/// [`search_metadata_candidates`] followed by a full-text pass.
 pub fn search_metadata(entries: &[MailEntry], query: &SearchQuery) -> Vec<usize> {
     entries
         .iter()
         .enumerate()
-        .filter(|(_, entry)| entry_matches(entry, query))
+        .filter(|(_, entry)| entry_matches(entry, query, false))
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// Like [`search_metadata`], but for AND queries it does **not** require
+/// `All` (free-text "Text") terms to match metadata — those are deferred to
+/// the full-text pass in [`super::fulltext`] so a Text term can also match the
+/// message body. Field-specific terms (`subject:`, `from:`, …) and the
+/// date/size/attachment filters still apply.
+///
+/// For OR queries this behaves identically to [`search_metadata`] (deferring
+/// `All` terms would incorrectly drop entries that match only via metadata).
+pub fn search_metadata_candidates(entries: &[MailEntry], query: &SearchQuery) -> Vec<usize> {
+    let defer_all = !query.is_or;
+    entries
+        .iter()
+        .enumerate()
+        .filter(|(_, entry)| entry_matches(entry, query, defer_all))
         .map(|(i, _)| i)
         .collect()
 }
 
 /// Check whether a single entry matches the query.
-fn entry_matches(entry: &MailEntry, query: &SearchQuery) -> bool {
+///
+/// When `defer_all` is set, `All` (free-text) terms are ignored here — the
+/// caller is expected to verify them against the body in the full-text pass.
+fn entry_matches(entry: &MailEntry, query: &SearchQuery, defer_all: bool) -> bool {
     // 1. Date filter (cheapest to check)
     if let Some(ref df) = query.date_filter {
         if !matches_date(entry, df) {
@@ -45,11 +70,14 @@ fn entry_matches(entry: &MailEntry, query: &SearchQuery) -> bool {
         }
     }
 
-    // 4. Text terms (skip body: terms — those need fulltext)
+    // 4. Text terms (skip body:/filename: terms — those need fulltext).
+    //    When `defer_all` is set, also skip free-text `All` terms so they can
+    //    be matched against the body in the full-text pass.
     let text_terms: Vec<&SearchTerm> = query
         .terms
         .iter()
         .filter(|t| t.field != SearchField::Body && t.field != SearchField::Filename)
+        .filter(|t| !(defer_all && t.field == SearchField::All))
         .collect();
 
     if text_terms.is_empty() {
@@ -72,19 +100,7 @@ fn entry_matches(entry: &MailEntry, query: &SearchQuery) -> bool {
 /// Check if a text term matches an entry's metadata.
 fn term_matches_entry(entry: &MailEntry, term: &SearchTerm) -> bool {
     let raw_match = match term.field {
-        SearchField::All => {
-            matches_text(&entry.subject, &term.operator)
-                || matches_text(&entry.from.address, &term.operator)
-                || matches_text(&entry.from.display_name, &term.operator)
-                || entry
-                    .to
-                    .iter()
-                    .any(|a| matches_text(&a.address, &term.operator))
-                || entry
-                    .to
-                    .iter()
-                    .any(|a| matches_text(&a.display_name, &term.operator))
-        }
+        SearchField::All => all_matches_metadata(entry, &term.operator),
         SearchField::From => {
             matches_text(&entry.from.address, &term.operator)
                 || matches_text(&entry.from.display_name, &term.operator)
@@ -111,6 +127,21 @@ fn term_matches_entry(entry: &MailEntry, term: &SearchTerm) -> bool {
     }
 }
 
+/// Whether a free-text (`All`) operator matches an entry's metadata, i.e. its
+/// subject, sender, or any recipient (address or display name).
+///
+/// Shared with [`super::fulltext`] so the full-text pass can apply the same
+/// "search everywhere" semantics to `All` terms (metadata **or** body).
+pub(crate) fn all_matches_metadata(entry: &MailEntry, op: &SearchOperator) -> bool {
+    matches_text(&entry.subject, op)
+        || matches_text(&entry.from.address, op)
+        || matches_text(&entry.from.display_name, op)
+        || entry
+            .to
+            .iter()
+            .any(|a| matches_text(&a.address, op) || matches_text(&a.display_name, op))
+}
+
 /// Case-insensitive text matching.
 ///
 /// Both `Contains` and `Exact` use substring matching. The distinction is
@@ -118,7 +149,7 @@ fn term_matches_entry(entry: &MailEntry, term: &SearchTerm) -> bool {
 /// phrase, spaces included, is treated as a single needle), while
 /// `Contains` is a single bareword. This mirrors the semantics of the
 /// fulltext search and matches what users expect from search engines.
-fn matches_text(haystack: &str, op: &SearchOperator) -> bool {
+pub(crate) fn matches_text(haystack: &str, op: &SearchOperator) -> bool {
     let haystack_lower = haystack.to_lowercase();
     let needle = match op {
         SearchOperator::Contains(s) | SearchOperator::Exact(s) => s,

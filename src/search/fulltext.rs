@@ -11,6 +11,7 @@ use tracing::debug;
 use crate::model::mail::MailEntry;
 use crate::store::reader::MboxStore;
 
+use super::metadata::all_matches_metadata;
 use super::query::{SearchField, SearchOperator, SearchQuery, SearchTerm};
 
 /// Search inside message bodies by reading from the MBOX file.
@@ -27,14 +28,21 @@ pub fn search_fulltext(
     query: &SearchQuery,
     progress: &dyn Fn(usize, usize) -> bool,
 ) -> crate::error::Result<Vec<usize>> {
-    let body_terms: Vec<&SearchTerm> = query
+    // Terms that require reading the message: body:/filename: and the
+    // free-text `All` terms (which "search everywhere": metadata or body).
+    let scan_terms: Vec<&SearchTerm> = query
         .terms
         .iter()
-        .filter(|t| t.field == SearchField::Body || t.field == SearchField::Filename)
+        .filter(|t| {
+            matches!(
+                t.field,
+                SearchField::Body | SearchField::Filename | SearchField::All
+            )
+        })
         .collect();
 
-    if body_terms.is_empty() {
-        // No body terms — all candidates pass
+    if scan_terms.is_empty() {
+        // Nothing to scan — all candidates pass
         return Ok(candidates.to_vec());
     }
 
@@ -50,7 +58,7 @@ pub fn search_fulltext(
         }
 
         let entry = &entries[idx];
-        let matches = match check_body_match(&mut store, entry, &body_terms, query.is_or) {
+        let matches = match check_body_match(&mut store, entry, &scan_terms, query.is_or) {
             Ok(m) => m,
             Err(e) => {
                 debug!(offset = entry.offset, error = %e, "Skipping message in fulltext search");
@@ -69,11 +77,15 @@ pub fn search_fulltext(
     Ok(results)
 }
 
-/// Check whether a single message's body matches the body search terms.
+/// Check whether a single message matches the scan terms by reading its body.
+///
+/// Handles `body:`, `filename:`, and free-text `All` terms. `All` terms match
+/// if the needle is found in the entry's metadata (subject/from/to) **or** the
+/// decoded body text — the "search everywhere" semantics users expect.
 fn check_body_match(
     store: &mut MboxStore,
     entry: &MailEntry,
-    body_terms: &[&SearchTerm],
+    scan_terms: &[&SearchTerm],
     is_or: bool,
 ) -> crate::error::Result<bool> {
     let body = store.get_message(entry)?;
@@ -97,6 +109,15 @@ fn check_body_match(
                     }
                 })
             }
+            // Free-text term: match metadata or body.
+            SearchField::All => {
+                all_matches_metadata(entry, &term.operator)
+                    || match &term.operator {
+                        SearchOperator::Contains(needle) | SearchOperator::Exact(needle) => {
+                            text_lower.contains(needle)
+                        }
+                    }
+            }
             _ => true,
         };
 
@@ -108,9 +129,9 @@ fn check_body_match(
     };
 
     let result = if is_or {
-        body_terms.iter().any(|t| check_term(t))
+        scan_terms.iter().any(|t| check_term(t))
     } else {
-        body_terms.iter().all(|t| check_term(t))
+        scan_terms.iter().all(|t| check_term(t))
     };
 
     Ok(result)
