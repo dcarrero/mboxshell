@@ -4,6 +4,10 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.3.5
+
+- Corregido: el campo `Texto` del popup de Filtros de Búsqueda (y cualquier búsqueda de texto libre / palabra suelta) ahora busca también en el **cuerpo del mensaje**, además de en asunto/remitente/destinatario. Antes solo miraba los metadatos de las cabeceras, así que una palabra que solo estaba en el cuerpo no devolvía resultados — lo que hacía que combinar `Texto` + `Asunto` "no siempre encontrara la coincidencia" (#4, #6) y que `Buscar en los resultados anteriores` pareciera roto, porque su búsqueda base no devolvía nada (#5). El filtrado mientras escribes sigue siendo solo de metadatos e instantáneo; el escaneo del cuerpo se ejecuta al pulsar `Enter`, con el mismo coste que una consulta `body:` explícita. Las consultas OR y los términos por campo no cambian.
+
 ## v0.3.4
 
 - Nuevo: casilla `Buscar en los resultados anteriores` en el popup de Filtros de Búsqueda (`F`). Al activarla, la nueva consulta se intersecta con lo que estuviera visible al abrir el popup, permitiendo refinar progresivamente un conjunto de resultados (#5).

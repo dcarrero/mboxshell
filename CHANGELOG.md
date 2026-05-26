@@ -4,6 +4,10 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.5
+
+- Fix: the `Text` field in the Search Filters popup (and any free-text/bare-word search) now searches the **message body** in addition to subject/from/to. Previously it only matched header metadata, so a word that lived only in the body returned no results — which made combining `Text` + `Subject` "not always find the match" (#4, #6) and made `Search within previous results` appear broken because its base search returned nothing (#5). As-you-type filtering stays metadata-only and instant; the body scan runs on `Enter`, same cost as an explicit `body:` query. OR queries and field-specific terms are unchanged.
+
 ## v0.3.4
 
 - Add: new `Search within previous results` checkbox in the Search Filters popup (`F`). When checked, the new query is intersected with whatever was visible at the moment the popup opened, allowing iterative narrowing of result sets (#5).
