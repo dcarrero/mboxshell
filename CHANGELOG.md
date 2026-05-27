@@ -4,6 +4,11 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.6
+
+- Fix: free-text and `body:`/`filename:` searches no longer freeze the UI. v0.3.5 made the `Text` field scan message bodies, but that scan ran synchronously on the UI thread, so on a large mailbox the whole app locked up until it finished, with no progress and no way to cancel (#6). The body scan now runs on a **background thread**: the interface stays responsive, shows live progress (`Searching message bodies N/M`), and can be cancelled with **Esc**. Metadata-only searches (`from:`, `subject:`, …) still resolve instantly inline.
+- Change: a multi-word value in the `Text` field now matches messages that contain **all** the words (AND), searched across subject/from/to **and** the body, instead of looking for that exact contiguous phrase. Field-specific values (`subject:`, `from:`, …) are still treated as quoted phrases.
+
 ## v0.3.5
 
 - Fix: the `Text` field in the Search Filters popup (and any free-text/bare-word search) now searches the **message body** in addition to subject/from/to. Previously it only matched header metadata, so a word that lived only in the body returned no results — which made combining `Text` + `Subject` "not always find the match" (#4, #6) and made `Search within previous results` appear broken because its base search returned nothing (#5). As-you-type filtering stays metadata-only and instant; the body scan runs on `Enter`, same cost as an explicit `body:` query. OR queries and field-specific terms are unchanged.

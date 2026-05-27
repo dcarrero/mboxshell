@@ -4,6 +4,11 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.3.6
+
+- Corregido: las búsquedas de texto libre y `body:`/`filename:` ya no congelan la interfaz. v0.3.5 hizo que el campo `Texto` escaneara el cuerpo de los mensajes, pero ese escaneo se ejecutaba de forma síncrona en el hilo de la UI, así que en un buzón grande la app entera se bloqueaba hasta terminar, sin progreso ni forma de cancelar (#6). El escaneo del cuerpo ahora corre en un **hilo en segundo plano**: la interfaz sigue respondiendo, muestra el progreso en vivo (`Buscando en los cuerpos N/M`) y se puede cancelar con **Esc**. Las búsquedas solo de metadatos (`from:`, `subject:`, …) siguen resolviéndose al instante en línea.
+- Cambio: un valor de varias palabras en el campo `Texto` ahora coincide con los mensajes que contienen **todas** las palabras (AND), buscadas en asunto/remitente/destinatario **y** en el cuerpo, en vez de buscar esa frase contigua exacta. Los valores por campo (`subject:`, `from:`, …) se siguen tratando como frases entrecomilladas.
+
 ## v0.3.5
 
 - Corregido: el campo `Texto` del popup de Filtros de Búsqueda (y cualquier búsqueda de texto libre / palabra suelta) ahora busca también en el **cuerpo del mensaje**, además de en asunto/remitente/destinatario. Antes solo miraba los metadatos de las cabeceras, así que una palabra que solo estaba en el cuerpo no devolvía resultados — lo que hacía que combinar `Texto` + `Asunto` "no siempre encontrara la coincidencia" (#4, #6) y que `Buscar en los resultados anteriores` pareciera roto, porque su búsqueda base no devolvía nada (#5). El filtrado mientras escribes sigue siendo solo de metadatos e instantáneo; el escaneo del cuerpo se ejecuta al pulsar `Enter`, con el mismo coste que una consulta `body:` explícita. Las consultas OR y los términos por campo no cambian.
