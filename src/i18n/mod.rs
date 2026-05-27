@@ -486,6 +486,17 @@ msg!(
 msg!(tui_results, "result(s)", "resultado(s)");
 msg!(tui_search_error, "Search error", "Error de b\u{fa}squeda");
 msg!(
+    tui_searching,
+    "Searching message bodies",
+    "Buscando en los cuerpos"
+);
+msg!(tui_search_cancel_hint, "Esc to cancel", "Esc para cancelar");
+msg!(
+    tui_search_cancelled,
+    "Search cancelled",
+    "B\u{fa}squeda cancelada"
+);
+msg!(
     tui_exported_messages_eml,
     "message(s) as EML",
     "mensaje(s) como EML"

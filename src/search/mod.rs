@@ -10,6 +10,18 @@ use crate::model::mail::MailEntry;
 
 use self::query::{parse_query, SearchField, SearchQuery};
 
+/// Whether running this query requires reading message bodies from disk
+/// (the slow, cancelable path).
+///
+/// True when an explicit `body:`/`filename:` term is present, or when a
+/// free-text (`All`) term is used in an AND query — those search the body
+/// as well as metadata. OR queries keep `All` terms metadata-only, so they
+/// never need a body scan on their own.
+pub fn needs_body_scan(query: &SearchQuery) -> bool {
+    let has_all_text = query.terms.iter().any(|t| t.field == SearchField::All);
+    query.needs_fulltext || (has_all_text && !query.is_or)
+}
+
 /// High-level search: parse the query, search metadata, optionally run
 /// full-text search, and return matching entry indices.
 ///
@@ -37,8 +49,7 @@ pub fn execute(
     // message body — but only on AND queries (the popup always emits AND).
     // On OR queries `All` terms keep metadata-only semantics to avoid dropping
     // metadata-only matches from the candidate set.
-    let has_all_text = query.terms.iter().any(|t| t.field == SearchField::All);
-    let scan_bodies = query.needs_fulltext || (has_all_text && !query.is_or);
+    let scan_bodies = needs_body_scan(&query);
 
     // Phase 1: metadata search (fast). When we will scan bodies for `All`
     // terms, defer them so a Text term that only appears in the body is not
@@ -122,5 +133,39 @@ mod tests {
         let subjects = search_subjects("-perspective");
         assert_eq!(subjects.len(), 4);
         assert!(!subjects.contains(&"Message with From in body".to_string()));
+    }
+
+    #[test]
+    fn test_multiword_free_text_ands_across_metadata_and_body() {
+        // Issue #6 follow-up: a multi-word Text search must AND each word and
+        // search everywhere. msg004 has "perspective" in its body and
+        // "Message" in its subject, so both words match the same message.
+        let subjects = search_subjects("perspective message");
+        assert_eq!(subjects, vec!["Message with From in body".to_string()]);
+    }
+
+    #[test]
+    fn test_multiword_free_text_requires_every_word() {
+        // If any word matches nowhere, the AND query returns nothing — even
+        // though "perspective" alone would match.
+        let subjects = search_subjects("perspective zzzznotfoundanywhere");
+        assert!(subjects.is_empty());
+    }
+
+    #[test]
+    fn test_needs_body_scan_classification() {
+        use super::query::parse_query;
+        // Free-text (single or multi-word) needs the body scan.
+        assert!(super::needs_body_scan(&parse_query("hello")));
+        assert!(super::needs_body_scan(&parse_query("multi word search")));
+        // Explicit body:/filename: too.
+        assert!(super::needs_body_scan(&parse_query("body:x")));
+        assert!(super::needs_body_scan(&parse_query("filename:report.pdf")));
+        // Metadata-only queries never scan bodies.
+        assert!(!super::needs_body_scan(&parse_query("from:a@b.com")));
+        assert!(!super::needs_body_scan(&parse_query("subject:hello")));
+        assert!(!super::needs_body_scan(&parse_query("has:attachment")));
+        // OR free-text stays metadata-only.
+        assert!(!super::needs_body_scan(&parse_query("from:a OR from:b")));
     }
 }

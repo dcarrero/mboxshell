@@ -2,12 +2,42 @@
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc::{self, Receiver, TryRecvError};
+use std::sync::Arc;
 
 use crate::i18n;
 use crate::index::builder;
 use crate::model::mail::{MailBody, MailEntry};
 use crate::store::reader::MboxStore;
 use crate::tui::threading;
+
+/// Shared progress counters for an in-flight background search.
+#[derive(Default)]
+pub struct SearchProgress {
+    /// Number of candidate messages whose body has been scanned so far.
+    pub processed: AtomicUsize,
+    /// Total number of candidate messages to scan.
+    pub total: AtomicUsize,
+}
+
+/// A full-text search running on a background thread.
+///
+/// Body scans read every candidate message from disk, which can take a while
+/// on large MBOX files. Running them off the UI thread keeps the interface
+/// responsive and cancelable (Esc), satisfying the "all I/O must be cancelable"
+/// rule. The main loop polls [`App::poll_search`] each tick to collect results.
+pub struct SearchJob {
+    /// Receives the final result (or error) from the worker thread.
+    rx: Receiver<crate::error::Result<Vec<usize>>>,
+    /// Set to `true` to ask the worker to stop early.
+    cancel: Arc<AtomicBool>,
+    /// Live progress counters updated by the worker.
+    progress: Arc<SearchProgress>,
+    /// Optional set the results must be intersected with ("search within
+    /// previous results").
+    restrict: Option<HashSet<usize>>,
+}
 
 /// Which panel currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,8 +155,9 @@ pub struct App {
     // ── Data ──────────────────────────────────
     /// Path to the open MBOX file.
     pub mbox_path: PathBuf,
-    /// Full index of messages (in memory).
-    pub entries: Vec<MailEntry>,
+    /// Full index of messages (in memory). Wrapped in `Arc` so background
+    /// search threads can share it without copying.
+    pub entries: Arc<Vec<MailEntry>>,
     /// Indices into `entries` for the currently visible (filtered) messages.
     pub visible_indices: Vec<usize>,
     /// Store for random-access message reading.
@@ -192,6 +223,8 @@ pub struct App {
     pub search_results: Vec<usize>,
     /// Current position within `search_results`.
     pub search_result_index: usize,
+    /// In-flight background full-text search, if any.
+    pub search_job: Option<SearchJob>,
 
     // ── Search filter popup ──────────────────
     /// Whether the search filter popup is visible.
@@ -277,6 +310,8 @@ impl App {
         let label_counts: Vec<usize> = all_labels.iter().map(|l| label_map[l]).collect();
         let has_labels = !all_labels.is_empty();
 
+        let entries = Arc::new(entries);
+
         let mut app = Self {
             mbox_path,
             entries,
@@ -307,6 +342,7 @@ impl App {
             search_query: String::new(),
             search_results: Vec::new(),
             search_result_index: 0,
+            search_job: None,
             show_search_filter: false,
             search_filter_focus: SearchFilterField::Text,
             filter_text: String::new(),
@@ -573,6 +609,21 @@ impl App {
     /// Supports field-specific queries (`from:`, `subject:`, `body:`, etc.),
     /// date/size filters, negation, and full-text body search.
     pub fn execute_search(&mut self) {
+        self.execute_search_restricted(None);
+    }
+
+    /// Like [`execute_search`](Self::execute_search), but intersects the
+    /// results with `restrict` ("search within previous results").
+    ///
+    /// Metadata-only queries run synchronously (they are instant). Queries
+    /// that need a body scan are dispatched to a background thread via
+    /// [`spawn_search_job`](Self::spawn_search_job) so the UI stays responsive
+    /// and cancelable; their results are applied later by
+    /// [`poll_search`](Self::poll_search).
+    pub fn execute_search_restricted(&mut self, restrict: Option<HashSet<usize>>) {
+        // Drop any in-flight search before starting a new one.
+        self.cancel_search();
+
         if self.search_query.is_empty() {
             self.visible_indices = (0..self.entries.len()).collect();
             self.search_results.clear();
@@ -583,25 +634,154 @@ impl App {
             return;
         }
 
+        let query = crate::search::query::parse_query(&self.search_query);
+
+        if crate::search::needs_body_scan(&query) {
+            self.spawn_search_job(restrict);
+            return;
+        }
+
+        // Metadata-only: fast enough to run inline.
         match crate::search::execute(&self.mbox_path, &self.entries, &self.search_query, None) {
-            Ok((_query, results)) => {
-                self.search_results = results.clone();
-                self.visible_indices = results;
-                self.search_result_index = 0;
-                self.apply_sort();
-
-                if !self.visible_indices.is_empty() {
-                    self.select_message(0);
-                }
-
-                let count = self.visible_indices.len();
-                self.set_status(&format!("{count} {}", i18n::tui_results()));
-            }
+            Ok((_query, results)) => self.apply_search_results(results, restrict),
             Err(e) => {
                 tracing::warn!(error = %e, "Search failed");
                 self.set_status(&format!("{}: {e}", i18n::tui_search_error()));
             }
         }
+    }
+
+    /// Spawn a background thread to run the current query's body scan.
+    ///
+    /// The worker shares the index via `Arc`, reports progress through shared
+    /// atomics, and stops early when `cancel` is set. The TUI keeps running
+    /// and shows live progress; results are collected in
+    /// [`poll_search`](Self::poll_search).
+    fn spawn_search_job(&mut self, restrict: Option<HashSet<usize>>) {
+        let entries = Arc::clone(&self.entries);
+        let path = self.mbox_path.clone();
+        let query_str = self.search_query.clone();
+        let cancel = Arc::new(AtomicBool::new(false));
+        let progress = Arc::new(SearchProgress::default());
+        let (tx, rx) = mpsc::channel();
+
+        let cancel_worker = Arc::clone(&cancel);
+        let progress_worker = Arc::clone(&progress);
+        std::thread::spawn(move || {
+            let on_progress = move |done: usize, total: usize| {
+                progress_worker.processed.store(done, Ordering::Relaxed);
+                progress_worker.total.store(total, Ordering::Relaxed);
+                !cancel_worker.load(Ordering::Relaxed)
+            };
+            let result = crate::search::execute(&path, &entries, &query_str, Some(&on_progress))
+                .map(|(_, results)| results);
+            // The receiver may already be gone (search cancelled/superseded);
+            // ignoring the send error is intentional.
+            let _ = tx.send(result);
+        });
+
+        self.search_job = Some(SearchJob {
+            rx,
+            cancel,
+            progress,
+            restrict,
+        });
+        self.set_status(&format!(
+            "{} ({})",
+            i18n::tui_searching(),
+            i18n::tui_search_cancel_hint()
+        ));
+    }
+
+    /// Poll the in-flight background search (called once per event-loop tick).
+    ///
+    /// Applies results when the worker finishes, refreshes the progress status
+    /// while it runs, and clears the job if the worker thread vanished.
+    pub fn poll_search(&mut self) {
+        let outcome = match &self.search_job {
+            Some(job) => job.rx.try_recv(),
+            None => return,
+        };
+
+        match outcome {
+            Ok(result) => {
+                if let Some(job) = self.search_job.take() {
+                    match result {
+                        Ok(results) => self.apply_search_results(results, job.restrict),
+                        Err(e) => {
+                            tracing::warn!(error = %e, "Search failed");
+                            self.set_status(&format!("{}: {e}", i18n::tui_search_error()));
+                        }
+                    }
+                }
+            }
+            Err(TryRecvError::Empty) => {
+                // Still running — refresh the live progress line.
+                let (done, total) = match &self.search_job {
+                    Some(job) => (
+                        job.progress.processed.load(Ordering::Relaxed),
+                        job.progress.total.load(Ordering::Relaxed),
+                    ),
+                    None => return,
+                };
+                let msg = if total > 0 {
+                    format!(
+                        "{} {done}/{total} ({})",
+                        i18n::tui_searching(),
+                        i18n::tui_search_cancel_hint()
+                    )
+                } else {
+                    format!(
+                        "{} ({})",
+                        i18n::tui_searching(),
+                        i18n::tui_search_cancel_hint()
+                    )
+                };
+                self.set_status(&msg);
+            }
+            Err(TryRecvError::Disconnected) => {
+                self.search_job = None;
+            }
+        }
+    }
+
+    /// Whether a background search is currently running.
+    pub fn search_in_progress(&self) -> bool {
+        self.search_job.is_some()
+    }
+
+    /// Cancel any in-flight background search, signalling the worker to stop.
+    ///
+    /// The visible list is left untouched (the pre-search view stays on
+    /// screen). Reports a cancellation status only when a search was actually
+    /// running.
+    pub fn cancel_search(&mut self) {
+        if let Some(job) = self.search_job.take() {
+            job.cancel.store(true, Ordering::Relaxed);
+            self.set_status(i18n::tui_search_cancelled());
+        }
+    }
+
+    /// Apply a finished result set to the visible list, optionally intersecting
+    /// it with `restrict` (the "search within previous results" set).
+    fn apply_search_results(&mut self, mut results: Vec<usize>, restrict: Option<HashSet<usize>>) {
+        if let Some(prev) = &restrict {
+            results.retain(|i| prev.contains(i));
+        }
+        self.search_results = results.clone();
+        self.visible_indices = results;
+        self.search_result_index = 0;
+        self.apply_sort();
+        if self.threaded_view {
+            self.rebuild_threaded_view();
+        }
+        if !self.visible_indices.is_empty() {
+            self.select_message(0);
+        } else {
+            self.current_body = None;
+        }
+        let count = self.visible_indices.len();
+        self.set_status(&format!("{count} {}", i18n::tui_results()));
     }
 
     /// Run a fast metadata-only incremental search (called on each keystroke).
@@ -672,7 +852,11 @@ impl App {
         let mut parts: Vec<String> = Vec::new();
 
         if !self.filter_text.is_empty() {
-            parts.push(quote_if_needed(&self.filter_text));
+            // Free-text: pushed verbatim (not quoted) so each word becomes its
+            // own AND term. "multi word search" then matches messages that
+            // contain all three words, rather than that exact contiguous
+            // phrase. Field values below stay quoted to survive tokenization.
+            parts.push(self.filter_text.trim().to_string());
         }
         if !self.filter_from.is_empty() {
             parts.push(format!("from:{}", quote_if_needed(&self.filter_from)));
@@ -790,5 +974,78 @@ mod build_query_tests {
     fn quote_if_needed_preexisting_quote_passthrough() {
         // Already quoted or contains a quote — don't re-wrap.
         assert_eq!(quote_if_needed("\"already\""), "\"already\"");
+    }
+}
+
+#[cfg(test)]
+mod async_search_tests {
+    use super::App;
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, Instant};
+
+    fn fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join(name)
+    }
+
+    /// Drive an in-flight background search to completion (bounded wait).
+    fn drain_search(app: &mut App) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while app.search_in_progress() {
+            app.poll_search();
+            assert!(
+                Instant::now() < deadline,
+                "background search did not finish in time"
+            );
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    #[test]
+    fn multiword_body_search_runs_in_background_and_applies_results() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_query = "perspective message".to_string();
+        app.execute_search();
+
+        // A free-text body scan is dispatched to a worker, not applied inline.
+        assert!(
+            app.search_in_progress(),
+            "free-text search should run in the background"
+        );
+
+        drain_search(&mut app);
+
+        let subjects: Vec<String> = app
+            .visible_indices
+            .iter()
+            .map(|&i| app.entries[i].subject.clone())
+            .collect();
+        assert_eq!(subjects, vec!["Message with From in body".to_string()]);
+    }
+
+    #[test]
+    fn metadata_only_search_runs_inline() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_query = "from:user1".to_string();
+        app.execute_search();
+        assert!(
+            !app.search_in_progress(),
+            "metadata-only search must not spawn a background job"
+        );
+    }
+
+    #[test]
+    fn cancelling_a_search_clears_the_job() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_query = "perspective".to_string();
+        app.execute_search();
+        assert!(app.search_in_progress());
+        app.cancel_search();
+        assert!(
+            !app.search_in_progress(),
+            "cancel_search must drop the in-flight job"
+        );
     }
 }

@@ -397,6 +397,16 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_multiword_free_text() {
+        // The Search Filters "Text" field emits its value verbatim, so a
+        // multi-word value tokenizes into one free-text term per word, ANDed.
+        let q = parse_query("multi word search");
+        assert_eq!(q.terms.len(), 3);
+        assert!(q.terms.iter().all(|t| t.field == SearchField::All));
+        assert!(!q.is_or);
+    }
+
+    #[test]
     fn test_parse_field_query() {
         let q = parse_query("from:user@example.com subject:hello");
         assert_eq!(q.terms.len(), 2);

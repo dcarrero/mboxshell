@@ -43,6 +43,12 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         return handle_search_filter_popup(app, key);
     }
 
+    // ── Cancel an in-flight background search with Esc ────
+    if app.search_in_progress() && key.code == KeyCode::Esc {
+        app.cancel_search();
+        return Ok(());
+    }
+
     // ── Always-available shortcuts ────────────────────────
     match (key.modifiers, key.code) {
         // Ctrl+C always quits, from any panel
@@ -770,7 +776,10 @@ fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()
             app.search_filter_focus = focus.prev(has_labels);
         }
         KeyCode::Enter => {
-            // Build query from filters, execute search, and close popup
+            // Build query from filters, execute search, and close popup. The
+            // "within previous results" set is captured now and intersected
+            // with the results when they arrive (the search may run on a
+            // background thread).
             let query = app.build_query_from_filters();
             let restrict: Option<std::collections::HashSet<usize>> = if app.filter_within_results {
                 Some(app.visible_indices.iter().copied().collect())
@@ -780,19 +789,7 @@ fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()
             app.search_query = query.clone();
             app.push_search_history(&query);
             app.show_search_filter = false;
-            app.execute_search();
-            if let Some(prev) = restrict {
-                app.visible_indices.retain(|i| prev.contains(i));
-                app.search_results.retain(|i| prev.contains(i));
-                app.search_result_index = 0;
-                if !app.visible_indices.is_empty() {
-                    app.select_message(0);
-                } else {
-                    app.current_body = None;
-                }
-                let count = app.visible_indices.len();
-                app.set_status(&format!("{count} {}", crate::i18n::tui_results()));
-            }
+            app.execute_search_restricted(restrict);
         }
         KeyCode::Char(' ') if focus == SearchFilterField::HasAttachment => {
             app.filter_has_attachment = !app.filter_has_attachment;

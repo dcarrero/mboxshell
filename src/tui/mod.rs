@@ -88,6 +88,9 @@ fn run_event_loop(
             }
         }
 
+        // Collect results from any in-flight background search.
+        app.poll_search();
+
         // Periodic housekeeping
         app.tick();
 
