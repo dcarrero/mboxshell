@@ -4,6 +4,10 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.3.7
+
+- Fix: searches launched from the search bar now respect the active sidebar label filter. When a label was selected, typing a query and pressing `Enter` dropped the scope and matched against every message in the index; the bar now derives a restrict set from the active label and intersects results with it (#7). The empty-query path honours the same scope, so clearing the query no longer escapes the label.
+
 ## v0.3.6
 
 - Fix: free-text and `body:`/`filename:` searches no longer freeze the UI. v0.3.5 made the `Text` field scan message bodies, but that scan ran synchronously on the UI thread, so on a large mailbox the whole app locked up until it finished, with no progress and no way to cancel (#6). The body scan now runs on a **background thread**: the interface stays responsive, shows live progress (`Searching message bodies N/M`), and can be cancelled with **Esc**. Metadata-only searches (`from:`, `subject:`, …) still resolve instantly inline.

@@ -4,6 +4,10 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.3.7
+
+- Corregido: las búsquedas lanzadas desde la barra de búsqueda ahora respetan el filtro de etiqueta activo en la barra lateral. Cuando había una etiqueta seleccionada, escribir una consulta y pulsar `Enter` perdía el scope y buscaba contra todos los mensajes del índice; la barra ahora deriva un conjunto de restricción a partir de la etiqueta activa e intersecta los resultados con él (#7). El camino de consulta vacía honra el mismo scope, así que limpiar la consulta ya no escapa de la etiqueta.
+
 ## v0.3.6
 
 - Corregido: las búsquedas de texto libre y `body:`/`filename:` ya no congelan la interfaz. v0.3.5 hizo que el campo `Texto` escaneara el cuerpo de los mensajes, pero ese escaneo se ejecutaba de forma síncrona en el hilo de la UI, así que en un buzón grande la app entera se bloqueaba hasta terminar, sin progreso ni forma de cancelar (#6). El escaneo del cuerpo ahora corre en un **hilo en segundo plano**: la interfaz sigue respondiendo, muestra el progreso en vivo (`Buscando en los cuerpos N/M`) y se puede cancelar con **Esc**. Las búsquedas solo de metadatos (`from:`, `subject:`, …) siguen resolviéndose al instante en línea.
