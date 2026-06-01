@@ -711,6 +711,8 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             app.search_active = false;
             app.search_history_index = None;
             app.focus = PanelFocus::MailList;
+            // Leaving the search resets the scope, so drop within-results mode.
+            app.filter_within_results = false;
             // Reset to show all messages (respecting active label filter)
             if let Some(label) = app.active_label_filter.clone() {
                 app.apply_label_filter(Some(label));
@@ -797,20 +799,16 @@ fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()
             app.search_filter_focus = focus.prev(has_labels);
         }
         KeyCode::Enter => {
-            // Build query from filters, execute search, and close popup. The
-            // "within previous results" set is captured now and intersected
-            // with the results when they arrive (the search may run on a
-            // background thread).
+            // Build the query from the filters, then run it through the shared
+            // search path. `execute_search` preserves the active scope —
+            // "within previous results" (the currently visible messages) or an
+            // active label filter — intersecting it with the results when they
+            // arrive (the search may run on a background thread).
             let query = app.build_query_from_filters();
-            let restrict: Option<std::collections::HashSet<usize>> = if app.filter_within_results {
-                Some(app.visible_indices.iter().copied().collect())
-            } else {
-                None
-            };
             app.search_query = query.clone();
             app.push_search_history(&query);
             app.show_search_filter = false;
-            app.execute_search_restricted(restrict);
+            app.execute_search();
         }
         KeyCode::Char(' ') if focus == SearchFilterField::HasAttachment => {
             app.filter_has_attachment = !app.filter_has_attachment;

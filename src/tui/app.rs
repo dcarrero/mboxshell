@@ -528,6 +528,9 @@ impl App {
         self.active_label_filter = label.clone();
         self.search_query.clear();
         self.search_results.clear();
+        // A label change establishes a fresh scope; drop any lingering
+        // "within previous results" mode so it cannot apply to a stale set.
+        self.filter_within_results = false;
 
         match &label {
             None => {
@@ -609,18 +612,33 @@ impl App {
     /// Supports field-specific queries (`from:`, `subject:`, `body:`, etc.),
     /// date/size filters, negation, and full-text body search.
     ///
-    /// When a sidebar label filter is active, the search is restricted to the
-    /// messages bearing that label so the active scope is preserved.
+    /// The active scope is preserved: when "search within previous results" is
+    /// on, the search stays inside the currently visible messages; otherwise an
+    /// active sidebar label filter restricts it to the labelled messages.
     pub fn execute_search(&mut self) {
-        let restrict = self.active_label_filter.as_ref().map(|label| {
+        let restrict = self.search_restrict_set();
+        self.execute_search_restricted(restrict);
+    }
+
+    /// Compute the index set a new search should be confined to, preserving the
+    /// active scope.
+    ///
+    /// "Search within previous results" takes priority and returns the
+    /// currently visible messages; failing that, an active sidebar label filter
+    /// returns the messages bearing that label. Returns `None` when neither is
+    /// active, meaning the search runs over the whole index.
+    fn search_restrict_set(&self) -> Option<HashSet<usize>> {
+        if self.filter_within_results {
+            return Some(self.visible_indices.iter().copied().collect());
+        }
+        self.active_label_filter.as_ref().map(|label| {
             self.entries
                 .iter()
                 .enumerate()
                 .filter(|(_, e)| e.labels.iter().any(|l| l == label))
                 .map(|(i, _)| i)
                 .collect::<HashSet<usize>>()
-        });
-        self.execute_search_restricted(restrict);
+        })
     }
 
     /// Like [`execute_search`](Self::execute_search), but intersects the
@@ -923,7 +941,12 @@ impl App {
         parts.join(" ")
     }
 
-    /// Reset all search filter popup fields to their defaults.
+    /// Reset the search filter popup form fields to their defaults.
+    ///
+    /// `filter_within_results` is deliberately *not* cleared here: it is a
+    /// scoping mode, not a one-shot field, so it must survive reopening the
+    /// popup (see #11). It is dropped instead when the underlying scope is
+    /// reset — e.g. on a label-filter change or when leaving the search.
     pub fn reset_search_filters(&mut self) {
         self.search_filter_focus = SearchFilterField::Text;
         self.filter_text.clear();
@@ -935,7 +958,6 @@ impl App {
         self.filter_size_selected = 0;
         self.filter_has_attachment = false;
         self.filter_label_selected = 0;
-        self.filter_within_results = false;
     }
 
     /// Push a query into the search history (most recent first, dedup, capped).
@@ -1117,5 +1139,62 @@ mod async_search_tests {
         app.execute_search();
 
         assert_eq!(app.visible_indices, vec![2]);
+    }
+
+    /// Regression for #11: "search within previous results" must survive
+    /// reopening the filter popup and must scope a subsequent body search to
+    /// the previously matched messages, instead of searching the whole index.
+    #[test]
+    fn within_results_persists_and_scopes_body_search() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+
+        // Step 1: a subject search narrows the view to the "Hello World" thread.
+        app.search_query = "subject:Hello".to_string();
+        app.execute_search();
+        assert!(!app.search_in_progress(), "metadata search runs inline");
+        let mut scoped = app.visible_indices.clone();
+        scoped.sort_unstable();
+        assert_eq!(scoped, vec![0, 1]);
+
+        // Step 2: the user enables "search within previous results".
+        app.filter_within_results = true;
+
+        // Step 3: reopening the popup resets the form fields, but the
+        // within-results mode must persist (this is the #11 regression).
+        app.reset_search_filters();
+        assert!(
+            app.filter_within_results,
+            "within-results mode must survive reopening the filter popup"
+        );
+
+        // Step 4: a body/free-text search. "This" matches the bodies of
+        // messages 0, 1 and 3; scoped to the previous {0, 1} it must never
+        // leak message 3.
+        app.filter_text = "This".to_string();
+        app.search_query = app.build_query_from_filters();
+        app.execute_search();
+        drain_search(&mut app);
+
+        assert!(
+            app.visible_indices.iter().all(|i| scoped.contains(i)),
+            "body search must stay within previous results, got {:?}",
+            app.visible_indices
+        );
+        let mut result = app.visible_indices.clone();
+        result.sort_unstable();
+        assert_eq!(result, vec![0, 1]);
+    }
+
+    /// Backing out of a scope (changing the sidebar label filter) must drop the
+    /// within-results mode so it cannot silently apply to a stale result set.
+    #[test]
+    fn within_results_clears_on_label_filter_change() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.filter_within_results = true;
+        app.apply_label_filter(None);
+        assert!(
+            !app.filter_within_results,
+            "changing the label scope must drop within-results mode"
+        );
     }
 }
