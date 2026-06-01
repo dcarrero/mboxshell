@@ -361,6 +361,12 @@ msg!(tui_hint_headers, "Headers", "Cabeceras");
 msg!(tui_hint_raw, "Raw", "Raw");
 msg!(tui_hint_cancel, "Cancel", "Cancelar");
 
+// ── Body scroll indicator ───────────────────────────────────────
+
+msg!(tui_scroll_all, "All", "Todo");
+msg!(tui_scroll_top, "Top", "Inicio");
+msg!(tui_scroll_bot, "Bot", "Fin");
+
 // ── Search filter popup labels ──────────────────────────────────
 
 msg!(tui_filter_text, "Text:", "Texto:");

@@ -35,11 +35,11 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let inner = block.inner(area);
     app.message_view_height = inner.height as usize;
-    frame.render_widget(block, area);
 
     let entry = match app.current_entry() {
         Some(e) => e,
         None => {
+            frame.render_widget(block, area);
             let empty = Paragraph::new(i18n::tui_no_message()).style(theme.message_body);
             frame.render_widget(empty, inner);
             return;
@@ -194,11 +194,40 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let max_scroll = total_lines.saturating_sub(visible_height);
     let scroll = app.message_scroll_offset.min(max_scroll);
 
+    // Build the scroll indicator for the bottom border (e.g. "[ ↕ 45% ]").
+    let block = block.title_bottom(scroll_indicator(scroll, max_scroll, &theme).right_aligned());
+    frame.render_widget(block, area);
+
     let paragraph = Paragraph::new(lines)
         .scroll((scroll as u16, 0))
         .wrap(Wrap { trim: false });
 
     frame.render_widget(paragraph, inner);
+}
+
+/// Build the body scroll indicator shown in the bottom border.
+///
+/// Signals at a glance whether the message body is scrollable and where the
+/// viewport sits: `[ All ]` when everything fits, `[ ↓ Top ]` at the start,
+/// `[ ↑ Bot ]` at the end, and `[ ↕ NN% ]` in between. The percentage is an
+/// approximation, since the offset counts unwrapped lines while the paragraph
+/// scrolls over wrapped ones.
+fn scroll_indicator<'a>(
+    scroll: usize,
+    max_scroll: usize,
+    theme: &crate::tui::theme::Theme,
+) -> Line<'a> {
+    let label = if max_scroll == 0 {
+        format!(" [ {} ] ", i18n::tui_scroll_all())
+    } else if scroll == 0 {
+        format!(" [ \u{2193} {} ] ", i18n::tui_scroll_top())
+    } else if scroll >= max_scroll {
+        format!(" [ \u{2191} {} ] ", i18n::tui_scroll_bot())
+    } else {
+        let percent = (scroll * 100) / max_scroll;
+        format!(" [ \u{2195} {percent}% ] ")
+    };
+    Line::from(Span::styled(label, theme.border))
 }
 
 /// Style a single body line, highlighting URLs.
