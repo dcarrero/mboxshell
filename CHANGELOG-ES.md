@@ -4,6 +4,10 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.4.1
+
+- Añadido: **búsqueda interactiva dentro del cuerpo del mensaje abierto**, al estilo less/vim. Con el panel de mensaje enfocado, `/` abre un prompt que resalta todas las coincidencias en vivo según escribes; `Enter` confirma y las mantiene navegables; `n` / `N` saltan a la coincidencia siguiente/anterior con auto-scroll que la centra en pantalla; un contador `[ actual/total ]` aparece en el borde del cuerpo junto al indicador de scroll; `Esc` primero limpia las coincidencias y luego vuelve a la lista. La búsqueda no distingue mayúsculas y es compatible con Unicode. La búsqueda global con `/` no cambia en el resto de paneles (#12).
+
 ## v0.4.0
 
 - Añadido: la vista previa del mensaje ahora muestra un **indicador de posición de scroll** en la esquina inferior derecha de su borde, para saber de un vistazo si el cuerpo se puede desplazar y por dónde vas — `[ Todo ]` cuando cabe entero, `[ ↓ Inicio ]` al principio, `[ ↕ NN% ]` en medio y `[ ↑ Fin ]` al final (#10).

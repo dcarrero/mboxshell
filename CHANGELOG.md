@@ -4,6 +4,10 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.1
+
+- Add: **interactive search within the open message body**, less/vim style. With the message view focused, `/` opens a prompt that highlights every match live as you type; `Enter` confirms and keeps the matches navigable; `n` / `N` jump to the next/previous match with auto-scroll that brings it into view; a `[ current/total ]` counter sits in the body border next to the scroll indicator; `Esc` first clears the matches, then returns to the list. Matching is case-insensitive and Unicode-aware. The global `/` search is unchanged from every other panel (#12).
+
 ## v0.4.0
 
 - Add: the message preview now shows a **scroll position indicator** in the bottom-right of its border, so you can tell at a glance whether a body is scrollable and where you are in it — `[ All ]` when everything fits, `[ ↓ Top ]` at the start, `[ ↕ NN% ]` in the middle, and `[ ↑ Bot ]` at the end (#10).
