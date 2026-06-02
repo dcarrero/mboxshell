@@ -115,7 +115,7 @@ jobs:
           cp target/${{ matrix.target }}/release/mboxshell.exe ${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
