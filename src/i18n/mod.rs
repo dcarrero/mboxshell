@@ -185,6 +185,8 @@ msg!(
 );
 msg!(msg_top_senders, "Top senders", "Principales remitentes");
 msg!(msg_with_attachments, "With attachments", "Con adjuntos");
+msg!(msg_duplicates, "Duplicates", "Duplicados");
+msg!(msg_unique_ids, "Unique IDs", "IDs únicos");
 msg!(
     msg_no_messages,
     "No messages found",

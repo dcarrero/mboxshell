@@ -790,6 +790,14 @@ fn print_stats_table(
         }
     );
 
+    let (duplicates, unique_ids) = index_reader::count_duplicates(entries);
+    println!(
+        "  {:<20} {} ({})" ,
+        i18n::msg_duplicates(),
+        duplicates,
+        format!("{} {}", unique_ids, i18n::msg_unique_ids())
+    );
+
     let top = index_reader::top_senders(entries, 10);
     if !top.is_empty() {
         println!();
@@ -827,6 +835,8 @@ fn print_stats_json(
         })
         .collect();
 
+    let (duplicates, unique_ids) = index_reader::count_duplicates(entries);
+
     let stats = serde_json::json!({
         "file": path.to_string_lossy(),
         "file_size": file_size,
@@ -835,6 +845,8 @@ fn print_stats_json(
         "index_size": idx_size,
         "indexing_time_ms": elapsed.as_millis(),
         "with_attachments": index_reader::count_with_attachments(entries),
+        "duplicates": duplicates,
+        "unique_ids": unique_ids,
         "top_senders": top_json,
     });
 
