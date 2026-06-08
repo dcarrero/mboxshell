@@ -47,10 +47,8 @@ pub fn count_duplicates(entries: &[MailEntry]) -> (usize, usize) {
     let mut duplicates = 0usize;
     for e in entries {
         let id = e.message_id.as_str();
-        if !id.is_empty() {
-            if !seen.insert(id) {
-                duplicates += 1;
-            }
+        if !id.is_empty() && !seen.insert(id) {
+            duplicates += 1;
         }
     }
     let unique = seen.len();

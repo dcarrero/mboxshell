@@ -792,10 +792,11 @@ fn print_stats_table(
 
     let (duplicates, unique_ids) = index_reader::count_duplicates(entries);
     println!(
-        "  {:<20} {} ({})" ,
+        "  {:<20} {} ({} {})",
         i18n::msg_duplicates(),
         duplicates,
-        format!("{} {}", unique_ids, i18n::msg_unique_ids())
+        unique_ids,
+        i18n::msg_unique_ids()
     );
 
     let top = index_reader::top_senders(entries, 10);
