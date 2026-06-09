@@ -4,6 +4,10 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.4.4
+
+- Corregido: **las líneas de cabecera que caen justo en el límite del búfer de lectura de 1 MB ya no se parten**, algo que antes truncaba las cabeceras de un mensaje y descartaba todo lo que venía después del punto de corte (`Subject`, `Date`, …). Los mensajes afectados aparecían con fecha `1970-01-01` y asunto `unknown`, e inflaban el recuento de mensajes. El lector de líneas ahora acumula una línea física completa a través de las recargas del búfer en vez de tratar un fragmento parcial como una línea completa. Gracias a @jpetrina por el diagnóstico preciso y la propuesta de corrección (#15).
+
 ## v0.4.3
 
 - Añadido: el comando `stats` ahora muestra una **línea `Duplicados`** que cuenta los mensajes que repiten un `Message-ID` ya visto, junto al número de IDs distintos — p. ej. `Duplicados  185 (42 IDs únicos)`. Los mensajes sin `Message-ID` no se cuentan como duplicados. Las mismas cifras `duplicates` / `unique_ids` se incluyen en `stats --json`. Gracias a @jpetrina (#14).

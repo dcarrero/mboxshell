@@ -1225,7 +1225,7 @@ dependencies = [
 
 [[package]]
 name = "mboxshell"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "ammonia",
  "anyhow",

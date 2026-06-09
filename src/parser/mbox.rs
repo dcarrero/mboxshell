@@ -98,20 +98,18 @@ impl MboxParser {
         loop {
             line_buf.clear();
             let line_len = {
-                let buf = reader
-                    .fill_buf()
+                // Read a full physical line, accumulating across buffer
+                // boundaries. Using `fill_buf` + manual consume here would
+                // split long lines (e.g. folded `Received:` headers) when they
+                // straddle the read buffer, leaving a stray `\r\n` tail that
+                // `is_blank_line` misreads as the end of the headers.
+                let consumed = reader
+                    .read_until(b'\n', &mut line_buf)
                     .map_err(|e| MboxError::io(&self.path, e))?;
-                if buf.is_empty() {
+                if consumed == 0 {
                     break; // EOF
                 }
-                let newline_pos = memchr_newline(buf);
-                let consume_len = match newline_pos {
-                    Some(pos) => pos + 1,
-                    None => buf.len(),
-                };
-                line_buf.extend_from_slice(&buf[..consume_len]);
-                reader.consume(consume_len);
-                consume_len as u64
+                consumed as u64
             };
 
             let is_from_line = is_mbox_separator(&line_buf);
@@ -216,20 +214,18 @@ impl MboxParser {
             // Read a line into the reusable buffer (zero-alloc in the common case)
             line_buf.clear();
             let line_len = {
-                let buf = reader
-                    .fill_buf()
+                // Read a full physical line, accumulating across buffer
+                // boundaries. Using `fill_buf` + manual consume here would
+                // split long lines (e.g. folded `Received:` headers) when they
+                // straddle the read buffer, leaving a stray `\r\n` tail that
+                // `is_blank_line` misreads as the end of the headers.
+                let consumed = reader
+                    .read_until(b'\n', &mut line_buf)
                     .map_err(|e| MboxError::io(&self.path, e))?;
-                if buf.is_empty() {
+                if consumed == 0 {
                     break; // EOF
                 }
-                let newline_pos = memchr_newline(buf);
-                let consume_len = match newline_pos {
-                    Some(pos) => pos + 1,
-                    None => buf.len(),
-                };
-                line_buf.extend_from_slice(&buf[..consume_len]);
-                reader.consume(consume_len);
-                consume_len as u64
+                consumed as u64
             };
 
             let is_from_line = is_mbox_separator(&line_buf);
@@ -311,12 +307,6 @@ impl MboxParser {
     }
 }
 
-/// Fast newline search (equivalent to memchr for `\n`).
-#[inline]
-fn memchr_newline(buf: &[u8]) -> Option<usize> {
-    buf.iter().position(|&b| b == b'\n')
-}
-
 /// Check whether a line is an MBOX separator (`From ` at the start).
 fn is_mbox_separator(line: &[u8]) -> bool {
     // Skip BOM if present at very start
@@ -364,5 +354,58 @@ mod tests {
         let mut line = vec![0xEF, 0xBB, 0xBF];
         line.extend_from_slice(b"From user@example.com Thu Jan 01 00:00:00 2024\n");
         assert!(is_mbox_separator(&line));
+    }
+
+    /// Regression test for issue #15: a header line whose trailing CRLF lands
+    /// exactly on the read-buffer boundary used to be split into a separate
+    /// blank line, prematurely ending the header section and dropping every
+    /// header after it (Subject, Date, …).
+    #[test]
+    fn test_header_line_straddling_buffer_boundary() {
+        use std::io::Write;
+
+        let from_line = b"From sender@example.com Thu Jan 01 00:00:00 2024\n";
+        let prefix = b"X-Pad: ";
+        // Pad a header line so its content fills the read buffer exactly,
+        // leaving its `\r\n` to start right at the boundary.
+        let pad = READ_BUFFER_SIZE - from_line.len() - prefix.len();
+
+        let mut data = Vec::new();
+        data.extend_from_slice(from_line);
+        data.extend_from_slice(prefix);
+        data.extend(std::iter::repeat_n(b'a', pad));
+        assert_eq!(data.len(), READ_BUFFER_SIZE);
+        data.extend_from_slice(b"\r\n");
+        data.extend_from_slice(b"Subject: Boundary Bug\r\n");
+        data.extend_from_slice(b"Date: Wed, 22 Apr 2020 14:32:19 -0700\r\n");
+        data.extend_from_slice(b"\r\n");
+        data.extend_from_slice(b"Body here\r\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut captured: Vec<u8> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |_off, _len, headers| {
+                    captured = headers.to_vec();
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(count, 1);
+        let headers = String::from_utf8_lossy(&captured);
+        assert!(
+            headers.contains("Subject: Boundary Bug"),
+            "Subject header was dropped at the buffer boundary"
+        );
+        assert!(
+            headers.contains("Date: Wed, 22 Apr 2020"),
+            "Date header was dropped at the buffer boundary"
+        );
     }
 }

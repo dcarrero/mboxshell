@@ -4,6 +4,10 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.4
+
+- Fix: **header lines that land exactly on the 1 MB read-buffer boundary are no longer split**, which previously truncated a message's headers and dropped everything after the split point (`Subject`, `Date`, …). Affected messages showed up with a `1970-01-01` date and an `unknown` subject, and inflated the message count. The line reader now accumulates a full physical line across buffer refills instead of treating a partial chunk as a complete line. Thanks to @jpetrina for the precise diagnosis and proposed fix (#15).
+
 ## v0.4.3
 
 - Add: the `stats` command now reports a **`Duplicates` line** counting messages that repeat a `Message-ID` already seen, alongside the number of distinct IDs — e.g. `Duplicates  185 (42 Unique IDs)`. Messages without a `Message-ID` are not counted as duplicates. The same `duplicates` / `unique_ids` figures are included in `stats --json`. Thanks to @jpetrina (#14).
