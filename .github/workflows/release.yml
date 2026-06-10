@@ -89,18 +89,19 @@ jobs:
           echo '[target.riscv64gc-unknown-linux-gnu]' >> .cargo/config.toml
           echo 'linker = "riscv64-linux-gnu-gcc"' >> .cargo/config.toml
 
-      # FreeBSD cross-compilation via cross tool
+      # FreeBSD cross-compilation via cross tool (prebuilt binary, pinned by
+      # the action — avoids compiling cross from git HEAD on every release)
       - name: Install cross for FreeBSD
         if: matrix.target == 'x86_64-unknown-freebsd'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        uses: taiki-e/install-action@cross
 
       - name: Build release (cross)
         if: matrix.target == 'x86_64-unknown-freebsd'
-        run: cross build --release --target ${{ matrix.target }}
+        run: cross build --release --locked --target ${{ matrix.target }}
 
       - name: Build release
         if: matrix.target != 'x86_64-unknown-freebsd'
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --locked --target ${{ matrix.target }}
 
       # Rename binary for upload
       - name: Prepare binary (Unix)

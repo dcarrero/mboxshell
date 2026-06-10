@@ -27,9 +27,6 @@ bincode = "1.3"
 # Hashing for index integrity
 sha2 = "0.10"
 
-# Efficient I/O
-memmap2 = "0.9"
-
 # CLI
 clap = { version = "4", features = ["derive", "env", "wrap_help"] }
 
@@ -58,7 +55,6 @@ clap_mangen = "0.2"
 tracing-appender = "0.2"
 
 # Utilities
-byteorder = "1"
 humansize = "2"
 lru = "0.12"
 unicode-width = "0.2"
@@ -78,6 +74,13 @@ ammonia = "4"
 # reliably brings a match into view on messages with long, wrapped lines).
 ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
 crossterm = "0.28"
+
+# Distributed binaries: smaller and faster at the cost of slower release
+# builds (only paid on tag pushes).
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
