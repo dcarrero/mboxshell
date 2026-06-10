@@ -76,11 +76,27 @@ pub fn export_csv(
 /// Escape a value for CSV (RFC 4180).
 ///
 /// Wraps in double quotes if the value contains commas, quotes, or newlines.
+/// Values starting with `=`, `+`, `-`, `@`, tab or CR get a leading `'` so
+/// spreadsheet apps (Excel, LibreOffice) treat them as text instead of
+/// executing them as formulas (CSV injection).
 fn csv_escape(value: &str) -> String {
-    if value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r') {
-        format!("\"{}\"", value.replace('"', "\"\""))
+    let needs_guard = matches!(
+        value.chars().next(),
+        Some('=' | '+' | '-' | '@' | '\t' | '\r')
+    );
+    let guarded = if needs_guard {
+        format!("'{value}")
     } else {
         value.to_string()
+    };
+    if guarded.contains(',')
+        || guarded.contains('"')
+        || guarded.contains('\n')
+        || guarded.contains('\r')
+    {
+        format!("\"{}\"", guarded.replace('"', "\"\""))
+    } else {
+        guarded
     }
 }
 
@@ -106,5 +122,24 @@ mod tests {
     #[test]
     fn test_csv_escape_newline() {
         assert_eq!(csv_escape("line1\nline2"), "\"line1\nline2\"");
+    }
+
+    #[test]
+    fn test_csv_escape_formula_injection() {
+        assert_eq!(csv_escape("=cmd|'/c calc'!A1"), "'=cmd|'/c calc'!A1");
+        assert_eq!(csv_escape("+1234"), "'+1234");
+        assert_eq!(csv_escape("-2+3"), "'-2+3");
+        assert_eq!(csv_escape("@SUM(A1)"), "'@SUM(A1)");
+    }
+
+    #[test]
+    fn test_csv_escape_formula_injection_with_comma() {
+        // Guard prefix and RFC 4180 quoting must compose.
+        assert_eq!(csv_escape("=1,2"), "\"'=1,2\"");
+    }
+
+    #[test]
+    fn test_csv_escape_inner_equals_not_guarded() {
+        assert_eq!(csv_escape("a=b"), "a=b");
     }
 }

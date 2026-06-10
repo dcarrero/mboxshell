@@ -159,6 +159,20 @@ fn load_index_from_file(
         return Ok(None);
     }
 
+    // A corrupt or crafted index could carry offsets/lengths pointing outside
+    // the MBOX; reading such an entry would attempt an arbitrarily large
+    // allocation before the read fails. Treat it as invalid and rebuild.
+    let mbox_len = mbox_meta.len();
+    let in_bounds = entries.iter().all(|e| {
+        e.offset
+            .checked_add(e.length)
+            .is_some_and(|end| end <= mbox_len)
+    });
+    if !in_bounds {
+        debug!("Index contains entries beyond the MBOX bounds");
+        return Ok(None);
+    }
+
     Ok(Some(entries))
 }
 
@@ -266,4 +280,38 @@ pub fn index_file_size(mbox_path: &Path) -> u64 {
         .or_else(|_| std::fs::metadata(cache_index_path_for(mbox_path)))
         .map(|m| m.len())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_index_rejects_out_of_bounds_entries() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+
+        let entries = build_index(&mbox_path, true, None).expect("build index");
+        assert!(!entries.is_empty());
+        assert!(load_index(&mbox_path).expect("load").is_some());
+
+        // Tamper: point the first entry past the end of the MBOX. A length of
+        // u64::MAX would also overflow offset + length without checked_add.
+        let mut tampered = entries.clone();
+        tampered[0].length = u64::MAX;
+        write_index(&mbox_path, &tampered).expect("write tampered index");
+        assert!(load_index(&mbox_path).expect("load").is_none());
+
+        // Tamper: offset + length just one byte beyond the file.
+        let mbox_len = std::fs::metadata(&mbox_path).expect("metadata").len();
+        let mut tampered = entries.clone();
+        tampered[0].offset = mbox_len - tampered[0].length + 1;
+        write_index(&mbox_path, &tampered).expect("write tampered index");
+        assert!(load_index(&mbox_path).expect("load").is_none());
+
+        // A valid index still loads after rebuilding.
+        write_index(&mbox_path, &entries).expect("write valid index");
+        assert!(load_index(&mbox_path).expect("load").is_some());
+    }
 }

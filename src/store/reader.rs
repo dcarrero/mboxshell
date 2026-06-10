@@ -77,7 +77,13 @@ impl MboxStore {
         self.file
             .seek(SeekFrom::Start(entry.offset))
             .map_err(|e| MboxError::io(&self.path, e))?;
-        let mut buf = vec![0u8; entry.length as usize];
+        // Explicit conversion: on 32-bit targets a length above usize::MAX
+        // would silently truncate with `as`, under-allocating the buffer.
+        let length = usize::try_from(entry.length).map_err(|_| MboxError::ParseError {
+            offset: entry.offset,
+            reason: format!("message length {} exceeds addressable memory", entry.length),
+        })?;
+        let mut buf = vec![0u8; length];
         self.file
             .read_exact(&mut buf)
             .map_err(|e| MboxError::io(&self.path, e))?;
