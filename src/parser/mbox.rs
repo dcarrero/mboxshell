@@ -24,6 +24,10 @@ const MAX_MESSAGE_SIZE: usize = 256 * 1024 * 1024;
 ///
 /// - Mixed `\n` and `\r\n` line endings
 /// - `From ` lines not preceded by a blank line (logs a warning)
+/// - `From `-prefixed lines inside message bodies: only lines shaped like a
+///   real separator (`From <sender> <asctime date>`) split messages, and
+///   git `format-patch` pseudo-separators (magic date `Mon Sep 17 00:00:00
+///   2001`) are treated as content unless the file itself is a patch series
 /// - Truncated messages at EOF
 /// - NUL bytes and other binary content in the body
 /// - UTF-8 BOM at the start of the file
@@ -89,6 +93,7 @@ impl MboxParser {
         let mut bytes_read: u64 = 0;
         let mut prev_line_was_empty = true;
         let mut first_line = true;
+        let mut git_patch_mbox = false;
         let mut last_progress: u64 = 0;
 
         // Reusable line buffer
@@ -112,7 +117,18 @@ impl MboxParser {
                 consumed as u64
             };
 
-            let is_from_line = is_mbox_separator(&line_buf);
+            let kind = classify_from_line(&line_buf);
+            if first_line && kind == FromLineKind::GitPatchMarker {
+                git_patch_mbox = true;
+            }
+            let is_from_line = match kind {
+                FromLineKind::Separator => true,
+                FromLineKind::GitPatchMarker => git_patch_mbox,
+                // The very first line of the file is a separator even if
+                // malformed: there is no preceding content to mis-split and
+                // some writers use nonstandard From lines.
+                FromLineKind::Content => first_line && starts_with_from(&line_buf),
+            };
 
             if is_from_line && (first_line || prev_line_was_empty) {
                 if !message_buf.is_empty() {
@@ -199,6 +215,7 @@ impl MboxParser {
         let mut in_headers = false;
         let mut prev_line_was_empty = true;
         let mut first_line = true;
+        let mut git_patch_mbox = false;
         let mut bytes_read: u64 = 0;
         let mut last_progress: u64 = 0;
         let mut prev_message_start: Option<u64> = None;
@@ -228,7 +245,16 @@ impl MboxParser {
                 consumed as u64
             };
 
-            let is_from_line = is_mbox_separator(&line_buf);
+            let kind = classify_from_line(&line_buf);
+            if first_line && kind == FromLineKind::GitPatchMarker {
+                git_patch_mbox = true;
+            }
+            let is_from_line = match kind {
+                FromLineKind::Separator => true,
+                FromLineKind::GitPatchMarker => git_patch_mbox,
+                // See `parse()`: lenient on the very first line of the file.
+                FromLineKind::Content => first_line && starts_with_from(&line_buf),
+            };
 
             if is_from_line {
                 if !first_line && !prev_line_was_empty {
@@ -307,15 +333,133 @@ impl MboxParser {
     }
 }
 
-/// Check whether a line is an MBOX separator (`From ` at the start).
-fn is_mbox_separator(line: &[u8]) -> bool {
-    // Skip BOM if present at very start
+/// BOM-tolerant check for a `From `-prefixed line.
+fn starts_with_from(line: &[u8]) -> bool {
     let line = if line.starts_with(&[0xEF, 0xBB, 0xBF]) {
         &line[3..]
     } else {
         line
     };
     line.starts_with(b"From ")
+}
+
+/// Classification of a line with respect to MBOX message separation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FromLineKind {
+    /// Regular content — including `From `-prefixed lines that do not have
+    /// the structure of a real separator (e.g. quoted email headers inside
+    /// a message body, issue #16).
+    Content,
+    /// A structurally valid `From <sender> <asctime date>` separator.
+    Separator,
+    /// A valid separator shape carrying git's `format-patch` magic
+    /// timestamp (`Mon Sep 17 00:00:00 2001`). Only treated as a real
+    /// separator when the file itself is a git patch series (i.e. it
+    /// starts with one); inside a normal mailbox it is almost always a
+    /// patch quoted verbatim in a message body (issue #16).
+    GitPatchMarker,
+}
+
+/// Classify a line as MBOX separator, git-patch marker, or plain content.
+///
+/// A separator must look like `From <sender> <asctime date>` and end right
+/// after the date (an optional timezone is allowed before or after the
+/// year). Anything trailing the date — like the `<br>` of an HTML body that
+/// quotes an email verbatim — disqualifies the line.
+fn classify_from_line(line: &[u8]) -> FromLineKind {
+    // Skip BOM if present at very start
+    let line = if line.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &line[3..]
+    } else {
+        line
+    };
+    if !line.starts_with(b"From ") {
+        return FromLineKind::Content;
+    }
+    let Ok(rest) = std::str::from_utf8(&line[5..]) else {
+        return FromLineKind::Content;
+    };
+    let tokens: Vec<&str> = rest.split_ascii_whitespace().collect();
+
+    // sender + "Www Mmm dd hh:mm:ss yyyy" (+ optional timezone)
+    let date = match tokens.len() {
+        6 => &tokens[1..6],
+        7 if is_timezone(tokens[6]) => &tokens[1..6],
+        7 if is_timezone(tokens[5]) && is_year(tokens[6]) => {
+            // "Www Mmm dd hh:mm:ss TZ yyyy" (old ctime placement)
+            &tokens[1..5] // year checked above, validate the rest below
+        }
+        _ => return FromLineKind::Content,
+    };
+    let valid = match date {
+        [dow, mon, day, time, year] => {
+            is_day_of_week(dow) && is_month(mon) && is_day(day) && is_time(time) && is_year(year)
+        }
+        [dow, mon, day, time] => {
+            is_day_of_week(dow) && is_month(mon) && is_day(day) && is_time(time)
+        }
+        _ => false,
+    };
+    if !valid {
+        return FromLineKind::Content;
+    }
+
+    // `git format-patch` always stamps its pseudo-mbox From line with this
+    // fixed magic date (chosen as a marker; it predates git itself).
+    if rest.trim_end().ends_with("Mon Sep 17 00:00:00 2001") {
+        return FromLineKind::GitPatchMarker;
+    }
+    FromLineKind::Separator
+}
+
+fn is_day_of_week(s: &str) -> bool {
+    matches!(s, "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")
+}
+
+fn is_month(s: &str) -> bool {
+    matches!(
+        s,
+        "Jan"
+            | "Feb"
+            | "Mar"
+            | "Apr"
+            | "May"
+            | "Jun"
+            | "Jul"
+            | "Aug"
+            | "Sep"
+            | "Oct"
+            | "Nov"
+            | "Dec"
+    )
+}
+
+fn is_day(s: &str) -> bool {
+    (1..=2).contains(&s.len()) && s.parse::<u8>().is_ok_and(|d| (1..=31).contains(&d))
+}
+
+fn is_time(s: &str) -> bool {
+    let mut parts = s.split(':');
+    let (Some(h), Some(m), Some(sec), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return false;
+    };
+    let ok =
+        |t: &str, max: u8| (1..=2).contains(&t.len()) && t.parse::<u8>().is_ok_and(|v| v <= max);
+    ok(h, 23) && ok(m, 59) && ok(sec, 61)
+}
+
+fn is_year(s: &str) -> bool {
+    s.len() == 4 && s.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn is_timezone(s: &str) -> bool {
+    let numeric = (s.starts_with('+') || s.starts_with('-'))
+        && s.len() == 5
+        && s[1..].bytes().all(|b| b.is_ascii_digit());
+    let named = (1..=5).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_uppercase());
+    numeric || named
 }
 
 /// Check whether a line is blank (empty or only whitespace / CR / LF).
@@ -329,16 +473,80 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_mbox_separator() {
-        assert!(is_mbox_separator(
-            b"From user@example.com Thu Jan 01 00:00:00 2024\n"
-        ));
-        assert!(is_mbox_separator(
-            b"From sender@example.com Mon Feb 12 10:00:00 2024\n"
-        ));
-        assert!(!is_mbox_separator(b"from user@example.com\n")); // lowercase
-        assert!(!is_mbox_separator(b">From user@example.com\n")); // escaped
-        assert!(!is_mbox_separator(b"Subject: From here\n"));
+    fn test_classify_from_line_separators() {
+        use FromLineKind::*;
+        assert_eq!(
+            classify_from_line(b"From user@example.com Thu Jan 01 00:00:00 2024\n"),
+            Separator
+        );
+        assert_eq!(
+            classify_from_line(b"From sender@example.com Mon Feb 12 10:00:00 2024\n"),
+            Separator
+        );
+        // Thunderbird-style "-" sender, CRLF ending
+        assert_eq!(
+            classify_from_line(b"From - Thu Jan 01 00:00:00 2024\r\n"),
+            Separator
+        );
+        // asctime day padding collapses to a single-digit day token
+        assert_eq!(
+            classify_from_line(b"From MAILER-DAEMON Fri Jul  8 12:08:34 2011\n"),
+            Separator
+        );
+        // Timezone after the year, and old ctime placement before the year
+        assert_eq!(
+            classify_from_line(b"From user@example.com Mon Sep 18 00:00:00 2023 +0200\n"),
+            Separator
+        );
+        assert_eq!(
+            classify_from_line(b"From user@example.com Fri Jul  8 12:08:34 EDT 2011\n"),
+            Separator
+        );
+    }
+
+    #[test]
+    fn test_classify_from_line_content() {
+        use FromLineKind::*;
+        assert_eq!(classify_from_line(b"from user@example.com\n"), Content); // lowercase
+        assert_eq!(classify_from_line(b">From user@example.com\n"), Content); // escaped
+        assert_eq!(classify_from_line(b"Subject: From here\n"), Content);
+        // Body prose starting with "From "
+        assert_eq!(classify_from_line(b"From here on, all is well\n"), Content);
+        // No date at all
+        assert_eq!(classify_from_line(b"From user@example.com\n"), Content);
+        // Trailing junk after the date — the issue #16 HTML case
+        assert_eq!(
+            classify_from_line(b"From abc123 Mon Sep 17 00:00:00 2001<br>\n"),
+            Content
+        );
+        // Bogus date fields
+        assert_eq!(
+            classify_from_line(b"From u@e.com Xxx Jan 01 00:00:00 2024\n"),
+            Content
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Thu Jan 32 00:00:00 2024\n"),
+            Content
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Thu Jan 01 25:00:00 2024\n"),
+            Content
+        );
+    }
+
+    #[test]
+    fn test_classify_from_line_git_magic_date() {
+        // `git format-patch` pseudo-separator: structurally valid, but
+        // stamped with git's fixed magic date.
+        assert_eq!(
+            classify_from_line(b"From 8f3b1c4d5e6f Mon Sep 17 00:00:00 2001\n"),
+            FromLineKind::GitPatchMarker
+        );
+        // Same date with a different shape is still just a separator
+        assert_eq!(
+            classify_from_line(b"From u@e.com Mon Sep 17 00:00:01 2001\n"),
+            FromLineKind::Separator
+        );
     }
 
     #[test]
@@ -350,10 +558,92 @@ mod tests {
     }
 
     #[test]
-    fn test_is_mbox_separator_with_bom() {
+    fn test_classify_from_line_with_bom() {
         let mut line = vec![0xEF, 0xBB, 0xBF];
         line.extend_from_slice(b"From user@example.com Thu Jan 01 00:00:00 2024\n");
-        assert!(is_mbox_separator(&line));
+        assert_eq!(classify_from_line(&line), FromLineKind::Separator);
+    }
+
+    /// Regression test for issue #16: an email quoted verbatim inside a
+    /// message body (a `git format-patch` mail, with and without an HTML
+    /// `<br>` tail) must not split the containing message.
+    #[test]
+    fn test_embedded_git_patch_does_not_split_message() {
+        use std::io::Write;
+
+        let mut data = Vec::new();
+        data.extend_from_slice(b"From a@example.com Thu Jan 01 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: Patch review\n");
+        data.extend_from_slice(b"Message-ID: <1@example.com>\n");
+        data.extend_from_slice(b"\n");
+        data.extend_from_slice(b"Thanks,<br>\n");
+        data.extend_from_slice(b"<br>\n");
+        // HTML part: trailing <br> after the date
+        data.extend_from_slice(b"From abc123 Mon Sep 17 00:00:00 2001<br>\n");
+        data.extend_from_slice(b"From: Jakov <j@example.com><br>\n");
+        data.extend_from_slice(b"Subject: [PATCH] fix the thing<br>\n");
+        data.extend_from_slice(b"\n");
+        // Plain-text part: bare git pseudo-separator, blank line before it
+        data.extend_from_slice(b"From abc123 Mon Sep 17 00:00:00 2001\n");
+        data.extend_from_slice(b"From: Jakov <j@example.com>\n");
+        data.extend_from_slice(b"\n");
+        data.extend_from_slice(b"From b@example.com Thu Jan 02 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: Second real message\n");
+        data.extend_from_slice(b"Message-ID: <2@example.com>\n");
+        data.extend_from_slice(b"\n");
+        data.extend_from_slice(b"Body\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut subjects: Vec<String> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |_off, _len, headers| {
+                    let h = String::from_utf8_lossy(headers);
+                    let subj = h
+                        .lines()
+                        .find(|l| l.starts_with("Subject: "))
+                        .unwrap_or("")
+                        .to_string();
+                    subjects.push(subj);
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(count, 2, "embedded quoted email must not split the message");
+        assert_eq!(subjects[0], "Subject: Patch review");
+        assert_eq!(subjects[1], "Subject: Second real message");
+    }
+
+    /// A file produced by `git format-patch` IS a valid mbox whose
+    /// separators all carry the magic date; it must still split normally.
+    #[test]
+    fn test_git_patch_series_file_still_splits() {
+        use std::io::Write;
+
+        let mut data = Vec::new();
+        for i in 1..=3 {
+            data.extend_from_slice(b"From 8f3b1c4d5e6f Mon Sep 17 00:00:00 2001\n");
+            data.extend_from_slice(format!("Subject: [PATCH {i}/3] change\n").as_bytes());
+            data.extend_from_slice(b"\n");
+            data.extend_from_slice(b"diff --git a/x b/x\n");
+            data.extend_from_slice(b"\n");
+        }
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let count = parser
+            .parse_headers_only(&mut |_, _, _| true, None)
+            .unwrap();
+        assert_eq!(count, 3, "a patch-series mbox must split on every patch");
     }
 
     /// Regression test for issue #15: a header line whose trailing CRLF lands

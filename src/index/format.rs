@@ -21,7 +21,11 @@
 pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 
 /// Current index format version.
-pub const VERSION: u32 = 1;
+///
+/// v2: same binary layout as v1, bumped so that indexes built before the
+/// issue #16 separator fix (quoted `git format-patch` mails splitting
+/// messages) are rebuilt automatically.
+pub const VERSION: u32 = 2;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;
