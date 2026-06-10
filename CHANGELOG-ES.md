@@ -4,6 +4,13 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.4.5
+
+- Seguridad: **un fichero de índice corrupto o manipulado ya no puede provocar una reserva de memoria gigante.** Al cargar un `.mboxshell.idx`, ahora se valida que el `offset + length` de cada entrada (con aritmética segura frente a desbordamientos) cae dentro del tamaño real del MBOX; un índice con entradas fuera de rango se trata como inválido y se reconstruye, igual que cualquier otro índice obsoleto. Las longitudes de mensaje también se convierten con una conversión comprobada en el store, en vez de un cast silencioso que podía truncar en sistemas de 32 bits.
+- Seguridad: **las exportaciones a CSV ahora protegen contra la inyección de fórmulas de hoja de cálculo.** Los valores que empiezan por `=`, `+`, `-`, `@`, tabulador o CR reciben un `'` inicial para que Excel/LibreOffice los muestren como texto en vez de evaluarlos como fórmulas — un asunto tipo `=cmd|...` en un mensaje de spam era el vector típico al abrir el CSV exportado en una hoja de cálculo.
+- Cambiado: **los binarios de release ahora son más pequeños y algo más rápidos** — compilados con LTO thin, una sola unidad de codegen y símbolos eliminados mediante una nueva sección `[profile.release]`.
+- Cambiado: mantenimiento de CI/build — caché de cargo en CI con cancelación automática de runs supersedidos, fmt/clippy se ejecutan una sola vez en Linux en vez de en cada SO, token del workflow restringido a solo lectura, `cross` se instala como binario precompilado y pinneado en vez de compilarse desde el HEAD de git, builds con `--locked`, y eliminadas las dependencias sin uso `memmap2` y `byteorder`.
+
 ## v0.4.4
 
 - Corregido: **las líneas de cabecera que caen justo en el límite del búfer de lectura de 1 MB ya no se parten**, algo que antes truncaba las cabeceras de un mensaje y descartaba todo lo que venía después del punto de corte (`Subject`, `Date`, …). Los mensajes afectados aparecían con fecha `1970-01-01` y asunto `unknown`, e inflaban el recuento de mensajes. El lector de líneas ahora acumula una línea física completa a través de las recargas del búfer en vez de tratar un fragmento parcial como una línea completa. Gracias a @jpetrina por el diagnóstico preciso y la propuesta de corrección (#15).

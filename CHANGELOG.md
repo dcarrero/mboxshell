@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.5
+
+- Security: **a corrupt or crafted index file can no longer trigger a huge memory allocation.** When loading a `.mboxshell.idx`, the `offset + length` of every entry is now validated (with overflow-safe arithmetic) against the actual MBOX size; an index with out-of-range entries is treated as invalid and rebuilt, just like any other stale index. Message lengths are also converted with a checked conversion in the store instead of a silent cast that could truncate on 32-bit targets.
+- Security: **CSV exports now guard against spreadsheet formula injection.** Field values starting with `=`, `+`, `-`, `@`, tab or CR get a leading `'` so Excel/LibreOffice display them as text instead of evaluating them as formulas — a subject line like `=cmd|...` in a spam message was a typical vector when opening the exported CSV in a spreadsheet.
+- Change: **release binaries are now smaller and slightly faster** — built with thin LTO, a single codegen unit and stripped symbols via a new `[profile.release]` section.
+- Change: CI/build housekeeping — cargo caching in CI with superseded runs auto-cancelled, fmt/clippy run once on Linux instead of on every OS, workflow token restricted to read-only, `cross` installed as a pinned prebuilt binary instead of compiled from git HEAD, builds with `--locked`, and the unused `memmap2` and `byteorder` dependencies removed.
+
 ## v0.4.4
 
 - Fix: **header lines that land exactly on the 1 MB read-buffer boundary are no longer split**, which previously truncated a message's headers and dropped everything after the split point (`Subject`, `Date`, …). Affected messages showed up with a `1970-01-01` date and an `unknown` subject, and inflated the message count. The line reader now accumulates a full physical line across buffer refills instead of treating a partial chunk as a complete line. Thanks to @jpetrina for the precise diagnosis and proposed fix (#15).
