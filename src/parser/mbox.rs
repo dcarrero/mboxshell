@@ -366,8 +366,8 @@ enum FromLineKind {
 /// after the date (an optional timezone is allowed before or after the
 /// year). Anything trailing the date — like the `<br>` of an HTML body that
 /// quotes an email verbatim — disqualifies the line. A bare `From ` line
-/// with nothing after it is also a separator: some writers (e.g. GYB /
-/// got-your-back Gmail backups) emit exactly that (issue #16).
+/// with nothing after it is also a separator: some writers (e.g.
+/// Thunderbird exporting a Gmail account) emit exactly that (issue #16).
 fn classify_from_line(line: &[u8]) -> FromLineKind {
     // Skip BOM if present at very start
     let line = if line.starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -385,7 +385,7 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
 
     // sender + "Www Mmm dd hh:mm:ss yyyy" (+ optional timezone)
     let date = match tokens.len() {
-        // Bare "From " with nothing after it: GYB-style separator.
+        // Bare "From " with nothing after it: Thunderbird-style separator.
         0 => return FromLineKind::Separator,
         6 => &tokens[1..6],
         7 if is_timezone(tokens[6]) => &tokens[1..6],
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     fn test_classify_from_line_separators() {
         use FromLineKind::*;
-        // Bare "From " separator (GYB-style, issue #16)
+        // Bare "From " separator (Thunderbird-style, issue #16)
         assert_eq!(classify_from_line(b"From \n"), Separator);
         assert_eq!(classify_from_line(b"From \r\n"), Separator);
         assert_eq!(classify_from_line(b"From  \n"), Separator);
@@ -629,12 +629,12 @@ mod tests {
         assert_eq!(subjects[1], "Subject: Second real message");
     }
 
-    /// Regression test for issue #16 (second report): GYB writes bare
+    /// Regression test for issue #16 (second report): Thunderbird writes bare
     /// `From ` separators with no sender/date and no blank line between
     /// messages. They must keep splitting, while an embedded quoted git
     /// patch in a body must not.
     #[test]
-    fn test_gyb_style_bare_from_separators() {
+    fn test_bare_from_separators_still_split() {
         use std::io::Write;
 
         let mut data = Vec::new();
@@ -646,7 +646,7 @@ mod tests {
         data.extend_from_slice(b"From abc123 Mon Sep 17 00:00:00 2001<br>\n");
         data.extend_from_slice(b"From: Jakov <j@example.com><br>\n");
         data.extend_from_slice(b"Body of first message\n");
-        // No blank line before the next bare separator (GYB does this too)
+        // No blank line before the next bare separator (Thunderbird does this too)
         data.extend_from_slice(b"From \n");
         data.extend_from_slice(b"Subject: Second\n");
         data.extend_from_slice(b"Message-ID: <2@example.com>\n");
