@@ -4,6 +4,10 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.7
+
+- Fix: **stale on-screen artifacts in the TUI caused by control characters in message text.** Raw control characters in a message (tabs were the typical culprit, in bodies and even headers) were written to the terminal as-is; the terminal moved the cursor on its own, desyncing ratatui's cell-diffing from what was actually on screen, so fragments of previously viewed messages survived in areas the UI believed blank. All rendered text — body, raw view, headers and list columns — is now sanitized before drawing: tabs expand to 8-column tab stops and other control characters show as a visible `�`. In-body search offsets were adjusted to match, so match highlighting stays aligned. Thanks to @jpetrina for the report and for verifying the fix (#17).
+
 ## v0.4.6
 
 - Fix: **emails quoted verbatim inside a message body no longer split the containing message.** A `From `-prefixed line now separates messages only when it is structurally a real mbox separator — `From <sender> <asctime date>` ending right after the date (optional timezone allowed), or a bare `From ` line with nothing after it (as Thunderbird writes when exporting a Gmail account). Quoted `git format-patch` mails — whose pseudo-separator carries git's fixed magic date `Mon Sep 17 00:00:00 2001` — are treated as content inside a normal mailbox, while a file that *starts* with one (a patch series, itself valid mbox) still splits on every patch. The index format version was bumped, so existing indexes are rebuilt automatically with the corrected boundaries. Thanks to @jpetrina for the report, the on-the-spot debugging and the bare-separator fix (#16).
