@@ -365,7 +365,9 @@ enum FromLineKind {
 /// A separator must look like `From <sender> <asctime date>` and end right
 /// after the date (an optional timezone is allowed before or after the
 /// year). Anything trailing the date — like the `<br>` of an HTML body that
-/// quotes an email verbatim — disqualifies the line.
+/// quotes an email verbatim — disqualifies the line. A bare `From ` line
+/// with nothing after it is also a separator: some writers (e.g. GYB /
+/// got-your-back Gmail backups) emit exactly that (issue #16).
 fn classify_from_line(line: &[u8]) -> FromLineKind {
     // Skip BOM if present at very start
     let line = if line.starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -383,6 +385,8 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
 
     // sender + "Www Mmm dd hh:mm:ss yyyy" (+ optional timezone)
     let date = match tokens.len() {
+        // Bare "From " with nothing after it: GYB-style separator.
+        0 => return FromLineKind::Separator,
         6 => &tokens[1..6],
         7 if is_timezone(tokens[6]) => &tokens[1..6],
         7 if is_timezone(tokens[5]) && is_year(tokens[6]) => {
@@ -475,6 +479,10 @@ mod tests {
     #[test]
     fn test_classify_from_line_separators() {
         use FromLineKind::*;
+        // Bare "From " separator (GYB-style, issue #16)
+        assert_eq!(classify_from_line(b"From \n"), Separator);
+        assert_eq!(classify_from_line(b"From \r\n"), Separator);
+        assert_eq!(classify_from_line(b"From  \n"), Separator);
         assert_eq!(
             classify_from_line(b"From user@example.com Thu Jan 01 00:00:00 2024\n"),
             Separator
@@ -512,8 +520,9 @@ mod tests {
         assert_eq!(classify_from_line(b"Subject: From here\n"), Content);
         // Body prose starting with "From "
         assert_eq!(classify_from_line(b"From here on, all is well\n"), Content);
-        // No date at all
+        // No date at all (but see the bare "From " separator case above)
         assert_eq!(classify_from_line(b"From user@example.com\n"), Content);
+        assert_eq!(classify_from_line(b"From -\n"), Content);
         // Trailing junk after the date — the issue #16 HTML case
         assert_eq!(
             classify_from_line(b"From abc123 Mon Sep 17 00:00:00 2001<br>\n"),
@@ -618,6 +627,41 @@ mod tests {
         assert_eq!(count, 2, "embedded quoted email must not split the message");
         assert_eq!(subjects[0], "Subject: Patch review");
         assert_eq!(subjects[1], "Subject: Second real message");
+    }
+
+    /// Regression test for issue #16 (second report): GYB writes bare
+    /// `From ` separators with no sender/date and no blank line between
+    /// messages. They must keep splitting, while an embedded quoted git
+    /// patch in a body must not.
+    #[test]
+    fn test_gyb_style_bare_from_separators() {
+        use std::io::Write;
+
+        let mut data = Vec::new();
+        data.extend_from_slice(b"From \n");
+        data.extend_from_slice(b"Subject: First\n");
+        data.extend_from_slice(b"Message-ID: <1@example.com>\n");
+        data.extend_from_slice(b"\n");
+        data.extend_from_slice(b"Thanks,<br>\n");
+        data.extend_from_slice(b"From abc123 Mon Sep 17 00:00:00 2001<br>\n");
+        data.extend_from_slice(b"From: Jakov <j@example.com><br>\n");
+        data.extend_from_slice(b"Body of first message\n");
+        // No blank line before the next bare separator (GYB does this too)
+        data.extend_from_slice(b"From \n");
+        data.extend_from_slice(b"Subject: Second\n");
+        data.extend_from_slice(b"Message-ID: <2@example.com>\n");
+        data.extend_from_slice(b"\n");
+        data.extend_from_slice(b"Body\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let count = parser
+            .parse_headers_only(&mut |_, _, _| true, None)
+            .unwrap();
+        assert_eq!(count, 2, "bare 'From ' lines must separate messages");
     }
 
     /// A file produced by `git format-patch` IS a valid mbox whose

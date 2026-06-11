@@ -25,7 +25,10 @@ pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 /// v2: same binary layout as v1, bumped so that indexes built before the
 /// issue #16 separator fix (quoted `git format-patch` mails splitting
 /// messages) are rebuilt automatically.
-pub const VERSION: u32 = 2;
+/// v3: bumped again (layout still unchanged) because the unreleased v2
+/// parser rejected bare `From ` separators (GYB-style mboxes), so v2
+/// indexes built from `main` may carry mis-split boundaries.
+pub const VERSION: u32 = 3;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;
