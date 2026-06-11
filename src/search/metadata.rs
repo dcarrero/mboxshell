@@ -150,11 +150,29 @@ pub(crate) fn all_matches_metadata(entry: &MailEntry, op: &SearchOperator) -> bo
 /// `Contains` is a single bareword. This mirrors the semantics of the
 /// fulltext search and matches what users expect from search engines.
 pub(crate) fn matches_text(haystack: &str, op: &SearchOperator) -> bool {
-    let haystack_lower = haystack.to_lowercase();
     let needle = match op {
-        SearchOperator::Contains(s) | SearchOperator::Exact(s) => s,
+        SearchOperator::Contains(s) | SearchOperator::Exact(s) => s.as_str(),
     };
-    haystack_lower.contains(needle)
+    contains_lower(haystack, needle)
+}
+
+/// Case-insensitive substring check. The needle must already be lowercase
+/// (the query parser guarantees it).
+///
+/// This runs once per term per entry across the whole index, so the common
+/// all-ASCII case is matched byte-wise without allocating; only haystacks
+/// with non-ASCII content pay for a `to_lowercase()`.
+fn contains_lower(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    if haystack.is_ascii() && needle.is_ascii() {
+        let h = haystack.as_bytes();
+        let n = needle.as_bytes();
+        n.len() <= h.len() && h.windows(n.len()).any(|w| w.eq_ignore_ascii_case(n))
+    } else {
+        haystack.to_lowercase().contains(needle)
+    }
 }
 
 /// Check if entry's date matches the date filter.
@@ -326,6 +344,20 @@ mod tests {
         let q = parse_query("alice subject:\"Monthly Report\"");
         let results = search_metadata(&entries, &q);
         assert_eq!(results, vec![0]);
+    }
+
+    #[test]
+    fn test_contains_lower_case_insensitive() {
+        // ASCII fast path (no allocation)
+        assert!(contains_lower("Budget REPORT Q1", "report"));
+        assert!(contains_lower("alice@Example.COM", "example.com"));
+        assert!(!contains_lower("Budget Report", "meeting"));
+        assert!(contains_lower("anything", ""));
+        assert!(!contains_lower("ab", "abc"));
+        // Non-ASCII fallback keeps Unicode case folding
+        assert!(contains_lower("Reunión URGENTE", "reunión"));
+        assert!(contains_lower("CAFÉ con leche", "café"));
+        assert!(!contains_lower("Reunión", "cafe"));
     }
 
     #[test]

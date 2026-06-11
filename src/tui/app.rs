@@ -475,27 +475,33 @@ impl App {
     pub fn apply_sort(&mut self) {
         let entries = &self.entries;
         let asc = self.sort_ascending;
-        let col = self.sort_column;
-        self.visible_indices.sort_by(|&a, &b| {
-            let cmp = match col {
-                SortColumn::Date => entries[a].date.cmp(&entries[b].date),
-                SortColumn::From => entries[a]
-                    .from
-                    .address
-                    .to_lowercase()
-                    .cmp(&entries[b].from.address.to_lowercase()),
-                SortColumn::Subject => entries[a]
-                    .subject
-                    .to_lowercase()
-                    .cmp(&entries[b].subject.to_lowercase()),
-                SortColumn::Size => entries[a].length.cmp(&entries[b].length),
-            };
-            if asc {
-                cmp
-            } else {
-                cmp.reverse()
+        let dir = |cmp: std::cmp::Ordering| if asc { cmp } else { cmp.reverse() };
+        match self.sort_column {
+            SortColumn::Date => self
+                .visible_indices
+                .sort_by(|&a, &b| dir(entries[a].date.cmp(&entries[b].date))),
+            SortColumn::Size => self
+                .visible_indices
+                .sort_by(|&a, &b| dir(entries[a].length.cmp(&entries[b].length))),
+            // Text columns lowercase each row once (decorate-sort-undecorate)
+            // instead of twice per comparison — O(n) allocations rather than
+            // O(n log n), which is noticeable when sorting 100k+ rows.
+            col @ (SortColumn::From | SortColumn::Subject) => {
+                let mut decorated: Vec<(String, usize)> = self
+                    .visible_indices
+                    .iter()
+                    .map(|&i| {
+                        let key = match col {
+                            SortColumn::From => entries[i].from.address.to_lowercase(),
+                            _ => entries[i].subject.to_lowercase(),
+                        };
+                        (key, i)
+                    })
+                    .collect();
+                decorated.sort_by(|(ka, _), (kb, _)| dir(ka.cmp(kb)));
+                self.visible_indices = decorated.into_iter().map(|(_, i)| i).collect();
             }
-        });
+        }
     }
 
     /// Change the sort column (toggles direction if same column clicked again).
