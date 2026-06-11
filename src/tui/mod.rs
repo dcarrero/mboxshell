@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod event;
+pub mod text;
 pub mod theme;
 pub mod threading;
 pub mod ui;

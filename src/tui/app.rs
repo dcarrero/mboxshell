@@ -1084,7 +1084,10 @@ impl App {
         };
 
         for (line_idx, line) in text.lines().enumerate() {
-            for (start, end) in find_matches_ci(line, &self.body_search_query) {
+            // Sanitize exactly like the renderer does, so the byte ranges
+            // recorded here line up with the displayed (sanitized) text.
+            let line = crate::tui::text::sanitize_line(line);
+            for (start, end) in find_matches_ci(&line, &self.body_search_query) {
                 self.body_search_matches.push(BodyMatch {
                     line: line_idx,
                     start,

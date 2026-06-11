@@ -7,6 +7,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::i18n;
 use crate::tui::app::{App, PanelFocus, SortColumn};
+use crate::tui::text::sanitize_line;
 use crate::tui::theme::current_theme;
 
 /// Render the message list table with virtual scrolling.
@@ -106,7 +107,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 entry.from.display_name.clone()
             };
-            let from_truncated = truncate_str(&from_display, from_w as usize);
+            let from_truncated = truncate_str(&sanitize_line(&from_display), from_w as usize);
 
             // Indent subject in threaded view
             let depth = app.thread_depth(vis_idx);
@@ -124,7 +125,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                 String::new()
             };
             let avail_subj = (subject_w as usize).saturating_sub(indent.len());
-            let subject_truncated = format!("{indent}{}", truncate_str(&entry.subject, avail_subj));
+            let subject_truncated = format!(
+                "{indent}{}",
+                truncate_str(&sanitize_line(&entry.subject), avail_subj)
+            );
 
             let size = humansize::format_size(entry.length, humansize::BINARY);
             let att = if entry.has_attachments { "@" } else { " " };

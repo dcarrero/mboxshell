@@ -8,6 +8,7 @@ use ratatui::Frame;
 
 use crate::i18n;
 use crate::tui::app::{App, BodyMatch, PanelFocus};
+use crate::tui::text::sanitize_line;
 use crate::tui::theme::current_theme;
 
 /// Render the message view panel.
@@ -71,7 +72,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             let raw = &body.raw_headers;
             for line in raw.lines() {
                 lines.push(Line::from(Span::styled(
-                    line.to_string(),
+                    sanitize_line(line).into_owned(),
                     theme.message_body,
                 )));
             }
@@ -79,7 +80,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             if let Some(text) = &body.text {
                 for line in text.lines() {
                     lines.push(Line::from(Span::styled(
-                        line.to_string(),
+                        sanitize_line(line).into_owned(),
                         theme.message_body,
                     )));
                 }
@@ -91,6 +92,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             // Show all raw headers
             if let Some(body) = &app.current_body {
                 for line in body.raw_headers.lines() {
+                    let line = sanitize_line(line);
                     if let Some(colon_pos) = line.find(':') {
                         let label = &line[..colon_pos + 1];
                         let value = line[colon_pos + 1..].trim();
@@ -125,7 +127,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
             lines.push(Line::from(vec![
                 Span::styled(i18n::tui_header_from(), theme.message_header_label),
-                Span::styled(entry.from.display(), theme.message_header_value),
+                Span::styled(
+                    sanitize_line(&entry.from.display()).into_owned(),
+                    theme.message_header_value,
+                ),
             ]));
 
             if !entry.to.is_empty() {
@@ -137,7 +142,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     .join(", ");
                 lines.push(Line::from(vec![
                     Span::styled(i18n::tui_header_to(), theme.message_header_label),
-                    Span::styled(to_str, theme.message_header_value),
+                    Span::styled(
+                        sanitize_line(&to_str).into_owned(),
+                        theme.message_header_value,
+                    ),
                 ]));
             }
 
@@ -150,13 +158,19 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     .join(", ");
                 lines.push(Line::from(vec![
                     Span::styled(i18n::tui_header_cc(), theme.message_header_label),
-                    Span::styled(cc_str, theme.message_header_value),
+                    Span::styled(
+                        sanitize_line(&cc_str).into_owned(),
+                        theme.message_header_value,
+                    ),
                 ]));
             }
 
             lines.push(Line::from(vec![
                 Span::styled(i18n::tui_header_subject(), theme.message_header_label),
-                Span::styled(entry.subject.clone(), theme.message_header_value),
+                Span::styled(
+                    sanitize_line(&entry.subject).into_owned(),
+                    theme.message_header_value,
+                ),
             ]));
         }
 
@@ -174,10 +188,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         if let Some(body) = &app.current_body {
             if let Some(text) = &body.text {
                 for (idx, line) in text.lines().enumerate() {
+                    // Sanitize before styling. The in-body search sanitizes the
+                    // same way, so match byte ranges line up with what is shown.
+                    let line = sanitize_line(line);
                     // Highlight in-body search matches when present, otherwise
                     // fall back to plain URL detection.
                     let styled_line = style_body_line(
-                        line,
+                        &line,
                         &theme,
                         &app.body_search_matches,
                         app.body_search_index,
