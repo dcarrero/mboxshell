@@ -4,6 +4,11 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.4.6
+
+- Fix: **emails quoted verbatim inside a message body no longer split the containing message.** A `From `-prefixed line now separates messages only when it is structurally a real mbox separator — `From <sender> <asctime date>` ending right after the date (optional timezone allowed), or a bare `From ` line with nothing after it (as Thunderbird writes when exporting a Gmail account). Quoted `git format-patch` mails — whose pseudo-separator carries git's fixed magic date `Mon Sep 17 00:00:00 2001` — are treated as content inside a normal mailbox, while a file that *starts* with one (a patch series, itself valid mbox) still splits on every patch. The index format version was bumped, so existing indexes are rebuilt automatically with the corrected boundaries. Thanks to @jpetrina for the report, the on-the-spot debugging and the bare-separator fix (#16).
+- Change: **metadata search and column sorting allocate far less memory.** Case-insensitive matching no longer lowercases every field of every entry per search term (ASCII fields are compared in place; non-ASCII keeps full Unicode folding), and sorting by From/Subject computes each row's key once instead of twice per comparison — both noticeable on mailboxes with hundreds of thousands of messages.
+
 ## v0.4.5
 
 - Security: **a corrupt or crafted index file can no longer trigger a huge memory allocation.** When loading a `.mboxshell.idx`, the `offset + length` of every entry is now validated (with overflow-safe arithmetic) against the actual MBOX size; an index with out-of-range entries is treated as invalid and rebuilt, just like any other stale index. Message lengths are also converted with a checked conversion in the store instead of a silent cast that could truncate on 32-bit targets.

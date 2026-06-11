@@ -4,6 +4,11 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.4.6
+
+- Corregido: **los correos citados verbatim dentro del cuerpo de un mensaje ya no parten el mensaje que los contiene.** Una línea que empieza por `From ` ahora solo separa mensajes cuando es estructuralmente un separador mbox real — `From <remitente> <fecha asctime>` terminando justo después de la fecha (con zona horaria opcional), o una línea `From ` desnuda sin nada detrás (como las escribe Thunderbird al exportar una cuenta de Gmail). Los correos de `git format-patch` citados — cuyo pseudo-separador lleva la fecha mágica fija de git `Mon Sep 17 00:00:00 2001` — se tratan como contenido dentro de un buzón normal, mientras que un fichero que *empieza* por uno (una serie de parches, que es mbox válido en sí misma) sigue separándose en cada parche. Se ha subido la versión del formato de índice, así que los índices existentes se reconstruyen automáticamente con los límites corregidos. Gracias a @jpetrina por el reporte, la depuración al momento y el fix de los separadores desnudos (#16).
+- Cambiado: **la búsqueda por metadatos y la ordenación por columnas reservan mucha menos memoria.** La comparación sin distinción de mayúsculas ya no pasa a minúsculas cada campo de cada entrada por término de búsqueda (los campos ASCII se comparan in situ; los no-ASCII conservan el folding Unicode completo), y ordenar por Remitente/Asunto calcula la clave de cada fila una sola vez en lugar de dos veces por comparación — ambas cosas se notan en buzones con cientos de miles de mensajes.
+
 ## v0.4.5
 
 - Seguridad: **un fichero de índice corrupto o manipulado ya no puede provocar una reserva de memoria gigante.** Al cargar un `.mboxshell.idx`, ahora se valida que el `offset + length` de cada entrada (con aritmética segura frente a desbordamientos) cae dentro del tamaño real del MBOX; un índice con entradas fuera de rango se trata como inválido y se reconstruye, igual que cualquier otro índice obsoleto. Las longitudes de mensaje también se convierten con una conversión comprobada en el store, en vez de un cast silencioso que podía truncar en sistemas de 32 bits.
