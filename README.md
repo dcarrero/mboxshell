@@ -28,6 +28,10 @@ When you export your email from Gmail using Google Takeout, you get one or more 
 
 If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewer.net) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
 
+## Also in your browser: Online Mbox Viewer
+
+Need to peek at an MBOX file without installing anything? Try [Online Mbox Viewer](https://onlinemboxviewer.com) — a free, MIT-licensed web app by the same author. It opens and renders `.mbox` files entirely in your browser: nothing is uploaded to any server, so your email stays on your machine. Perfect for a quick look from any device. Source code at [github.com/dcarrero/online-mbox-viewer](https://github.com/dcarrero/online-mbox-viewer).
+
 ## Features
 
 - **Never loads the file into memory.** Uses streaming I/O with a 1 MB buffer. A 100 GB MBOX uses roughly the same ~500 MB of RAM as a 1 GB one (only the metadata index lives in memory).
