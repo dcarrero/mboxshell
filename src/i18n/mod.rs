@@ -537,6 +537,16 @@ msg!(
 );
 msg!(tui_exported, "Exported", "Exportado");
 msg!(tui_exported_csv, "message(s) as CSV", "mensaje(s) como CSV");
+msg!(
+    tui_exported_messages_html,
+    "message(s) as HTML",
+    "mensaje(s) como HTML"
+);
+msg!(
+    tui_exported_messages_txt,
+    "message(s) as TXT",
+    "mensaje(s) como TXT"
+);
 msg!(tui_history, "history", "historial");
 msg!(
     tui_search_hint,

@@ -648,11 +648,31 @@ fn export_current_eml(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
     }
 }
 
-/// Export the current message as a standalone HTML file.
+/// Export the current message — or all marked messages — as standalone HTML.
 fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<String> {
     std::fs::create_dir_all(output_dir)?;
 
-    if let (Some(entry), Some(body)) = (app.current_entry().cloned(), app.current_body.clone()) {
+    if !app.marked.is_empty() {
+        let entries: Vec<crate::model::mail::MailEntry> = app
+            .entries
+            .iter()
+            .filter(|e| app.marked.contains(&e.offset))
+            .cloned()
+            .collect();
+        let count = entries.len();
+        for entry in &entries {
+            let body = app.store.get_message(entry)?.clone();
+            crate::export::html::export_html(entry, &body, output_dir)?;
+        }
+        Ok(format!(
+            "{} {count} {} -> {}",
+            i18n::tui_exported(),
+            i18n::tui_exported_messages_html(),
+            output_dir.display()
+        ))
+    } else if let (Some(entry), Some(body)) =
+        (app.current_entry().cloned(), app.current_body.clone())
+    {
         let path = crate::export::html::export_html(&entry, &body, output_dir)?;
         let name = path
             .file_name()
@@ -668,11 +688,31 @@ fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<St
     }
 }
 
-/// Export the current message as TXT.
+/// Export the current message — or all marked messages — as TXT.
 fn export_current_txt(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<String> {
     std::fs::create_dir_all(output_dir)?;
 
-    if let (Some(entry), Some(body)) = (app.current_entry().cloned(), app.current_body.clone()) {
+    if !app.marked.is_empty() {
+        let entries: Vec<crate::model::mail::MailEntry> = app
+            .entries
+            .iter()
+            .filter(|e| app.marked.contains(&e.offset))
+            .cloned()
+            .collect();
+        let count = entries.len();
+        for entry in &entries {
+            let body = app.store.get_message(entry)?.clone();
+            crate::export::text::export_text(entry, &body, output_dir)?;
+        }
+        Ok(format!(
+            "{} {count} {} -> {}",
+            i18n::tui_exported(),
+            i18n::tui_exported_messages_txt(),
+            output_dir.display()
+        ))
+    } else if let (Some(entry), Some(body)) =
+        (app.current_entry().cloned(), app.current_body.clone())
+    {
         let path = crate::export::text::export_text(&entry, &body, output_dir)?;
         let name = path
             .file_name()
@@ -937,4 +977,46 @@ fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()
         _ => {}
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::app::App;
+    use std::path::PathBuf;
+
+    fn fixture(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(name)
+    }
+
+    /// Regression for #20: exporting with several messages marked must write
+    /// one file per marked message for HTML and TXT (not just the current one).
+    #[test]
+    fn export_html_and_txt_cover_all_marked_messages() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(
+            app.entries.len() >= 2,
+            "fixture needs at least two messages"
+        );
+        app.marked.insert(app.entries[0].offset);
+        app.marked.insert(app.entries[1].offset);
+
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tmp.path().to_path_buf();
+
+        export_current_html(&mut app, &out).unwrap();
+        export_current_txt(&mut app, &out).unwrap();
+
+        let count_ext = |ext: &str| {
+            std::fs::read_dir(&out)
+                .unwrap()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map(|x| x == ext).unwrap_or(false))
+                .count()
+        };
+        assert_eq!(count_ext("html"), 2, "one HTML file per marked message");
+        assert_eq!(count_ext("txt"), 2, "one TXT file per marked message");
+    }
 }
