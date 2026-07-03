@@ -51,8 +51,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     };
     app.message_view_height = body_area.height as usize;
 
-    let entry = match app.current_entry() {
-        Some(e) => e,
+    let entry_offset = match app.current_entry() {
+        Some(e) => e.offset,
         None => {
             frame.render_widget(block, area);
             if let Some(prompt_area) = prompt_area {
@@ -64,185 +64,54 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     };
 
-    let mut lines: Vec<Line> = Vec::new();
-
-    if app.show_raw {
-        // Show raw message source
-        if let Some(body) = &app.current_body {
-            let raw = &body.raw_headers;
-            for line in raw.lines() {
-                lines.push(Line::from(Span::styled(
-                    sanitize_line(line).into_owned(),
-                    theme.message_body,
-                )));
-            }
-            lines.push(Line::from(""));
-            if let Some(text) = &body.text {
-                for line in text.lines() {
-                    lines.push(Line::from(Span::styled(
-                        sanitize_line(line).into_owned(),
-                        theme.message_body,
-                    )));
-                }
-            }
-        }
-    } else {
-        // Headers
-        let header_fields = if app.show_full_headers {
-            // Show all raw headers
-            if let Some(body) = &app.current_body {
-                for line in body.raw_headers.lines() {
-                    let line = sanitize_line(line);
-                    if let Some(colon_pos) = line.find(':') {
-                        let label = &line[..colon_pos + 1];
-                        let value = line[colon_pos + 1..].trim();
-                        lines.push(Line::from(vec![
-                            Span::styled(format!("{label} "), theme.message_header_label),
-                            Span::styled(value.to_string(), theme.message_header_value),
-                        ]));
-                    } else {
-                        lines.push(Line::from(Span::styled(
-                            format!("  {line}"),
-                            theme.message_header_value,
-                        )));
-                    }
-                }
-                false // Already rendered
-            } else {
-                true
-            }
-        } else {
-            true
-        };
-
-        if header_fields {
-            // Standard compact headers
-            lines.push(Line::from(vec![
-                Span::styled(i18n::tui_header_date(), theme.message_header_label),
-                Span::styled(
-                    entry.date.format("%a, %d %b %Y %H:%M:%S %z").to_string(),
-                    theme.message_header_value,
-                ),
-            ]));
-
-            lines.push(Line::from(vec![
-                Span::styled(i18n::tui_header_from(), theme.message_header_label),
-                Span::styled(
-                    sanitize_line(&entry.from.display()).into_owned(),
-                    theme.message_header_value,
-                ),
-            ]));
-
-            if !entry.to.is_empty() {
-                let to_str = entry
-                    .to
-                    .iter()
-                    .map(|a| a.display())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                lines.push(Line::from(vec![
-                    Span::styled(i18n::tui_header_to(), theme.message_header_label),
-                    Span::styled(
-                        sanitize_line(&to_str).into_owned(),
-                        theme.message_header_value,
-                    ),
-                ]));
-            }
-
-            if !entry.cc.is_empty() {
-                let cc_str = entry
-                    .cc
-                    .iter()
-                    .map(|a| a.display())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                lines.push(Line::from(vec![
-                    Span::styled(i18n::tui_header_cc(), theme.message_header_label),
-                    Span::styled(
-                        sanitize_line(&cc_str).into_owned(),
-                        theme.message_header_value,
-                    ),
-                ]));
-            }
-
-            lines.push(Line::from(vec![
-                Span::styled(i18n::tui_header_subject(), theme.message_header_label),
-                Span::styled(
-                    sanitize_line(&entry.subject).into_owned(),
-                    theme.message_header_value,
-                ),
-            ]));
-        }
-
-        // Separator
-        let sep_width = inner.width as usize;
-        lines.push(Line::from(Span::styled(
-            "\u{2500}".repeat(sep_width),
-            theme.border,
-        )));
-        lines.push(Line::from(""));
-
-        // Body text. Record where the body begins so in-body search can map a
-        // match's body-relative line to an absolute scroll offset.
-        app.body_line_start = lines.len();
-        if let Some(body) = &app.current_body {
-            if let Some(text) = &body.text {
-                for (idx, line) in text.lines().enumerate() {
-                    // Sanitize before styling. The in-body search sanitizes the
-                    // same way, so match byte ranges line up with what is shown.
-                    let line = sanitize_line(line);
-                    // Highlight in-body search matches when present, otherwise
-                    // fall back to plain URL detection.
-                    let styled_line = style_body_line(
-                        &line,
-                        &theme,
-                        &app.body_search_matches,
-                        app.body_search_index,
-                        idx,
-                    );
-                    lines.push(styled_line);
-                }
-            } else {
-                lines.push(Line::from(Span::styled(
-                    i18n::tui_no_text_content(),
-                    theme.message_body,
-                )));
-            }
-
-            // Attachments summary
-            if !body.attachments.is_empty() {
-                lines.push(Line::from(""));
-                lines.push(Line::from(Span::styled(
-                    format!(
-                        "[{}: {} file(s)]",
-                        i18n::tui_attachments_count(),
-                        body.attachments.len()
-                    ),
-                    theme.attachment,
-                )));
-                for att in &body.attachments {
-                    let size = humansize::format_size(att.size, humansize::BINARY);
-                    lines.push(Line::from(Span::styled(
-                        format!("  @ {} ({})", att.filename, size),
-                        theme.attachment,
-                    )));
-                }
-            }
-        }
-    }
-
     // Scrolling is measured in *wrapped* rows — the unit ratatui actually
-    // scrolls over once `Wrap` splits long lines. `line_count` reuses ratatui's
-    // own word-wrap, so these counts match the rendered output exactly.
+    // scrolls over once `Wrap` splits long lines.
     let visible_height = body_area.height as usize;
     let body_width = body_area.width;
+    let sep_width = inner.width as usize;
+
+    // Reuse the cached styled render when nothing that affects the lines has
+    // changed. The key captures every input build_lines reads, so a match means
+    // the cache is still correct — no per-frame re-sanitize/re-style, and the
+    // wrapped-row count (`line_count`, a full word-wrap) is computed once per
+    // rebuild instead of every frame.
+    let key = RenderKey {
+        offset: entry_offset,
+        width: body_width,
+        show_raw: app.show_raw,
+        show_full_headers: app.show_full_headers,
+        body_search_index: app.body_search_index,
+        body_search_gen: app.body_search_gen,
+    };
+    let fresh = app.render_cache.as_ref().is_some_and(|c| c.key == key);
+    if !fresh {
+        let (lines, body_line_start) = build_lines(app, &theme, sep_width);
+        let total_wrapped = Paragraph::new(lines.clone())
+            .wrap(Wrap { trim: false })
+            .line_count(body_width)
+            .max(1);
+        app.render_cache = Some(CachedRender {
+            key,
+            lines,
+            total_wrapped,
+            body_line_start,
+        });
+    }
+    // Take the (now fresh) cached values for this frame. Cloning the lines is
+    // the price of ratatui consuming them in `Paragraph::new`; it still skips
+    // the sanitize/style work of a rebuild.
+    let (lines, total_wrapped, body_line_start) = match app.render_cache.as_ref() {
+        Some(c) => (c.lines.clone(), c.total_wrapped, c.body_line_start),
+        None => return,
+    };
+    app.body_line_start = body_line_start;
 
     // Bring the focused in-body match into view, if navigation requested it.
     // We measure the wrapped rows preceding the match's line and centre on it,
     // so the match lands inside the viewport regardless of earlier wrapping.
     if app.body_search_recenter {
         if let Some(m) = app.body_search_matches.get(app.body_search_index) {
-            let target = (app.body_line_start + m.line).min(lines.len());
+            let target = (body_line_start + m.line).min(lines.len());
             let rows_before = Paragraph::new(lines[..target].to_vec())
                 .wrap(Wrap { trim: false })
                 .line_count(body_width);
@@ -251,8 +120,6 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         app.body_search_recenter = false;
     }
 
-    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
-    let total_wrapped = paragraph.line_count(body_width).max(1);
     let max_scroll = total_wrapped.saturating_sub(visible_height);
     let scroll = app.message_scroll_offset.min(max_scroll);
 
@@ -272,6 +139,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         super::body_search_bar::render(frame, app, prompt_area);
     }
 
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(paragraph.scroll((scroll as u16, 0)), body_area);
 }
 
@@ -405,6 +273,230 @@ fn style_urls<'a>(line: &str, theme: &crate::tui::theme::Theme) -> Line<'a> {
     }
 }
 
+/// Cache key for the styled message-view render.
+///
+/// Two renders with an equal key produce byte-identical `lines`, so the cached
+/// build can be reused. The key therefore lists every input the line-building
+/// reads: which message (`offset`), the wrap width, the two view-mode toggles,
+/// and the in-body-search state (focused index + a generation counter bumped
+/// whenever the match set is rebuilt).
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct RenderKey {
+    /// MBOX offset of the selected message (its identity in the index).
+    pub offset: u64,
+    /// Body area width the lines were wrapped/measured against.
+    pub width: u16,
+    /// Raw-source view toggle.
+    pub show_raw: bool,
+    /// Full-headers view toggle.
+    pub show_full_headers: bool,
+    /// Focused in-body match (changes highlight emphasis via `n`/`N`).
+    pub body_search_index: usize,
+    /// In-body match-set generation (bumped on open/clear/recompute).
+    pub body_search_gen: u64,
+}
+
+/// A cached, fully-styled render of the message view, keyed by [`RenderKey`].
+///
+/// Holds the built `Line`s (owned, hence `'static`), the wrapped-row count for
+/// scroll math, and the body's start line for in-body-search recentring — all
+/// the per-render derived values, so a cache hit rebuilds none of them.
+pub struct CachedRender {
+    /// Key this render was built for.
+    pub key: RenderKey,
+    /// Fully styled lines, ready to hand to a `Paragraph`.
+    pub lines: Vec<Line<'static>>,
+    /// Number of wrapped rows at `key.width` (drives `max_scroll`).
+    pub total_wrapped: usize,
+    /// Absolute line index where the body text begins.
+    pub body_line_start: usize,
+}
+
+/// Build the fully-styled lines for the current message view.
+///
+/// Pure with respect to `app`: it reads state and returns the lines plus the
+/// body's start line (where in-body-search matches are anchored). The result is
+/// cached by [`render`] and only rebuilt when the [`RenderKey`] changes.
+fn build_lines(
+    app: &App,
+    theme: &crate::tui::theme::Theme,
+    sep_width: usize,
+) -> (Vec<Line<'static>>, usize) {
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    let mut body_line_start = 0;
+
+    let entry = match app.current_entry() {
+        Some(e) => e,
+        None => return (lines, body_line_start),
+    };
+
+    if app.show_raw {
+        // Show raw message source
+        if let Some(body) = &app.current_body {
+            let raw = &body.raw_headers;
+            for line in raw.lines() {
+                lines.push(Line::from(Span::styled(
+                    sanitize_line(line).into_owned(),
+                    theme.message_body,
+                )));
+            }
+            lines.push(Line::from(""));
+            if let Some(text) = &body.text {
+                for line in text.lines() {
+                    lines.push(Line::from(Span::styled(
+                        sanitize_line(line).into_owned(),
+                        theme.message_body,
+                    )));
+                }
+            }
+        }
+    } else {
+        // Headers
+        let header_fields = if app.show_full_headers {
+            // Show all raw headers
+            if let Some(body) = &app.current_body {
+                for line in body.raw_headers.lines() {
+                    let line = sanitize_line(line);
+                    if let Some(colon_pos) = line.find(':') {
+                        let label = &line[..colon_pos + 1];
+                        let value = line[colon_pos + 1..].trim();
+                        lines.push(Line::from(vec![
+                            Span::styled(format!("{label} "), theme.message_header_label),
+                            Span::styled(value.to_string(), theme.message_header_value),
+                        ]));
+                    } else {
+                        lines.push(Line::from(Span::styled(
+                            format!("  {line}"),
+                            theme.message_header_value,
+                        )));
+                    }
+                }
+                false // Already rendered
+            } else {
+                true
+            }
+        } else {
+            true
+        };
+
+        if header_fields {
+            // Standard compact headers
+            lines.push(Line::from(vec![
+                Span::styled(i18n::tui_header_date(), theme.message_header_label),
+                Span::styled(
+                    entry.date.format("%a, %d %b %Y %H:%M:%S %z").to_string(),
+                    theme.message_header_value,
+                ),
+            ]));
+
+            lines.push(Line::from(vec![
+                Span::styled(i18n::tui_header_from(), theme.message_header_label),
+                Span::styled(
+                    sanitize_line(&entry.from.display()).into_owned(),
+                    theme.message_header_value,
+                ),
+            ]));
+
+            if !entry.to.is_empty() {
+                let to_str = entry
+                    .to
+                    .iter()
+                    .map(|a| a.display())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                lines.push(Line::from(vec![
+                    Span::styled(i18n::tui_header_to(), theme.message_header_label),
+                    Span::styled(
+                        sanitize_line(&to_str).into_owned(),
+                        theme.message_header_value,
+                    ),
+                ]));
+            }
+
+            if !entry.cc.is_empty() {
+                let cc_str = entry
+                    .cc
+                    .iter()
+                    .map(|a| a.display())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                lines.push(Line::from(vec![
+                    Span::styled(i18n::tui_header_cc(), theme.message_header_label),
+                    Span::styled(
+                        sanitize_line(&cc_str).into_owned(),
+                        theme.message_header_value,
+                    ),
+                ]));
+            }
+
+            lines.push(Line::from(vec![
+                Span::styled(i18n::tui_header_subject(), theme.message_header_label),
+                Span::styled(
+                    sanitize_line(&entry.subject).into_owned(),
+                    theme.message_header_value,
+                ),
+            ]));
+        }
+
+        // Separator
+        lines.push(Line::from(Span::styled(
+            "\u{2500}".repeat(sep_width),
+            theme.border,
+        )));
+        lines.push(Line::from(""));
+
+        // Body text. Record where the body begins so in-body search can map a
+        // match's body-relative line to an absolute scroll offset.
+        body_line_start = lines.len();
+        if let Some(body) = &app.current_body {
+            if let Some(text) = &body.text {
+                for (idx, line) in text.lines().enumerate() {
+                    // Sanitize before styling. The in-body search sanitizes the
+                    // same way, so match byte ranges line up with what is shown.
+                    let line = sanitize_line(line);
+                    // Highlight in-body search matches when present, otherwise
+                    // fall back to plain URL detection.
+                    let styled_line = style_body_line(
+                        &line,
+                        theme,
+                        &app.body_search_matches,
+                        app.body_search_index,
+                        idx,
+                    );
+                    lines.push(styled_line);
+                }
+            } else {
+                lines.push(Line::from(Span::styled(
+                    i18n::tui_no_text_content(),
+                    theme.message_body,
+                )));
+            }
+
+            // Attachments summary
+            if !body.attachments.is_empty() {
+                lines.push(Line::from(""));
+                lines.push(Line::from(Span::styled(
+                    format!(
+                        "[{}: {} file(s)]",
+                        i18n::tui_attachments_count(),
+                        body.attachments.len()
+                    ),
+                    theme.attachment,
+                )));
+                for att in &body.attachments {
+                    let size = humansize::format_size(att.size, humansize::BINARY);
+                    lines.push(Line::from(Span::styled(
+                        format!("  @ {} ({})", att.filename, size),
+                        theme.attachment,
+                    )));
+                }
+            }
+        }
+    }
+
+    (lines, body_line_start)
+}
+
 #[cfg(test)]
 mod render_tests {
     use crate::model::mail::MailBody;
@@ -506,5 +598,120 @@ mod render_tests {
             .trim()
             .chars()
             .any(|c| !c.is_whitespace()));
+    }
+
+    /// The render cache key must distinguish every input that changes the
+    /// styled lines, and compare equal only when all of them match — otherwise
+    /// the cache would serve a stale render.
+    #[test]
+    fn render_key_distinguishes_inputs() {
+        use super::RenderKey;
+        let base = RenderKey {
+            offset: 100,
+            width: 80,
+            show_raw: false,
+            show_full_headers: false,
+            body_search_index: 0,
+            body_search_gen: 0,
+        };
+        assert_eq!(base, base.clone(), "identical inputs → cache hit");
+        assert_ne!(
+            base,
+            RenderKey {
+                offset: 101,
+                ..base.clone()
+            }
+        );
+        assert_ne!(
+            base,
+            RenderKey {
+                width: 81,
+                ..base.clone()
+            }
+        );
+        assert_ne!(
+            base,
+            RenderKey {
+                show_raw: true,
+                ..base.clone()
+            }
+        );
+        assert_ne!(
+            base,
+            RenderKey {
+                show_full_headers: true,
+                ..base.clone()
+            }
+        );
+        assert_ne!(
+            base,
+            RenderKey {
+                body_search_index: 1,
+                ..base.clone()
+            }
+        );
+        assert_ne!(
+            base,
+            RenderKey {
+                body_search_gen: 1,
+                ..base.clone()
+            }
+        );
+    }
+
+    /// Rendering populates the cache, an unchanged re-render keeps the same key
+    /// (a hit), and toggling a view mode changes the key (a rebuild).
+    #[test]
+    fn render_populates_and_reuses_cache() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.layout = LayoutMode::HorizontalSplit;
+        app.focus = PanelFocus::MailView;
+
+        fn draw(app: &mut App) {
+            let mut term = Terminal::new(TestBackend::new(60, 24)).expect("terminal");
+            term.draw(|f| crate::tui::ui::render(f, app)).expect("draw");
+        }
+
+        draw(&mut app);
+        let key1 = app.render_cache.as_ref().map(|c| c.key.clone());
+        assert!(key1.is_some(), "first render populates the cache");
+
+        draw(&mut app);
+        assert_eq!(
+            app.render_cache.as_ref().map(|c| c.key.clone()),
+            key1,
+            "an unchanged re-render is a cache hit (same key)"
+        );
+
+        app.show_raw = true;
+        draw(&mut app);
+        let key2 = app.render_cache.as_ref().map(|c| c.key.clone());
+        assert_ne!(key2, key1, "toggling show_raw must rebuild with a new key");
+    }
+
+    /// End-to-end guard against a stale cache: selecting a different message
+    /// must render that message, not the previous one's cached lines.
+    #[test]
+    fn render_cache_invalidates_on_message_change() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(app.visible_indices.len() >= 2, "fixture has >= 2 messages");
+        app.layout = LayoutMode::HorizontalSplit;
+        app.focus = PanelFocus::MailView;
+
+        fn render_text(app: &mut App) -> String {
+            let mut term = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+            term.draw(|f| crate::tui::ui::render(f, app)).expect("draw");
+            rendered_rows(&term)
+        }
+
+        app.select_message(0);
+        let first = render_text(&mut app);
+        app.select_message(1);
+        let second = render_text(&mut app);
+
+        assert_ne!(
+            first, second,
+            "selecting a different message must not serve the previous cached render"
+        );
     }
 }

@@ -306,6 +306,11 @@ pub struct App {
     /// Held as an [`Rc`] so selecting a message is a refcount bump rather than
     /// a deep copy of the (possibly multi-MB) body out of the store's LRU.
     pub current_body: Option<Rc<MailBody>>,
+    /// Cached, fully-styled render of the current message view. Reused across
+    /// frames while its key (message, width, view mode, in-body-search state) is
+    /// unchanged, so idle frames and scrolling avoid re-sanitizing/re-styling the
+    /// body and an extra full word-wrap. See [`mail_view::render`].
+    pub render_cache: Option<crate::tui::widgets::mail_view::CachedRender>,
 
     // ── In-body search ────────────────────────
     /// Is the in-body search prompt open and capturing input?
@@ -316,6 +321,10 @@ pub struct App {
     pub body_search_matches: Vec<BodyMatch>,
     /// Index into `body_search_matches` of the currently focused match.
     pub body_search_index: usize,
+    /// Bumped whenever `body_search_matches` is rebuilt (open / clear /
+    /// recompute). Part of the render cache key so a change in highlight
+    /// positions invalidates the cached, pre-styled body.
+    pub body_search_gen: u64,
     /// Set when the focused match changes (open / type / `n` / `N`). The next
     /// render recomputes the scroll offset to bring the match into view, using
     /// the real wrapped-row geometry it has access to. Centring here would be
@@ -421,10 +430,12 @@ impl App {
             sort_column: SortColumn::Date,
             sort_ascending: false,
             current_body: None,
+            render_cache: None,
             body_search_active: false,
             body_search_query: String::new(),
             body_search_matches: Vec::new(),
             body_search_index: 0,
+            body_search_gen: 0,
             body_search_recenter: false,
             body_line_start: 0,
             should_quit: false,
@@ -1107,6 +1118,7 @@ impl App {
         self.body_search_query.clear();
         self.body_search_matches.clear();
         self.body_search_index = 0;
+        self.body_search_gen = self.body_search_gen.wrapping_add(1);
         self.body_search_recenter = false;
     }
 
@@ -1116,6 +1128,7 @@ impl App {
         self.body_search_query.clear();
         self.body_search_matches.clear();
         self.body_search_index = 0;
+        self.body_search_gen = self.body_search_gen.wrapping_add(1);
         self.body_search_recenter = false;
     }
 
@@ -1124,6 +1137,7 @@ impl App {
     pub fn recompute_body_matches(&mut self) {
         self.body_search_matches.clear();
         self.body_search_index = 0;
+        self.body_search_gen = self.body_search_gen.wrapping_add(1);
 
         if self.body_search_query.is_empty() {
             return;
