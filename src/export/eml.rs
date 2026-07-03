@@ -162,7 +162,17 @@ fn unescape_mboxrd(body: &[u8]) -> Vec<u8> {
 /// The result is a message whose text bodies are pure 7-bit ASCII,
 /// which makes it accepted by strict-UTF-8 tooling like `eml-extractor`
 /// and `emlAnalyzer`.
+/// Maximum multipart nesting depth the QP re-encoder descends into. A message
+/// with thousands of nested `multipart/*` levels could otherwise overflow the
+/// stack (and copy the body once per level); beyond this cap the inner part is
+/// emitted unchanged.
+const MAX_QP_MULTIPART_DEPTH: usize = 32;
+
 fn reencode_message_as_qp(eml: Vec<u8>) -> Vec<u8> {
+    reencode_message_as_qp_depth(eml, 0)
+}
+
+fn reencode_message_as_qp_depth(eml: Vec<u8>, depth: usize) -> Vec<u8> {
     let split = match find_header_body_split(&eml) {
         Some(s) => s,
         None => return eml,
@@ -179,7 +189,7 @@ fn reencode_message_as_qp(eml: Vec<u8>) -> Vec<u8> {
     // Multipart: split by boundary, recurse, reassemble.
     if content_type_lc.starts_with("multipart/") {
         if let Some(boundary) = extract_boundary(&content_type_orig) {
-            let new_body = reencode_multipart_body(body, &boundary);
+            let new_body = reencode_multipart_body(body, &boundary, depth);
             let mut out = Vec::with_capacity(headers_raw.len() + new_body.len() + 2);
             out.extend_from_slice(headers_raw);
             if !out.ends_with(b"\n") {
@@ -265,7 +275,7 @@ fn reassemble(headers_raw: &[u8], body: &[u8]) -> Vec<u8> {
 ///   <part 2 headers + blank line + part 2 body>
 ///   --BOUNDARY--
 ///   <epilogue — ignored>
-fn reencode_multipart_body(body: &[u8], boundary: &str) -> Vec<u8> {
+fn reencode_multipart_body(body: &[u8], boundary: &str, depth: usize) -> Vec<u8> {
     let delim = format!("--{boundary}");
     let delim_bytes = delim.as_bytes();
     let close = format!("--{boundary}--");
@@ -319,7 +329,11 @@ fn reencode_multipart_body(body: &[u8], boundary: &str) -> Vec<u8> {
         let part_bytes = &body[after_delim..after_delim + part_end];
         let trailing = &body[after_delim + part_end..end];
 
-        let reencoded = reencode_message_as_qp(part_bytes.to_vec());
+        let reencoded = if depth + 1 >= MAX_QP_MULTIPART_DEPTH {
+            part_bytes.to_vec()
+        } else {
+            reencode_message_as_qp_depth(part_bytes.to_vec(), depth + 1)
+        };
         out.extend_from_slice(&reencoded);
         out.extend_from_slice(trailing);
     }
@@ -589,6 +603,25 @@ mod tests {
         let eml = b"Subject: Test\r\nContent-Type: text/plain\r\n\r\nHello world\r\n".to_vec();
         let out = reencode_message_as_qp(eml.clone());
         assert_eq!(out, eml, "pure ASCII bodies must be unchanged");
+    }
+
+    #[test]
+    fn test_qp_reencode_deeply_nested_no_stack_overflow() {
+        // Nest `multipart/mixed` far deeper than MAX_QP_MULTIPART_DEPTH; the
+        // re-encoder must return (stopping at the cap) rather than overflow.
+        let mut eml = b"Content-Type: text/plain\r\n\r\nleaf\r\n".to_vec();
+        for i in 0..200 {
+            let boundary = format!("b{i}");
+            let mut wrapped = format!(
+                "Content-Type: multipart/mixed; boundary=\"{boundary}\"\r\n\r\n--{boundary}\r\n"
+            )
+            .into_bytes();
+            wrapped.extend_from_slice(&eml);
+            wrapped.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+            eml = wrapped;
+        }
+        let out = reencode_message_as_qp(eml);
+        assert!(!out.is_empty());
     }
 
     #[test]

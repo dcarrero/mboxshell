@@ -98,11 +98,30 @@ pub fn load_index(mbox_path: &Path) -> anyhow::Result<Option<Vec<MailEntry>>> {
     load_index_from_file(&idx_path, mbox_path)
 }
 
+/// Whether an index file of `idx_len` bytes is plausibly valid for an MBOX of
+/// `mbox_len` bytes. The binary index is always far smaller than the mailbox;
+/// a wildly larger sidecar is treated as corrupt/hostile and rejected before it
+/// is read into memory.
+fn index_size_acceptable(idx_len: u64, mbox_len: u64) -> bool {
+    idx_len <= mbox_len.saturating_add(64 * 1024 * 1024)
+}
+
 /// Load and validate an index from a specific file.
 fn load_index_from_file(
     idx_path: &Path,
     mbox_path: &Path,
 ) -> anyhow::Result<Option<Vec<MailEntry>>> {
+    // A crafted/corrupt `.idx` sidecar could be arbitrarily large; reading it
+    // whole before validation would OOM. Reject an implausibly large one first.
+    let idx_len = std::fs::metadata(idx_path)
+        .map_err(|e| MboxError::io(idx_path, e))?
+        .len();
+    let mbox_len = std::fs::metadata(mbox_path).map(|m| m.len()).unwrap_or(0);
+    if !index_size_acceptable(idx_len, mbox_len) {
+        debug!("Index file implausibly large; ignoring");
+        return Ok(None);
+    }
+
     let data = std::fs::read(idx_path).map_err(|e| MboxError::io(idx_path, e))?;
 
     if data.len() < HEADER_SIZE {
@@ -285,6 +304,20 @@ pub fn index_file_size(mbox_path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_index_size_acceptable() {
+        // A normal small index for a large mailbox is accepted.
+        assert!(index_size_acceptable(10_000, 50_000_000_000));
+        // Within the fixed slack even for a tiny/zero-size mailbox.
+        assert!(index_size_acceptable(64 * 1024 * 1024, 0));
+        // A wildly oversized sidecar is rejected before being read into memory.
+        assert!(!index_size_acceptable(200 * 1024 * 1024, 0));
+        assert!(!index_size_acceptable(
+            50_000_000_000u64 + 64 * 1024 * 1024 + 1,
+            50_000_000_000
+        ));
+    }
 
     #[test]
     fn test_load_index_rejects_out_of_bounds_entries() {

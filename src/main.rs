@@ -688,8 +688,16 @@ fn print_search_results_table(entries: &[mboxshell::model::mail::MailEntry], res
         } else {
             &entry.from.display_name
         };
-        let from_trunc: String = from.chars().take(24).collect();
-        let subj_trunc: String = entry.subject.chars().take(39).collect();
+        // Sanitize before printing: raw header fields can carry ESC/OSC
+        // sequences (RFC 2047 encoded-words decode into real control bytes),
+        // which would be terminal-injection when written straight to stdout.
+        let from_trunc =
+            mboxshell::tui::text::sanitize_line(&from.chars().take(24).collect::<String>())
+                .into_owned();
+        let subj_trunc = mboxshell::tui::text::sanitize_line(
+            &entry.subject.chars().take(39).collect::<String>(),
+        )
+        .into_owned();
         let size = format_size(entry.length, BINARY);
 
         println!(
