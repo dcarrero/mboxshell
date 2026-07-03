@@ -19,7 +19,13 @@ pub fn parse_headers_to_entry(
     let headers = unfold_headers(&text);
 
     let date_str = get_header(&headers, "date").unwrap_or_default();
-    let date = parse_date(&date_str).unwrap_or(DateTime::UNIX_EPOCH);
+    // Fall back to the `From ` separator's envelope date (the first line of the
+    // raw headers) when there is no parseable `Date:`, instead of collapsing to
+    // the Unix epoch (1970) — common for Gmail Takeout chats, drafts and many
+    // automated messages.
+    let date = parse_date(&date_str)
+        .or_else(|| parse_from_line_date(&text))
+        .unwrap_or(DateTime::UNIX_EPOCH);
 
     let from_raw = get_header(&headers, "from").unwrap_or_default();
     let from = EmailAddress::parse(&decode_encoded_words(&from_raw));
@@ -379,6 +385,15 @@ pub fn parse_date(date_str: &str) -> Option<DateTime<Utc>> {
         return None;
     }
 
+    // Substitute named timezones (CET/CEST/JST/…) with a numeric offset up
+    // front: chrono's RFC 2822 parser only recognizes the North-American
+    // obs-zones (EST/EDT/…/PST/PDT) and silently treats every other alphabetic
+    // zone as -0000, so a Date ending in `CEST` would otherwise parse as UTC —
+    // off by the zone's real offset. Substituting first makes the numeric-offset
+    // path handle them correctly. No-op when the value carries a numeric offset.
+    let with_offset = replace_named_tz(trimmed);
+    let trimmed = with_offset.as_str();
+
     // Try chrono's RFC 2822
     if let Ok(dt) = DateTime::parse_from_rfc2822(trimmed) {
         return Some(dt.with_timezone(&Utc));
@@ -508,7 +523,13 @@ fn strip_day_of_week(s: &str) -> String {
 
 /// Replace well-known timezone abbreviations with numeric offsets.
 fn replace_named_tz(s: &str) -> String {
+    // Ordered so a longer name wins over a shorter one it ends with: "CEST"
+    // must be tested before "EST" (`"CEST".ends_with("EST")` is true), else a
+    // CEST value would match the EST rule and get the wrong offset.
     let tzs = [
+        ("CEST", "+0200"),
+        ("CET", "+0100"),
+        ("JST", "+0900"),
         ("EST", "-0500"),
         ("EDT", "-0400"),
         ("CST", "-0600"),
@@ -519,9 +540,6 @@ fn replace_named_tz(s: &str) -> String {
         ("PDT", "-0700"),
         ("GMT", "+0000"),
         ("UTC", "+0000"),
-        ("CET", "+0100"),
-        ("CEST", "+0200"),
-        ("JST", "+0900"),
     ];
     let mut result = s.to_string();
     for (name, offset) in &tzs {
@@ -532,6 +550,19 @@ fn replace_named_tz(s: &str) -> String {
         }
     }
     result
+}
+
+/// Extract the envelope date from a leading `From ` separator line, used as a
+/// fallback when a message has no parseable `Date:` header. The mbox `From_`
+/// line carries an asctime date after the sender:
+/// `From <sender> Www Mmm dd hh:mm:ss yyyy`.
+fn parse_from_line_date(headers: &str) -> Option<DateTime<Utc>> {
+    let first = headers.lines().next()?;
+    let rest = first.strip_prefix("From ")?;
+    // Drop the envelope sender (first whitespace-delimited token); the rest is
+    // the asctime date, which `parse_date` already knows how to read.
+    let (_, date_part) = rest.split_once(char::is_whitespace)?;
+    parse_date(date_part.trim())
 }
 
 #[cfg(test)]
@@ -587,8 +618,47 @@ mod tests {
 
     #[test]
     fn test_parse_date_named_tz() {
-        let dt = parse_date("Thu, 04 Jan 2024 10:00:00 EST");
-        assert!(dt.is_some());
+        // Obs-zone EST (-0500): 10:00 EST = 15:00 UTC (still works after the fix).
+        assert_eq!(
+            parse_date("Thu, 04 Jan 2024 10:00:00 EST"),
+            Some(Utc.with_ymd_and_hms(2024, 1, 4, 15, 0, 0).unwrap())
+        );
+        // Zones chrono's RFC 2822 parser mishandled as UTC before the fix:
+        // CEST (+0200) 10:00 = 08:00 UTC, CET (+0100) = 09:00, JST (+0900) = 01:00.
+        assert_eq!(
+            parse_date("Wed, 15 Jan 2025 10:00:00 CEST"),
+            Some(Utc.with_ymd_and_hms(2025, 1, 15, 8, 0, 0).unwrap())
+        );
+        assert_eq!(
+            parse_date("Wed, 15 Jan 2025 10:00:00 CET"),
+            Some(Utc.with_ymd_and_hms(2025, 1, 15, 9, 0, 0).unwrap())
+        );
+        assert_eq!(
+            parse_date("Wed, 15 Jan 2025 10:00:00 JST"),
+            Some(Utc.with_ymd_and_hms(2025, 1, 15, 1, 0, 0).unwrap())
+        );
+    }
+
+    #[test]
+    fn test_replace_named_tz_orders_cest_before_est() {
+        assert!(replace_named_tz("Wed, 15 Jan 2025 10:00:00 CEST").ends_with("+0200"));
+        assert!(replace_named_tz("Wed, 15 Jan 2025 10:00:00 EST").ends_with("-0500"));
+    }
+
+    #[test]
+    fn test_missing_date_uses_from_line_date() {
+        use chrono::Datelike;
+        // No Date: header — fall back to the From_ envelope date, not 1970.
+        let raw = b"From foo@bar.com Wed Jan 15 10:00:00 2025\nSubject: No Date\n";
+        let entry = parse_headers_to_entry(raw, 0, 100, 0).unwrap();
+        assert_eq!(entry.date.year(), 2025);
+        assert_eq!(entry.date.month(), 1);
+        assert_eq!(entry.date.day(), 15);
+
+        // A present, parseable Date: must win over the From_ line.
+        let raw2 = b"From foo@bar.com Wed Jan 15 10:00:00 2025\nDate: Fri, 20 Jun 2025 12:00:00 +0000\nSubject: X\n";
+        let entry2 = parse_headers_to_entry(raw2, 0, 100, 0).unwrap();
+        assert_eq!(entry2.date.month(), 6);
     }
 
     #[test]
