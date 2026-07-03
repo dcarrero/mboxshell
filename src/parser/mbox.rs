@@ -1,6 +1,6 @@
 //! Streaming MBOX parser.
 //!
-//! Reads MBOX files line-by-line with a 128 KB buffer.
+//! Reads MBOX files line-by-line with a 1 MB buffer.
 //! Never loads the entire file into memory. Tolerant of malformed input.
 
 use std::fs::File;
@@ -286,8 +286,14 @@ impl MboxParser {
                     );
                 }
 
-                // Emit the *previous* message
-                if let (Some(pstart), Some(pheaders)) = (prev_message_start, prev_headers.take()) {
+                // Emit the *previous* message. Use its saved headers, or fall
+                // back to the still-accumulating buffer when the message had no
+                // blank line before this separator — otherwise that message
+                // (its headers never got swapped out) would be silently dropped.
+                if let Some(pstart) = prev_message_start {
+                    let pheaders = prev_headers
+                        .take()
+                        .unwrap_or_else(|| std::mem::take(&mut header_buf));
                     let msg_length = current_offset - pstart;
                     if !header_callback(pstart, msg_length, &pheaders) {
                         return Ok(count);
@@ -348,7 +354,12 @@ impl MboxParser {
         let mut file = File::open(path).map_err(|e| MboxError::io(path, e))?;
         file.seek(SeekFrom::Start(offset))
             .map_err(|e| MboxError::io(path, e))?;
-        let mut buffer = vec![0u8; length as usize];
+        // Convert with a checked cast instead of `as usize`, which would
+        // truncate on a 32-bit target and under-allocate the buffer.
+        let len = usize::try_from(length).map_err(|_| {
+            MboxError::io(path, std::io::Error::from(std::io::ErrorKind::InvalidData))
+        })?;
+        let mut buffer = vec![0u8; len];
         file.read_exact(&mut buffer)
             .map_err(|e| MboxError::io(path, e))?;
         Ok(buffer)
@@ -851,5 +862,42 @@ mod tests {
         assert!(all_headers[0].contains("X-Foo: bar"));
         assert!(all_headers[0].contains("Date: Wed, 22 Apr 2020"));
         assert!(all_headers[1].contains("Subject: Second"));
+    }
+
+    #[test]
+    fn test_intermediate_message_without_blank_line_is_not_dropped() {
+        use std::io::Write;
+        // The first message has no blank line before the next `From ` separator.
+        // Its headers were never swapped into `prev_headers`, so before the fix
+        // it was silently dropped; now it is emitted from the accumulating buffer.
+        let mut data = Vec::new();
+        data.extend_from_slice(b"From a@b.com Thu Jan 01 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: First\n");
+        data.extend_from_slice(b"From c@d.com Fri Jan 02 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: Second\n\n");
+        data.extend_from_slice(b"Body\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut headers: Vec<String> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |_off, _len, h| {
+                    headers.push(String::from_utf8_lossy(h).into_owned());
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            count, 2,
+            "the blank-line-less first message must not be dropped"
+        );
+        assert!(headers[0].contains("Subject: First"));
+        assert!(headers[1].contains("Subject: Second"));
     }
 }

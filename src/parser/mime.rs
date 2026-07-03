@@ -143,29 +143,40 @@ fn skip_from_line(data: &[u8]) -> &[u8] {
     data
 }
 
+/// Find the header/body boundary: the earliest of an LF blank line (`\n\n`) and
+/// a CRLF blank line (`\r\n\r\n`). Returns the byte offset of the blank line and
+/// the separator length. Taking the earliest avoids mis-detecting the boundary
+/// on a message with CRLF headers but an LF-only blank line early in the body.
+fn header_body_split(text: &str) -> Option<(usize, usize)> {
+    match (text.find("\n\n"), text.find("\r\n\r\n")) {
+        (Some(lf), Some(crlf)) => {
+            if lf <= crlf {
+                Some((lf, 2))
+            } else {
+                Some((crlf, 4))
+            }
+        }
+        (Some(lf), None) => Some((lf, 2)),
+        (None, Some(crlf)) => Some((crlf, 4)),
+        (None, None) => None,
+    }
+}
+
 /// Extract the raw headers as a string (everything before the first blank line).
 fn extract_raw_headers(data: &[u8]) -> String {
     let text = String::from_utf8_lossy(data);
-    // Find double newline (end of headers)
-    if let Some(pos) = text.find("\n\n") {
-        text[..pos].to_string()
-    } else if let Some(pos) = text.find("\r\n\r\n") {
-        text[..pos].to_string()
-    } else {
-        text.to_string()
+    match header_body_split(&text) {
+        Some((pos, _)) => text[..pos].to_string(),
+        None => text.to_string(),
     }
 }
 
 /// Fallback body extraction when `mail-parser` cannot parse the message.
 fn extract_body_fallback(data: &[u8]) -> String {
     let text = String::from_utf8_lossy(data);
-    // Everything after the first blank line is the body
-    if let Some(pos) = text.find("\n\n") {
-        text[pos + 2..].to_string()
-    } else if let Some(pos) = text.find("\r\n\r\n") {
-        text[pos + 4..].to_string()
-    } else {
-        String::new()
+    match header_body_split(&text) {
+        Some((pos, sep_len)) => text[pos + sep_len..].to_string(),
+        None => String::new(),
     }
 }
 
@@ -310,5 +321,22 @@ PAYLOAD\r\n\
         assert_eq!(metas[0].filename, "attachment_0");
         let data = extract_attachment(raw, &metas[0]).unwrap();
         assert!(data.starts_with(b"PAYLOAD"));
+    }
+
+    #[test]
+    fn test_header_body_split_prefers_earliest_boundary() {
+        // CRLF headers with the real `\r\n\r\n` boundary, then an LF-only blank
+        // line inside the body. The header slice must stop at the CRLF boundary,
+        // not leak the body up to the later `\n\n`.
+        let data = b"Subject: Hi\r\nFrom: a@b\r\n\r\nbody line 1\n\nbody line 2\n";
+        let headers = extract_raw_headers(data);
+        assert!(headers.contains("Subject: Hi"));
+        assert!(headers.contains("From: a@b"));
+        assert!(
+            !headers.contains("body line 1"),
+            "body must not leak into headers, got: {headers:?}"
+        );
+        let body = extract_body_fallback(data);
+        assert!(body.starts_with("body line 1"), "body was: {body:?}");
     }
 }

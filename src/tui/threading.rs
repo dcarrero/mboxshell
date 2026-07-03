@@ -324,18 +324,22 @@ fn normalize_id(id: &str) -> String {
 
 /// Normalize a subject for grouping: strip Re:/Fwd: prefixes, lowercase.
 fn normalize_subject(subject: &str) -> String {
-    let mut s = subject.trim().to_string();
+    let mut s = subject.trim();
     loop {
-        let lower = s.trim().to_lowercase();
-        if lower.starts_with("re:") {
-            s = s.trim()[3..].trim_start().to_string();
-        } else if lower.starts_with("fwd:") {
-            s = s.trim()[4..].trim_start().to_string();
-        } else if lower.starts_with("fw:") {
-            s = s.trim()[3..].trim_start().to_string();
+        // Compare only the short prefix case-insensitively rather than
+        // lowercasing the whole (possibly long) subject on every iteration —
+        // otherwise a subject like "Re:"×N is O(n²). `get(..n)` also keeps the
+        // slice on a char boundary for non-ASCII subjects.
+        let stripped = if s.get(..3).is_some_and(|p| p.eq_ignore_ascii_case("re:")) {
+            &s[3..]
+        } else if s.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("fwd:")) {
+            &s[4..]
+        } else if s.get(..3).is_some_and(|p| p.eq_ignore_ascii_case("fw:")) {
+            &s[3..]
         } else {
             break;
-        }
+        };
+        s = stripped.trim_start();
     }
     s.to_lowercase()
 }
@@ -383,6 +387,11 @@ mod tests {
         assert_eq!(normalize_subject("Re: Re: Hello"), "hello");
         assert_eq!(normalize_subject("Fwd: Hello"), "hello");
         assert_eq!(normalize_subject("FW: Re: Hello"), "hello");
+        // Many prefixes still collapse (and now in linear, not quadratic, time).
+        let many = "Re: ".repeat(50) + "Hello";
+        assert_eq!(normalize_subject(&many), "hello");
+        // A non-ASCII subject must not panic on the prefix boundary check.
+        assert_eq!(normalize_subject("Café con leña"), "café con leña");
     }
 
     #[test]

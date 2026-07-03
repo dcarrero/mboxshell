@@ -236,8 +236,18 @@ fn handle_mail_list_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         }
         KeyCode::Char(' ') => app.toggle_mark(),
         KeyCode::Char('*') => {
-            if app.marked.len() == app.visible_count() {
-                app.marked.clear();
+            // Toggle based on whether the currently visible rows are all marked
+            // — `marked` is a global set of offsets, so its length is not "how
+            // many visible rows are marked" once a filter is active.
+            let all_visible_marked = !app.visible_indices.is_empty()
+                && app
+                    .visible_indices
+                    .iter()
+                    .all(|&i| app.marked.contains(&app.entries[i].offset));
+            if all_visible_marked {
+                for &idx in &app.visible_indices {
+                    app.marked.remove(&app.entries[idx].offset);
+                }
             } else {
                 for &idx in &app.visible_indices {
                     app.marked.insert(app.entries[idx].offset);
@@ -1018,5 +1028,35 @@ mod tests {
         };
         assert_eq!(count_ext("html"), 2, "one HTML file per marked message");
         assert_eq!(count_ext("txt"), 2, "one TXT file per marked message");
+    }
+
+    /// Regression for the mark-all (`*`) toggle: it must act on the visible set,
+    /// not on `marked.len()` (a global count), and must not clear marks that are
+    /// outside the current filtered view.
+    #[test]
+    fn mark_all_star_toggles_only_the_visible_set() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(app.entries.len() >= 3, "fixture needs 3+ messages");
+        let outside = app.entries[0].offset;
+        app.marked.insert(outside); // marked, but outside the filtered view below
+        app.visible_indices = vec![1, 2];
+
+        let star = KeyEvent::new(KeyCode::Char('*'), KeyModifiers::NONE);
+        // No visible row is marked yet → '*' marks the visible set and leaves
+        // the out-of-view mark untouched.
+        handle_mail_list_keys(&mut app, star).unwrap();
+        assert!(app.marked.contains(&app.entries[1].offset));
+        assert!(app.marked.contains(&app.entries[2].offset));
+        assert!(
+            app.marked.contains(&outside),
+            "out-of-view mark must survive"
+        );
+
+        // All visible now marked → '*' unmarks the visible set, out-of-view mark intact.
+        handle_mail_list_keys(&mut app, star).unwrap();
+        assert!(!app.marked.contains(&app.entries[1].offset));
+        assert!(!app.marked.contains(&app.entries[2].offset));
+        assert!(app.marked.contains(&outside));
     }
 }

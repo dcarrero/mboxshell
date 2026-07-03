@@ -260,11 +260,17 @@ fn write_index_to_file(path: &Path, header: &[u8], entries: &[u8]) -> anyhow::Re
 
 /// Compute SHA-256 of the first `n` bytes of a file.
 fn sha256_first_n(path: &Path, n: usize) -> anyhow::Result<[u8; 32]> {
-    let mut file = File::open(path).map_err(|e| MboxError::io(path, e))?;
-    let mut buf = vec![0u8; n];
-    let bytes_read = file.read(&mut buf).map_err(|e| MboxError::io(path, e))?;
+    let file = File::open(path).map_err(|e| MboxError::io(path, e))?;
+    // Read exactly the first `n` bytes (or the whole file if shorter) with a
+    // bounded `read_to_end`. A single `read` can return fewer bytes than
+    // available, which would hash a different prefix length between build and
+    // load and trigger a spurious rebuild.
+    let mut buf = Vec::with_capacity(n);
+    file.take(n as u64)
+        .read_to_end(&mut buf)
+        .map_err(|e| MboxError::io(path, e))?;
     let mut hasher = Sha256::new();
-    hasher.update(&buf[..bytes_read]);
+    hasher.update(&buf);
     Ok(hasher.finalize().into())
 }
 
