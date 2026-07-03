@@ -56,7 +56,7 @@ tracing-appender = "0.2"
 
 # Utilities
 humansize = "2"
-lru = "0.16"
+lru = "0.18"
 unicode-width = "0.2"
 
 # HTML to text rendering (tables, lists, links)
@@ -72,7 +72,7 @@ ammonia = "4"
 # `unstable-rendered-line-info` exposes `Paragraph::line_count`, used by the
 # message view to compute wrap-aware scroll offsets (so in-body search `n`/`N`
 # reliably brings a match into view on messages with long, wrapped lines).
-ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
+ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
 crossterm = "0.28"
 
 # Distributed binaries: smaller and faster at the cost of slower release
