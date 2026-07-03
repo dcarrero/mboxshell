@@ -4,6 +4,14 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.5.3
+
+- Corregido: **el atajo "marcar todos" (`*`) ahora conmuta las filas visibles, no un recuento global.** Comparaba `marked.len()` con el número de filas visibles, así que con un filtro activo — cuando el número de mensajes marcados globalmente coincidía con el de visibles — podía limpiarlo todo (o marcar el conjunto equivocado). Ahora marca las filas visibles, las desmarca si ya están todas marcadas, y nunca toca las marcas fuera de la vista actual.
+- Corregido: **un mensaje sin línea en blanco antes del siguiente separador `From ` ya no se descarta silenciosamente del índice.** Ese mensaje (mal formado) nunca finalizaba sus cabeceras, así que el indexador lo saltaba; ahora se emite desde el búfer acumulado.
+- Corregido: **la separación cabecera/cuerpo se detecta correctamente en mensajes con finales de línea mixtos.** Un mensaje con cabeceras CRLF pero una línea en blanco solo-LF al principio del cuerpo podía arrastrar texto del cuerpo a la vista de cabeceras en bruto (y viceversa); el límite se toma ahora como el primero de `\n\n` y `\r\n\r\n`.
+- Corregido: **la normalización de asuntos para el threading ahora es lineal en vez de O(n²)** — antes convertía a minúsculas todo el asunto por cada prefijo `Re:`/`Fwd:` eliminado — y ya no corre riesgo de panic con un asunto no ASCII.
+- Corregido: el hash de contenido de 4 KB del índice ahora se lee de forma determinista (un `read` corto podía hashear una longitud de prefijo distinta entre construcción y carga y provocar una reconstrucción espuria), y el `read_message_at` interno usa una conversión de longitud comprobada en vez de un cast que podía truncar en objetivos de 32 bits.
+
 ## v0.5.2
 
 - Seguridad: **las tablas de la CLI de `search` y `stats` ahora sanean los campos de cabecera de los mensajes antes de imprimirlos.** Un asunto o remitente hostil podía llevar secuencias de escape ESC/OSC del terminal (y los encoded-words RFC 2047 se decodifican a bytes de control reales), que se escribían directamente al terminal — la misma clase de inyección de terminal contra la que la TUI ya se protegía. La CLI pasa ahora esos campos por el mismo saneador; la salida `--json` ya era segura.

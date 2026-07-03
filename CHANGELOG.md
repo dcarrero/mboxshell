@@ -4,6 +4,14 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.3
+
+- Fix: **the "mark all" (`*`) shortcut now toggles the visible rows, not a global count.** It compared `marked.len()` against the visible count, so with a filter active — when the number of globally-marked messages happened to equal the visible count — it could clear everything (or mark the wrong set). It now marks the visible rows, unmarks them if all are already marked, and never touches marks outside the current view.
+- Fix: **a message with no blank line before the next `From ` separator is no longer silently dropped from the index.** Such a (malformed) message never had its headers finalized, so the indexer skipped it; it is now emitted from the accumulating buffer.
+- Fix: **the header/body split is detected correctly on messages with mixed line endings.** A message with CRLF headers but an LF-only blank line early in the body could pull body text into the raw-header view (and vice-versa); the boundary is now taken as the earliest of `\n\n` and `\r\n\r\n`.
+- Fix: **subject normalization for threading is now linear instead of O(n²)** — it used to re-lowercase the whole subject for each stripped `Re:`/`Fwd:` prefix — and no longer risks panicking on a non-ASCII subject.
+- Fix: the index's 4 KB content hash is now read deterministically (a short `read` could hash a different prefix length between build and load and trigger a spurious rebuild), and the internal `read_message_at` uses a checked length conversion instead of a cast that could truncate on 32-bit targets.
+
 ## v0.5.2
 
 - Security: **the `search` and `stats` CLI tables now sanitize message header fields before printing them.** A hostile subject or sender could carry ESC/OSC terminal escape sequences (and RFC 2047 encoded-words decode into real control bytes), which were written straight to the terminal — the same terminal-injection class the TUI already guarded against. The CLI now runs those fields through the same sanitizer; the `--json` output was already safe.
