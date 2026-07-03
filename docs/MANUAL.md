@@ -1,7 +1,7 @@
 # mboxShell — User Manual
 
 > Complete guide to every feature of `mboxShell`, the fast terminal MBOX viewer.
-> **Applies to mboxShell v0.4.2.**
+> **Applies to mboxShell v0.5.1.**
 > Spanish version: [MANUAL-ES.md](MANUAL-ES.md) · Short overview: [../README.md](../README.md) · Changes: [../CHANGELOG.md](../CHANGELOG.md)
 
 `mboxShell` opens, searches and exports `.mbox` files of any size (50 GB+) from the terminal, without ever loading the whole file into memory and **without ever modifying the source file** (it is strictly read-only).
@@ -167,7 +167,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 
 #### `stats` output
 
-`stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, and the top 10 senders. Add `--json` for a machine-readable object.
+`stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, the number of duplicate `Message-ID`s (with the count of unique IDs), and the top 10 senders. Add `--json` for a machine-readable object.
 
 #### Examples
 

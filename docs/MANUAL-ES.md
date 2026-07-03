@@ -1,7 +1,7 @@
 # mboxShell — Manual de usuario
 
 > Guía completa de todas las funciones de `mboxShell`, el visor rápido de MBOX para terminal.
-> **Válido para mboxShell v0.4.2.**
+> **Válido para mboxShell v0.5.1.**
 > Versión en inglés: [MANUAL.md](MANUAL.md) · Resumen breve: [../README-ES.md](../README-ES.md) · Cambios: [../CHANGELOG-ES.md](../CHANGELOG-ES.md)
 
 `mboxShell` abre, busca y exporta ficheros `.mbox` de cualquier tamaño (más de 50 GB) desde la terminal, sin cargar nunca el fichero entero en memoria y **sin modificar jamás el fichero original** (es estrictamente de solo lectura).
@@ -167,7 +167,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 
 #### Salida de `stats`
 
-`stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
+`stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, el número de `Message-ID` duplicados (con el recuento de IDs únicos), y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
 
 #### Ejemplos
 

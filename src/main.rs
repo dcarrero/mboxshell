@@ -15,7 +15,7 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
 
-    /// MBOX file or directory to open
+    /// MBOX file to open
     #[arg(value_name = "FILE")]
     file: Option<PathBuf>,
 

@@ -68,7 +68,7 @@ The project follows the rules in `CLAUDE.md`:
 - Public functions need `///` doc comments.
 - Errors: `thiserror` for library types, `anyhow` only in `src/main.rs`.
 - **No `unwrap()` or `expect()` in production code** — tests are the only exception. Failures must propagate `MboxError` (or `anyhow::Result` in main).
-- **No `unsafe`** except inside the `memmap2` wrapper, with a comment explaining the invariants.
+- **No `unsafe`** — the codebase contains none.
 - Logging is the `tracing` crate only. No `println!` outside intentional CLI output.
 - All I/O operations must have timeouts or be cancelable.
 
@@ -131,7 +131,7 @@ A few rules:
 
 ### What gets pushed back
 
-- PRs that introduce panics, `unwrap()` in non-test code, or `unsafe` outside the `memmap2` wrapper.
+- PRs that introduce panics, `unwrap()` in non-test code, or any `unsafe`.
 - Changes to the index format, search syntax or CLI flags without a prior issue / discussion.
 - Drive-by formatting or refactor diffs unrelated to the stated goal.
 - Anything that breaks `cargo clippy -- -D warnings` on the matrix.

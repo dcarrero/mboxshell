@@ -146,7 +146,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | Comando | Descripcion |
 |---------|-------------|
 | `mboxshell [ARCHIVO]` | Abrir en la interfaz de terminal (accion por defecto) |
-| `mboxshell open <ruta>` | Abrir un archivo o directorio en la TUI |
+| `mboxshell open <ruta>` | Abrir un fichero MBOX en la TUI |
 | `mboxshell index <ruta> [-f/--force]` | Construir o reconstruir el indice binario |
 | `mboxshell stats <ruta> [--json]` | Mostrar estadisticas de un archivo MBOX |
 | `mboxshell search <ruta> <consulta> [--json]` | Buscar mensajes desde la linea de comandos |
@@ -225,8 +225,6 @@ term1 OR term2                      OR explicito
 | Formato | Extension | Descripcion |
 |---------|-----------|-------------|
 | MBOX (mboxrd/mboxo) | `.mbox` | Formato estandar. Google Takeout, Thunderbird, servidores Unix |
-| EML | `.eml` | Mensaje individual RFC 5322 |
-| Directorio de EML | (carpeta) | Carpeta con multiples archivos `.eml` |
 
 ## Rendimiento
 

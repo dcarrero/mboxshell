@@ -146,7 +146,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | Command | Description |
 |---------|-------------|
 | `mboxshell [FILE]` | Open a file in the TUI (default action) |
-| `mboxshell open <path>` | Open a file or directory in the TUI |
+| `mboxshell open <path>` | Open an MBOX file in the TUI |
 | `mboxshell index <path> [-f/--force]` | Build or rebuild the binary index |
 | `mboxshell stats <path> [--json]` | Show statistics about an MBOX file |
 | `mboxshell search <path> <query> [--json]` | Search messages from the command line |
@@ -225,8 +225,6 @@ term1 OR term2                   Explicit OR
 | Format | Extension | Description |
 |--------|-----------|-------------|
 | MBOX (mboxrd/mboxo) | `.mbox` | Standard format. Google Takeout, Thunderbird, Unix servers |
-| EML | `.eml` | Individual RFC 5322 message |
-| EML directory | (folder) | Folder containing multiple `.eml` files |
 
 ## Performance
 
