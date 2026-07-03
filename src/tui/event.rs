@@ -806,6 +806,8 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             app.search_active = false;
             app.search_history_index = None;
             app.focus = PanelFocus::MailList;
+            // Abandon any debounced incremental recompute for the closed query.
+            app.cancel_pending_incremental_search();
             // Leaving the search resets the scope, so drop within-results mode.
             app.filter_within_results = false;
             // Reset to show all messages (respecting active label filter)
@@ -845,7 +847,7 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                         }
                     }
                 }
-                app.execute_incremental_search();
+                app.mark_search_dirty();
             }
         }
         KeyCode::Down => {
@@ -860,18 +862,18 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                     app.search_history_index = Some(prev);
                     app.search_query = app.search_history[prev].clone();
                 }
-                app.execute_incremental_search();
+                app.mark_search_dirty();
             }
         }
         KeyCode::Backspace => {
             app.search_query.pop();
             app.search_history_index = None;
-            app.execute_incremental_search();
+            app.mark_search_dirty();
         }
         KeyCode::Char(c) => {
             app.search_query.push(c);
             app.search_history_index = None;
-            app.execute_incremental_search();
+            app.mark_search_dirty();
         }
         _ => {}
     }

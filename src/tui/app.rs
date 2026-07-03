@@ -250,6 +250,11 @@ pub struct App {
     pub search_active: bool,
     /// Current search query text.
     pub search_query: String,
+    /// When the incremental (metadata) search was last marked dirty by a
+    /// keystroke. The recompute is debounced: a burst of keystrokes coalesces
+    /// into a single O(n) scan once input settles. See
+    /// [`poll_incremental_search`](App::poll_incremental_search).
+    search_dirty_since: Option<std::time::Instant>,
     /// Indices into `entries` that match the search.
     pub search_results: Vec<usize>,
     /// Current position within `search_results`.
@@ -394,6 +399,7 @@ impl App {
             active_label_filter: None,
             search_active: false,
             search_query: String::new(),
+            search_dirty_since: None,
             search_results: Vec::new(),
             search_result_index: 0,
             search_job: None,
@@ -694,6 +700,8 @@ impl App {
     /// on, the search stays inside the currently visible messages; otherwise an
     /// active sidebar label filter restricts it to the labelled messages.
     pub fn execute_search(&mut self) {
+        // A full search supersedes any debounced incremental recompute.
+        self.search_dirty_since = None;
         let restrict = self.search_restrict_set();
         self.execute_search_restricted(restrict);
     }
@@ -898,10 +906,48 @@ impl App {
         self.set_status(&format!("{count} {}", i18n::tui_results()));
     }
 
-    /// Run a fast metadata-only incremental search (called on each keystroke).
+    /// Debounce window before a keystroke triggers an incremental recompute.
     ///
-    /// If the query requires full-text search (body:), this skips filtering
-    /// and shows all entries (full search runs on Enter).
+    /// Slightly longer than the 100 ms event-loop tick so held/fast keys
+    /// coalesce into one scan instead of one scan per key.
+    const SEARCH_DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(150);
+
+    /// Mark the incremental search as needing a recompute.
+    ///
+    /// The scan itself is deferred to [`poll_incremental_search`](App::poll_incremental_search)
+    /// so a burst of keystrokes runs `search_metadata` once, not once per key.
+    pub fn mark_search_dirty(&mut self) {
+        self.search_dirty_since = Some(std::time::Instant::now());
+    }
+
+    /// Discard any pending incremental recompute.
+    ///
+    /// Called when the search bar closes or a full search supersedes the
+    /// incremental one, so the debounce timer cannot fire against a query the
+    /// user already abandoned.
+    pub fn cancel_pending_incremental_search(&mut self) {
+        self.search_dirty_since = None;
+    }
+
+    /// Run a pending incremental search once input has settled.
+    ///
+    /// Called once per event-loop tick. Does nothing until the debounce window
+    /// has elapsed since the last keystroke.
+    pub fn poll_incremental_search(&mut self) {
+        if let Some(since) = self.search_dirty_since {
+            if since.elapsed() >= Self::SEARCH_DEBOUNCE {
+                self.search_dirty_since = None;
+                self.execute_incremental_search();
+            }
+        }
+    }
+
+    /// Run a fast metadata-only incremental search.
+    ///
+    /// Normally reached via the debounced [`poll_incremental_search`](App::poll_incremental_search),
+    /// but callable directly (tests, programmatic refresh). If the query
+    /// requires full-text search (body:), this skips filtering and shows all
+    /// entries (full search runs on Enter).
     pub fn execute_incremental_search(&mut self) {
         if self.search_query.is_empty() {
             // Restore all messages (respecting label filter)
@@ -930,25 +976,16 @@ impl App {
             return;
         }
 
-        // Start from full set (or label-filtered set)
-        let base_indices: Vec<usize> = if let Some(ref label) = self.active_label_filter {
-            self.entries
-                .iter()
-                .enumerate()
-                .filter(|(_, e)| e.labels.iter().any(|l| l == label))
-                .map(|(i, _)| i)
-                .collect()
-        } else {
-            (0..self.entries.len()).collect()
-        };
-
-        // Filter using metadata search
-        let all_results = crate::search::metadata::search_metadata(&self.entries, &query);
-        let result_set: std::collections::HashSet<usize> = all_results.into_iter().collect();
-        self.visible_indices = base_indices
-            .into_iter()
-            .filter(|i| result_set.contains(i))
-            .collect();
+        // Single metadata pass. `search_metadata` already returns the matching
+        // entry indices in ascending order, so we use them directly instead of
+        // building a `(0..n)` base set and re-filtering it through a `HashSet`
+        // (the old double pass + extra allocation on every keystroke). When a
+        // sidebar label filter is active, narrow the results in one `retain`.
+        let mut results = crate::search::metadata::search_metadata(&self.entries, &query);
+        if let Some(ref label) = self.active_label_filter {
+            results.retain(|&i| self.entries[i].labels.iter().any(|l| l == label));
+        }
+        self.visible_indices = results;
 
         self.apply_sort();
         if self.threaded_view {
@@ -1546,5 +1583,66 @@ mod async_search_tests {
             "body should be shared (store LRU + current_body), got {}",
             std::rc::Rc::strong_count(body)
         );
+    }
+
+    /// The incremental search runs a single metadata pass: `search_metadata`'s
+    /// output is used directly (no `(0..n)` base set + HashSet re-filter), and
+    /// an active label filter narrows it in one `retain`.
+    #[test]
+    fn incremental_search_single_pass() {
+        use std::sync::Arc;
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+
+        // No label filter: results are exactly the metadata matches.
+        app.search_query = "from:user1".to_string();
+        app.execute_incremental_search();
+        assert_eq!(
+            app.visible_indices,
+            vec![0],
+            "from:user1 matches only the first message"
+        );
+
+        // With an active label filter, results are the metadata matches
+        // intersected with the labelled subset — narrowed in one pass.
+        {
+            let entries = Arc::make_mut(&mut app.entries);
+            entries[0].labels.push("Inbox".to_string());
+            entries[1].labels.push("Inbox".to_string());
+        }
+        app.active_label_filter = Some("Inbox".to_string());
+        app.search_query = "from:user".to_string();
+        app.execute_incremental_search();
+        let mut got = app.visible_indices.clone();
+        got.sort_unstable();
+        assert_eq!(
+            got,
+            vec![0, 1],
+            "from:user within the Inbox label keeps only labelled matches"
+        );
+    }
+
+    /// Keystrokes debounce: `mark_search_dirty` schedules a recompute that
+    /// `poll_incremental_search` only runs after the window elapses, and
+    /// `cancel_pending_incremental_search` discards it.
+    #[test]
+    fn incremental_search_is_debounced_and_cancelable() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_query = "from:user1".to_string();
+
+        app.mark_search_dirty();
+        // Polling immediately (well within the debounce window) must not fire.
+        app.poll_incremental_search();
+        assert!(
+            app.search_dirty_since.is_some(),
+            "a poll before the debounce window keeps the recompute pending"
+        );
+
+        app.cancel_pending_incremental_search();
+        assert!(
+            app.search_dirty_since.is_none(),
+            "cancel must discard the pending recompute"
+        );
+        // A poll with nothing pending is a no-op.
+        app.poll_incremental_search();
     }
 }

@@ -105,6 +105,9 @@ fn run_event_loop(
         // Collect results from any in-flight background search.
         app.poll_search();
 
+        // Run a debounced incremental search if the query settled.
+        app.poll_incremental_search();
+
         // Periodic housekeeping
         app.tick();
 
