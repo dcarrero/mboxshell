@@ -4,6 +4,13 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.5.1
+
+- Corregido: **al exportar con varios mensajes marcados ahora se escribe cada mensaje marcado en HTML y TXT, no solo el actual.** La exportación a EML y CSV ya respetaba el conjunto marcado, pero HTML y TXT solo escribían el mensaje enfocado, así que exportar una selección marcada producía un único fichero. Ahora ambos escriben un fichero por mensaje marcado, todos a la vez. Gracias a @nekromoff (#20).
+- Corregido: **los mensajes sin cabecera `Date:` parseable ahora usan como respaldo la fecha del separador `From ` en vez de 1970.** Los chats de Google Takeout, los borradores y muchos mensajes automáticos no llevan cabecera `Date:`; se marcaban todos con `1970-01-01` y se agrupaban en un extremo de cualquier orden por fecha. Ahora se usa la fecha asctime de la línea `From_` del mbox como respaldo documentado.
+- Corregido: **las zonas horarias con nombre CET, CEST y JST ya no se leen como UTC.** El parser RFC 2822 de chrono solo reconoce las obs-zones norteamericanas (EST/EDT/…/PST/PDT) y trataba el resto de zonas alfabéticas como `-0000`, así que el correo europeo/asiático quedaba desviado 1–9 horas — suficiente para cambiar el día del calendario cerca de la medianoche. Ahora las zonas con nombre se sustituyen por su offset numérico antes de parsear, y la tabla de sustitución está ordenada para que `CEST` ya no lo capture la regla de `EST`.
+- Docs: eliminada la afirmación de los README sobre entrada `.eml` y de directorio de EML (hoy solo se soporta MBOX), corregida una referencia en CONTRIBUTING a un wrapper `memmap2` con `unsafe` ya eliminado (el código no contiene `unsafe`), y actualizados el banner de versión de los manuales de usuario y la lista de campos de `stats` (recuento de `Message-ID` duplicados).
+
 ## v0.5.0
 
 Versión de robustez surgida de una auditoría completa de seguridad y estabilidad de todo el código. Sin cambios funcionales en el uso normal; 13 nuevos tests de regresión.

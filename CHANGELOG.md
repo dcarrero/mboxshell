@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.1
+
+- Fix: **exporting with several messages marked now writes every marked message for HTML and TXT, not just the current one.** EML and CSV export already honored the marked set, but HTML and TXT only wrote the focused message, so exporting a marked selection produced a single file. Both now write one file per marked message, all at once. Thanks to @nekromoff (#20).
+- Fix: **messages with no parseable `Date:` header now fall back to the `From ` separator's envelope date instead of 1970.** Gmail Takeout chats, drafts and many automated messages carry no `Date:` header; they were all stamped `1970-01-01` and clumped together at one end of every date sort. The mbox `From_` line's asctime date is now used as the documented fallback.
+- Fix: **the named timezones CET, CEST and JST are no longer read as UTC.** chrono's RFC 2822 parser only recognizes the North-American obs-zones (EST/EDT/…/PST/PDT) and treated other alphabetic zones as `-0000`, so European/Asian mail was off by 1–9 hours — enough to shift the calendar day near midnight. Named zones are now substituted with their numeric offset before parsing, and the substitution table is ordered so `CEST` is no longer swallowed by the `EST` rule.
+- Docs: removed the READMEs' claim of `.eml` and EML-directory input (only MBOX is supported today), corrected a CONTRIBUTING reference to a removed `memmap2` unsafe wrapper (the codebase contains no `unsafe`), and refreshed the user manuals' version banner and the `stats` field list (duplicate `Message-ID` count).
+
 ## v0.5.0
 
 Hardening release from a full security and stability audit of the whole codebase. No functional changes to normal use; 13 new regression tests.
