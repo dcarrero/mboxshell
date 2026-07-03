@@ -4,6 +4,14 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.6.0
+
+Versión de rendimiento interactivo para buzones grandes (los ficheros de 50 GB / ~500k mensajes que este proyecto busca soportar). No cambia lo que muestra la TUI, solo cuánto trabajo hace por pulsación y por fotograma. 6 tests nuevos.
+
+- Rendimiento: **la vista de mensaje ya no reconstruye ni reajusta todo el cuerpo en cada fotograma.** Renderizar un mensaje volvía a sanear y estilar cada línea y a reajustar (word-wrap) todo el cuerpo dos veces por fotograma —miles de asignaciones para un correo HTML grande— y redibujaba ~10 veces por segundo incluso en reposo. Las líneas ya estilizadas se cachean y se reutilizan hasta que cambia algo que las afecta (el mensaje seleccionado, el ancho del panel, las vistas raw / cabeceras completas o el estado de la búsqueda intra-mensaje), de modo que los fotogramas en reposo y el desplazamiento se saltan la reconstrucción y uno de los dos reajustes.
+- Rendimiento: **la búsqueda incremental ahora tiene rebote (debounce) y hace una sola pasada.** Cada tecla en la barra de búsqueda escaneaba todos los mensajes dos veces (más un conjunto hash) de forma síncrona, así que escribir se ralentizaba en buzones grandes. Ahora hace una sola pasada y solo cuando dejas de teclear (~150 ms), de modo que una ráfaga de teclas se funde en una única búsqueda en vez de una por tecla. Pulsar Enter sigue lanzando de inmediato la búsqueda completa (incluido el cuerpo).
+- Rendimiento: **seleccionar un mensaje ya no copia en profundidad su cuerpo decodificado.** Mover el cursor clonaba el mensaje decodificado completo —texto, HTML, cabeceras y adjuntos, potencialmente varios MB— fuera de la caché en cada pulsación de flecha. Ahora los cuerpos se comparten por referencia, así que seleccionar es un incremento de contador barato.
+
 ## v0.5.3
 
 - Corregido: **el atajo "marcar todos" (`*`) ahora conmuta las filas visibles, no un recuento global.** Comparaba `marked.len()` con el número de filas visibles, así que con un filtro activo — cuando el número de mensajes marcados globalmente coincidía con el de visibles — podía limpiarlo todo (o marcar el conjunto equivocado). Ahora marca las filas visibles, las desmarca si ya están todas marcadas, y nunca toca las marcas fuera de la vista actual.

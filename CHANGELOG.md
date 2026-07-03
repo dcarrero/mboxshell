@@ -4,6 +4,14 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.0
+
+Interactive-performance release for large mailboxes (the 50GB / ~500k-message files this project targets). No change to what the TUI shows — only how much work it does per keystroke and per frame. 6 new tests.
+
+- Performance: **the message view no longer rebuilds and re-wraps the whole body on every frame.** Rendering a message used to re-sanitize and re-style every line and word-wrap the entire body twice per frame — thousands of allocations for a large HTML mail, and it drew ~10 times a second even while idle. The styled lines are now cached and reused until something that affects them changes (the selected message, the panel width, the raw / full-headers toggles, or the in-body search state), so idle frames and scrolling skip the rebuild and one of the two wraps.
+- Performance: **incremental search is debounced and does a single pass.** Every keystroke in the search bar used to scan all messages twice (plus build a hash set) synchronously, so typing lagged on large mailboxes. It now runs one scan, and only after typing settles (~150 ms), so a burst of keystrokes coalesces into a single search instead of one search per key. Pressing Enter still runs the full (including body) search immediately.
+- Performance: **selecting a message no longer deep-copies its decoded body.** Moving the cursor used to clone the whole decoded message — text, HTML, headers and attachments, potentially several MB — out of the cache on every arrow-key press. Bodies are now shared by reference, so selection is a cheap reference-count bump.
+
 ## v0.5.3
 
 - Fix: **the "mark all" (`*`) shortcut now toggles the visible rows, not a global count.** It compared `marked.len()` against the visible count, so with a filter active — when the number of globally-marked messages happened to equal the visible count — it could clear everything (or mark the wrong set). It now marks the visible rows, unmarks them if all are already marked, and never touches marks outside the current view.

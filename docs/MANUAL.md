@@ -1,7 +1,7 @@
 # mboxShell — User Manual
 
 > Complete guide to every feature of `mboxShell`, the fast terminal MBOX viewer.
-> **Applies to mboxShell v0.5.1.**
+> **Applies to mboxShell v0.6.0.**
 > Spanish version: [MANUAL-ES.md](MANUAL-ES.md) · Short overview: [../README.md](../README.md) · Changes: [../CHANGELOG.md](../CHANGELOG.md)
 
 `mboxShell` opens, searches and exports `.mbox` files of any size (50 GB+) from the terminal, without ever loading the whole file into memory and **without ever modifying the source file** (it is strictly read-only).
