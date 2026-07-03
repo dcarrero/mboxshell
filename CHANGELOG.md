@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.2
+
+- Security: **the `search` and `stats` CLI tables now sanitize message header fields before printing them.** A hostile subject or sender could carry ESC/OSC terminal escape sequences (and RFC 2047 encoded-words decode into real control bytes), which were written straight to the terminal — the same terminal-injection class the TUI already guarded against. The CLI now runs those fields through the same sanitizer; the `--json` output was already safe.
+- Security: **the quoted-printable re-encoder (`export --qp`) is now depth-limited.** A deeply nested `multipart/*` message could recurse without bound and overflow the stack; nesting beyond 32 levels now emits the inner part unchanged.
+- Security: **a `.mboxshell.idx` sidecar that is implausibly large for its mailbox is now rejected before being read into memory**, so a crafted index can't force a huge allocation ahead of validation.
+- Dependencies: **bumped ratatui 0.29 → 0.30 and lru 0.16 → 0.18.** This removes the vulnerable `lru 0.12.5` that ratatui pulled in transitively (GHSA-rhfx-m35p-ff5j, a low-severity `IterMut` Stacked-Borrows issue); the dependency tree now resolves a single `lru 0.18`.
+
 ## v0.5.1
 
 - Fix: **exporting with several messages marked now writes every marked message for HTML and TXT, not just the current one.** EML and CSV export already honored the marked set, but HTML and TXT only wrote the focused message, so exporting a marked selection produced a single file. Both now write one file per marked message, all at once. Thanks to @nekromoff (#20).

@@ -4,6 +4,13 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.5.2
+
+- Seguridad: **las tablas de la CLI de `search` y `stats` ahora sanean los campos de cabecera de los mensajes antes de imprimirlos.** Un asunto o remitente hostil podía llevar secuencias de escape ESC/OSC del terminal (y los encoded-words RFC 2047 se decodifican a bytes de control reales), que se escribían directamente al terminal — la misma clase de inyección de terminal contra la que la TUI ya se protegía. La CLI pasa ahora esos campos por el mismo saneador; la salida `--json` ya era segura.
+- Seguridad: **el re-codificador quoted-printable (`export --qp`) ahora está limitado en profundidad.** Un mensaje `multipart/*` profundamente anidado podía recursar sin límite y desbordar la pila; a partir de 32 niveles de anidamiento se emite la parte interna sin cambios.
+- Seguridad: **un fichero adjunto `.mboxshell.idx` inverosímilmente grande para su buzón ahora se rechaza antes de leerse en memoria**, así que un índice manipulado no puede forzar una asignación enorme antes de la validación.
+- Dependencias: **actualizadas ratatui 0.29 → 0.30 y lru 0.16 → 0.18.** Esto elimina la `lru 0.12.5` vulnerable que ratatui arrastraba de forma transitiva (GHSA-rhfx-m35p-ff5j, un problema de baja severidad de Stacked Borrows en `IterMut`); el árbol de dependencias ahora resuelve una única `lru 0.18`.
+
 ## v0.5.1
 
 - Corregido: **al exportar con varios mensajes marcados ahora se escribe cada mensaje marcado en HTML y TXT, no solo el actual.** La exportación a EML y CSV ya respetaba el conjunto marcado, pero HTML y TXT solo escribían el mensaje enfocado, así que exportar una selección marcada producía un único fichero. Ahora ambos escriben un fichero por mensaje marcado, todos a la vez. Gracias a @nekromoff (#20).
