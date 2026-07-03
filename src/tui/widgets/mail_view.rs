@@ -470,4 +470,41 @@ mod render_tests {
             "focused match must be scrolled into view, got:\n{visible}"
         );
     }
+
+    /// Smoke test: the full UI renders in every layout plus the help overlay
+    /// without panicking and produces a non-empty frame. Guards the ratatui
+    /// render pipeline (notably across the 0.30 upgrade).
+    #[test]
+    fn full_ui_renders_across_layouts_and_popups() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(!app.entries.is_empty(), "fixture has messages");
+
+        for layout in [
+            LayoutMode::ListOnly,
+            LayoutMode::HorizontalSplit,
+            LayoutMode::VerticalSplit,
+        ] {
+            app.layout = layout;
+            let mut term = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+            term.draw(|f| crate::tui::ui::render(f, &mut app))
+                .expect("draw");
+            assert!(
+                rendered_rows(&term)
+                    .trim()
+                    .chars()
+                    .any(|c| !c.is_whitespace()),
+                "a layout rendered an empty frame"
+            );
+        }
+
+        // Help overlay on top of the list.
+        app.show_help = true;
+        let mut term = Terminal::new(TestBackend::new(80, 24)).expect("terminal");
+        term.draw(|f| crate::tui::ui::render(f, &mut app))
+            .expect("draw");
+        assert!(rendered_rows(&term)
+            .trim()
+            .chars()
+            .any(|c| !c.is_whitespace()));
+    }
 }
