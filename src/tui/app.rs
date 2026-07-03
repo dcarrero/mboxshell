@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::Arc;
@@ -296,7 +297,10 @@ pub struct App {
 
     // ── Loaded message ────────────────────────
     /// Decoded body of the currently selected message.
-    pub current_body: Option<MailBody>,
+    ///
+    /// Held as an [`Rc`] so selecting a message is a refcount bump rather than
+    /// a deep copy of the (possibly multi-MB) body out of the store's LRU.
+    pub current_body: Option<Rc<MailBody>>,
 
     // ── In-body search ────────────────────────
     /// Is the in-body search prompt open and capturing input?
@@ -460,7 +464,9 @@ impl App {
     fn load_selected_body(&mut self) {
         if let Some(entry) = self.current_entry().cloned() {
             match self.store.get_message(&entry) {
-                Ok(body) => self.current_body = Some(body.clone()),
+                // `get_message` returns an `Rc`; this is a refcount bump, not a
+                // deep copy of the decoded body.
+                Ok(body) => self.current_body = Some(body),
                 Err(e) => {
                     tracing::warn!(error = %e, "Failed to load message body");
                     self.current_body = None;
@@ -1226,14 +1232,14 @@ mod body_search_tests {
     fn external_html_view_sanitizes_script() {
         use super::MailBody;
         let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
-        app.current_body = Some(MailBody {
+        app.current_body = Some(std::rc::Rc::new(MailBody {
             text: Some("plain".to_string()),
             html: Some(
                 "<p>ok</p><script>alert(1)</script><a href=\"javascript:x\">l</a>".to_string(),
             ),
             raw_headers: String::new(),
             attachments: vec![],
-        });
+        }));
         app.request_external_html_view();
         let path = app
             .pending_html_view
@@ -1520,6 +1526,25 @@ mod async_search_tests {
         assert!(
             !app.filter_within_results,
             "changing the label scope must drop within-results mode"
+        );
+    }
+
+    /// Selecting a message must share the decoded body with the store's cache
+    /// via `Rc`, not deep-copy it. A strong count ≥ 2 (store + `current_body`)
+    /// proves the body was not cloned out of the LRU on selection.
+    #[test]
+    fn load_body_is_shared_not_deep_copied() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(!app.visible_indices.is_empty(), "fixture has messages");
+        app.select_message(0);
+        let body = app
+            .current_body
+            .as_ref()
+            .expect("selecting a valid message loads its body");
+        assert!(
+            std::rc::Rc::strong_count(body) >= 2,
+            "body should be shared (store LRU + current_body), got {}",
+            std::rc::Rc::strong_count(body)
         );
     }
 }

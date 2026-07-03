@@ -671,7 +671,7 @@ fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<St
             .collect();
         let count = entries.len();
         for entry in &entries {
-            let body = app.store.get_message(entry)?.clone();
+            let body = app.store.get_message(entry)?;
             crate::export::html::export_html(entry, &body, output_dir)?;
         }
         Ok(format!(
@@ -711,7 +711,7 @@ fn export_current_txt(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
             .collect();
         let count = entries.len();
         for entry in &entries {
-            let body = app.store.get_message(entry)?.clone();
+            let body = app.store.get_message(entry)?;
             crate::export::text::export_text(entry, &body, output_dir)?;
         }
         Ok(format!(

@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use lru::LruCache;
 use tracing::debug;
@@ -21,10 +22,14 @@ const DEFAULT_CACHE_SIZE: usize = 50;
 /// Maintains an LRU cache of decoded [`MailBody`] objects so that
 /// scrolling back and forth through a message list does not require
 /// repeated MIME decoding.
+///
+/// Bodies are stored behind an [`Rc`] so callers (the TUI's `current_body`,
+/// exporters) obtain a cheap shared handle instead of deep-copying a
+/// potentially multi-MB `MailBody` out of the cache on every access.
 pub struct MboxStore {
     path: PathBuf,
     file: File,
-    cache: LruCache<u64, MailBody>,
+    cache: LruCache<u64, Rc<MailBody>>,
 }
 
 impl MboxStore {
@@ -41,15 +46,18 @@ impl MboxStore {
         })
     }
 
-    /// Read and decode a message. Cached results are returned immediately.
-    pub fn get_message(&mut self, entry: &MailEntry) -> Result<&MailBody> {
-        if !self.cache.contains(&entry.offset) {
-            let raw = self.read_raw(entry)?;
-            let body = mime::parse_message_body(&raw)?;
-            self.cache.put(entry.offset, body);
+    /// Read and decode a message, returning a shared handle to the cached body.
+    ///
+    /// The returned [`Rc`] is a cheap refcount bump, not a deep copy; it keeps
+    /// the body alive even if a later `get_message` evicts it from the LRU.
+    pub fn get_message(&mut self, entry: &MailEntry) -> Result<Rc<MailBody>> {
+        if let Some(body) = self.cache.get(&entry.offset) {
+            return Ok(Rc::clone(body));
         }
-        // Safe: we just inserted if missing
-        Ok(self.cache.get(&entry.offset).expect("just inserted"))
+        let raw = self.read_raw(entry)?;
+        let body = Rc::new(mime::parse_message_body(&raw)?);
+        self.cache.put(entry.offset, Rc::clone(&body));
+        Ok(body)
     }
 
     /// Read the raw bytes of a message (not cached).

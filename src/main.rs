@@ -503,7 +503,7 @@ fn cmd_export(
             let mut count = 0usize;
             for (i, entry) in selected.iter().enumerate() {
                 pb.set_position(i as u64);
-                let body = store.get_message(entry)?.clone();
+                let body = store.get_message(entry)?;
                 mboxshell::export::text::export_text(entry, &body, output)?;
                 count += 1;
             }
@@ -521,7 +521,7 @@ fn cmd_export(
             let sanitize = !raw_html;
             for (i, entry) in selected.iter().enumerate() {
                 pb.set_position(i as u64);
-                let body = store.get_message(entry)?.clone();
+                let body = store.get_message(entry)?;
                 mboxshell::export::html::export_html_opts(entry, &body, output, sanitize)?;
                 count += 1;
             }

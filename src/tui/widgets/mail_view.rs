@@ -447,12 +447,12 @@ mod render_tests {
             text.push('\n');
         }
         text.push_str("here is the UNIQUENEEDLE token\n");
-        app.current_body = Some(MailBody {
+        app.current_body = Some(std::rc::Rc::new(MailBody {
             text: Some(text),
             html: None,
             raw_headers: String::new(),
             attachments: Vec::new(),
-        });
+        }));
         app.layout = LayoutMode::HorizontalSplit;
         app.focus = PanelFocus::MailView;
         app.body_search_query = "UNIQUENEEDLE".to_string();

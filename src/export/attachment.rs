@@ -31,7 +31,7 @@ pub fn export_all_attachments(
     entry: &MailEntry,
     output_dir: &Path,
 ) -> anyhow::Result<Vec<PathBuf>> {
-    let body = store.get_message(entry)?.clone();
+    let body = store.get_message(entry)?;
     let mut paths = Vec::new();
 
     for att in &body.attachments {
@@ -58,7 +58,7 @@ pub fn export_bulk_attachments(
     for (i, entry) in entries.iter().enumerate() {
         progress(i, total);
 
-        let body = store.get_message(entry)?.clone();
+        let body = store.get_message(entry)?;
         if body.attachments.is_empty() {
             continue;
         }
