@@ -56,7 +56,7 @@ tracing-appender = "0.2"
 
 # Utilities
 humansize = "2"
-lru = "0.12"
+lru = "0.16"
 unicode-width = "0.2"
 
 # HTML to text rendering (tables, lists, links)
