@@ -76,8 +76,10 @@ enum Commands {
         inputs: Vec<PathBuf>,
         #[arg(short, long)]
         output: PathBuf,
-        #[arg(long, default_value = "true")]
-        dedup: bool,
+        /// Skip duplicate-Message-ID detection and concatenate the inputs
+        /// byte-for-byte (preserves original bytes and line endings).
+        #[arg(long)]
+        no_dedup: bool,
     },
     /// Extract all attachments
     Attachments {
@@ -225,8 +227,8 @@ fn main() -> anyhow::Result<()> {
         Some(Commands::Merge {
             inputs,
             output,
-            dedup,
-        }) => cmd_merge(&inputs, &output, dedup),
+            no_dedup,
+        }) => cmd_merge(&inputs, &output, !no_dedup),
         Some(Commands::Attachments { path, output }) => cmd_attachments(&path, &output, force),
         Some(Commands::Completions { shell }) => cmd_completions(shell),
         Some(Commands::Manpage) => cmd_manpage(),

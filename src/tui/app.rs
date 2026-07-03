@@ -637,12 +637,14 @@ impl App {
 
     /// Request the main loop to open the current message's HTML body in
     /// the external viewer configured via `MBOXSHELL_HTML_VIEWER`
-    /// (defaults to `w3m`). Writes the HTML to a temp file and stores
-    /// the path in `pending_html_view`; the loop performs the spawn so
-    /// it can suspend/restore the terminal correctly.
+    /// (defaults to `w3m`). The HTML is sanitized (scripts, `on*` handlers
+    /// and `javascript:` URLs stripped) before being written to a temp file,
+    /// so a viewer such as a real browser cannot execute hostile email markup.
+    /// The path is stored in `pending_html_view`; the loop performs the spawn
+    /// so it can suspend/restore the terminal correctly.
     pub fn request_external_html_view(&mut self) {
         let html = match self.current_body.as_ref().and_then(|b| b.html.as_deref()) {
-            Some(h) => h.to_string(),
+            Some(h) => crate::export::html::sanitize_html(h),
             None => {
                 self.set_status(i18n::tui_no_html_part());
                 return;
@@ -654,7 +656,14 @@ impl App {
             .map(|d| d.as_nanos())
             .unwrap_or(0);
         path.push(format!("mboxshell-{}-{}.html", std::process::id(), stamp));
-        if let Err(e) = std::fs::write(&path, html) {
+        // `create_new` refuses to follow a pre-planted symlink or clobber an
+        // existing file — defends the predictable temp path on a shared /tmp.
+        let write_result = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, html.as_bytes()));
+        if let Err(e) = write_result {
             self.set_status(&format!("{}: {e}", i18n::tui_export_error()));
             return;
         }
@@ -1211,6 +1220,33 @@ mod body_search_tests {
         for (s, e) in hits {
             assert_eq!(hay[s..e].to_lowercase(), "café");
         }
+    }
+
+    #[test]
+    fn external_html_view_sanitizes_script() {
+        use super::MailBody;
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.current_body = Some(MailBody {
+            text: Some("plain".to_string()),
+            html: Some(
+                "<p>ok</p><script>alert(1)</script><a href=\"javascript:x\">l</a>".to_string(),
+            ),
+            raw_headers: String::new(),
+            attachments: vec![],
+        });
+        app.request_external_html_view();
+        let path = app
+            .pending_html_view
+            .clone()
+            .expect("temp path should be set");
+        let content = std::fs::read_to_string(&path).expect("temp file readable");
+        assert!(content.contains("ok"), "safe content must be preserved");
+        assert!(!content.contains("<script"), "script tag must be stripped");
+        assert!(
+            !content.contains("javascript:"),
+            "javascript: URL must be stripped"
+        );
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

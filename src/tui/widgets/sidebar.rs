@@ -94,8 +94,37 @@ fn truncate_sidebar_entry(label: &str, count: usize, max_width: usize) -> String
     if label.len() <= avail {
         format!(" {label}{}{count_str}", " ".repeat(avail - label.len()))
     } else if avail > 3 {
-        format!(" {}...{count_str}", &label[..avail - 3])
+        let mut end = avail - 3;
+        while end > 0 && !label.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!(" {}...{count_str}", &label[..end])
     } else {
         format!(" {label}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_sidebar_entry_ascii_fits() {
+        // Short label is padded, not truncated; formatting unchanged.
+        let out = truncate_sidebar_entry("Inbox", 12, 24);
+        assert!(out.starts_with(" Inbox"));
+        assert!(out.contains("(12)"));
+        assert!(!out.contains("..."));
+    }
+
+    #[test]
+    fn test_truncate_sidebar_entry_multibyte_label_no_panic() {
+        // A non-ASCII label wider than the budget must truncate on a char
+        // boundary instead of panicking mid-character (this runs every frame).
+        let label = "Categoría-Ñoños-Español-中文分類";
+        for max_width in [8usize, 10, 24] {
+            let out = truncate_sidebar_entry(label, 3, max_width);
+            assert!(out.starts_with(' '));
+        }
     }
 }

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use crate::model::mail::{MailBody, MailEntry};
 
-use super::eml::sanitize_filename_part;
+use super::eml::{sanitize_filename_part, truncate_at_char_boundary};
 
 /// Export a single message as a standalone HTML file.
 ///
@@ -34,6 +34,7 @@ pub fn export_html_opts(
 ) -> anyhow::Result<PathBuf> {
     let filename = html_filename(entry);
     let path = output_dir.join(&filename);
+    let path = super::attachment::unique_path(&path);
 
     let mut out = String::new();
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
@@ -138,7 +139,7 @@ fn escape_html(s: &str) -> String {
 /// Sanitize an HTML fragment using `ammonia` with defaults that strip
 /// scripts, styles, iframes, objects, embeds, `on*` event handlers and
 /// `javascript:` URLs while keeping safe formatting and links.
-fn sanitize_html(html: &str) -> String {
+pub(crate) fn sanitize_html(html: &str) -> String {
     ammonia::clean(html)
 }
 
@@ -147,7 +148,7 @@ fn html_filename(entry: &MailEntry) -> String {
     let subject = sanitize_filename_part(&entry.subject, 80);
     let name = format!("{date}_{subject}.html");
     if name.len() > 200 {
-        format!("{}.html", &name[..196])
+        format!("{}.html", truncate_at_char_boundary(&name, 196))
     } else {
         name
     }
@@ -252,5 +253,23 @@ mod tests {
         let path = export_html_opts(&entry, &body, tmp.path(), false).unwrap();
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("<script>x</script>"));
+    }
+
+    #[test]
+    fn test_html_export_unique_on_collision() {
+        // Two messages with identical date and subject must not overwrite each
+        // other — the second export gets a `_1` suffix.
+        let entry = sample_entry();
+        let body = MailBody {
+            text: Some("x".to_string()),
+            html: None,
+            raw_headers: String::new(),
+            attachments: vec![],
+        };
+        let tmp = tempfile::tempdir().unwrap();
+        let p1 = export_html(&entry, &body, tmp.path()).unwrap();
+        let p2 = export_html(&entry, &body, tmp.path()).unwrap();
+        assert_ne!(p1, p2, "second export must not overwrite the first");
+        assert!(p1.exists() && p2.exists());
     }
 }

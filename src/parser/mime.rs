@@ -68,19 +68,16 @@ pub fn extract_attachment(raw_message: &[u8], attachment: &AttachmentMeta) -> Re
         MboxError::MimeError("Failed to parse message for attachment extraction".into())
     })?;
 
-    use mail_parser::MimeHeaders;
-    // Find the attachment by filename match
-    for part in msg.attachments() {
-        let name = part.attachment_name().unwrap_or("").to_string();
-
-        if name == attachment.filename || attachment.filename.is_empty() {
-            return Ok(part.contents().to_vec());
-        }
+    // Select the exact part by its position at parse time. Matching by
+    // filename is unreliable: parts can share a name (all inline `image.png`)
+    // or have none, which would return the wrong bytes or nothing.
+    if let Some(part) = msg.attachments().nth(attachment.part_index) {
+        return Ok(part.contents().to_vec());
     }
 
     Err(MboxError::MimeError(format!(
-        "Attachment '{}' not found in message",
-        attachment.filename
+        "Attachment '{}' (part {}) not found in message",
+        attachment.filename, attachment.part_index
     )))
 }
 
@@ -121,6 +118,7 @@ fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<Attachmen
             is_inline,
             content_offset: 0,
             content_length: part.contents().len() as u64,
+            part_index: idx,
         });
     }
 
@@ -248,5 +246,69 @@ mod tests {
         assert!(headers.contains("From: alice@example.com"));
         assert!(headers.contains("Subject: Hi"));
         assert!(!headers.contains("Body here"));
+    }
+
+    #[test]
+    fn test_extract_attachment_duplicate_filenames() {
+        // Two attachments share the filename "data.txt" but carry different
+        // bodies. Selecting by name would return the first for both; selecting
+        // by part index must return the correct bytes for each.
+        let raw = b"Subject: Test\r\n\
+MIME-Version: 1.0\r\n\
+Content-Type: multipart/mixed; boundary=\"BOUND\"\r\n\
+\r\n\
+--BOUND\r\n\
+Content-Type: text/plain\r\n\
+\r\n\
+Body text\r\n\
+--BOUND\r\n\
+Content-Type: text/plain; name=\"data.txt\"\r\n\
+Content-Disposition: attachment; filename=\"data.txt\"\r\n\
+\r\n\
+AAA\r\n\
+--BOUND\r\n\
+Content-Type: text/plain; name=\"data.txt\"\r\n\
+Content-Disposition: attachment; filename=\"data.txt\"\r\n\
+\r\n\
+BBB\r\n\
+--BOUND--\r\n";
+        let metas = list_attachments(raw).unwrap();
+        assert_eq!(metas.len(), 2, "expected two attachments");
+        assert_eq!(metas[0].part_index, 0);
+        assert_eq!(metas[1].part_index, 1);
+
+        let first = extract_attachment(raw, &metas[0]).unwrap();
+        let second = extract_attachment(raw, &metas[1]).unwrap();
+        assert!(first.starts_with(b"AAA"), "part 0 must be AAA");
+        assert!(
+            second.starts_with(b"BBB"),
+            "part 1 must be BBB, not the first same-named part"
+        );
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn test_extract_attachment_unnamed_part() {
+        // An attachment with no filename gets a synthesized display name, but
+        // its real part name is empty; positional selection must still find it.
+        let raw = b"Subject: Test\r\n\
+MIME-Version: 1.0\r\n\
+Content-Type: multipart/mixed; boundary=\"BOUND\"\r\n\
+\r\n\
+--BOUND\r\n\
+Content-Type: text/plain\r\n\
+\r\n\
+Body text\r\n\
+--BOUND\r\n\
+Content-Type: application/octet-stream\r\n\
+Content-Disposition: attachment\r\n\
+\r\n\
+PAYLOAD\r\n\
+--BOUND--\r\n";
+        let metas = list_attachments(raw).unwrap();
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].filename, "attachment_0");
+        let data = extract_attachment(raw, &metas[0]).unwrap();
+        assert!(data.starts_with(b"PAYLOAD"));
     }
 }

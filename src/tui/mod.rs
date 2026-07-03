@@ -46,6 +46,16 @@ pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
 
     pb.finish_and_clear();
 
+    // If anything panics while the alternate screen is active, restore the
+    // terminal first so the user's shell is not left in raw mode (the normal
+    // restore below is skipped when unwinding).
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = disable_raw_mode();
+        let _ = io::stdout().execute(LeaveAlternateScreen);
+        default_hook(info);
+    }));
+
     // Setup terminal (alternate screen)
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -55,6 +65,9 @@ pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
 
     // Run the event loop
     let result = run_event_loop(&mut terminal, app);
+
+    // Restore the pre-TUI panic hook now that the alternate screen is going away.
+    let _ = std::panic::take_hook();
 
     // Restore terminal (always, even on error)
     disable_raw_mode()?;

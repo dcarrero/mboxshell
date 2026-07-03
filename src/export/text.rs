@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::model::mail::{MailBody, MailEntry};
 
-use super::eml::sanitize_filename_part;
+use super::eml::{sanitize_filename_part, truncate_at_char_boundary};
 
 /// Export a single message as a plain text file with headers and body.
 pub fn export_text(
@@ -14,6 +14,7 @@ pub fn export_text(
 ) -> anyhow::Result<PathBuf> {
     let filename = text_filename(entry);
     let path = output_dir.join(&filename);
+    let path = super::attachment::unique_path(&path);
 
     let mut content = String::new();
 
@@ -79,7 +80,7 @@ fn text_filename(entry: &MailEntry) -> String {
     let subject = sanitize_filename_part(&entry.subject, 80);
     let name = format!("{date}_{subject}.txt");
     if name.len() > 200 {
-        format!("{}.txt", &name[..196])
+        format!("{}.txt", truncate_at_char_boundary(&name, 196))
     } else {
         name
     }

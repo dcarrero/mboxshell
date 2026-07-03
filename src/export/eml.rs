@@ -41,6 +41,7 @@ pub fn export_eml_opts(
 
     let filename = eml_filename(entry);
     let path = output_dir.join(&filename);
+    let path = super::attachment::unique_path(&path);
 
     std::fs::write(&path, &bytes)?;
     Ok(path)
@@ -90,7 +91,7 @@ fn eml_filename(entry: &MailEntry) -> String {
 
     let name = format!("{date}_{from}_{subject}.eml");
     if name.len() > 200 {
-        format!("{}.eml", &name[..196])
+        format!("{}.eml", truncate_at_char_boundary(&name, 196))
     } else {
         name
     }
@@ -474,6 +475,19 @@ pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
     }
 }
 
+/// Truncate `s` to at most `max_bytes` bytes without splitting a UTF-8
+/// character. Returns the longest prefix whose byte length is `<= max_bytes`.
+pub(crate) fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -499,6 +513,61 @@ mod tests {
         assert!(!sanitize_filename_part("...triple", 50).starts_with('.'));
         // Trailing dots stripped
         assert!(!sanitize_filename_part("file...", 50).ends_with('.'));
+    }
+
+    #[test]
+    fn test_truncate_at_char_boundary() {
+        // Fits: returned unchanged.
+        assert_eq!(truncate_at_char_boundary("hello", 10), "hello");
+        assert_eq!(truncate_at_char_boundary("hello", 5), "hello");
+        // Empty and zero.
+        assert_eq!(truncate_at_char_boundary("", 4), "");
+        assert_eq!(truncate_at_char_boundary("héllo", 0), "");
+        // Multibyte: "é" is 2 bytes. max_bytes=2 must not split it.
+        assert_eq!(truncate_at_char_boundary("é", 1), "");
+        assert_eq!(truncate_at_char_boundary("aé", 2), "a");
+        // Never panics and never yields invalid UTF-8 for a CJK string.
+        let cjk = "日本語のテスト";
+        for max in 0..cjk.len() + 2 {
+            let t = truncate_at_char_boundary(cjk, max);
+            assert!(t.len() <= max.min(cjk.len()));
+        }
+    }
+
+    fn entry_with_subject(subject: &str) -> MailEntry {
+        use crate::model::address::EmailAddress;
+        use chrono::TimeZone;
+        MailEntry {
+            offset: 0,
+            length: 0,
+            date: chrono::Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+            from: EmailAddress {
+                display_name: String::new(),
+                address: "sender@example.com".to_string(),
+            },
+            to: vec![],
+            cc: vec![],
+            subject: subject.to_string(),
+            message_id: "<id@example.com>".to_string(),
+            in_reply_to: None,
+            references: vec![],
+            has_attachments: false,
+            content_type: "text/plain".to_string(),
+            text_size: 0,
+            labels: vec![],
+            sequence: 0,
+        }
+    }
+
+    #[test]
+    fn test_eml_filename_long_multibyte_subject_no_panic() {
+        // 80 CJK chars (each 3 bytes) = 240 bytes of subject; combined with the
+        // date and sender the name exceeds 200 bytes and used to be sliced at a
+        // fixed byte index, panicking mid-character.
+        let subject: String = "日".repeat(80);
+        let name = eml_filename(&entry_with_subject(&subject));
+        assert!(name.ends_with(".eml"));
+        assert!(name.len() <= 200, "name was {} bytes", name.len());
     }
 
     #[test]

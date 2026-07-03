@@ -93,7 +93,7 @@ fn message_folder_name(entry: &MailEntry) -> String {
 }
 
 /// If `path` already exists, append a counter to make it unique.
-fn unique_path(path: &Path) -> PathBuf {
+pub(crate) fn unique_path(path: &Path) -> PathBuf {
     if !path.exists() {
         return path.to_path_buf();
     }

@@ -32,4 +32,10 @@ pub struct AttachmentMeta {
 
     /// Length in bytes of the encoded content.
     pub content_length: u64,
+
+    /// Zero-based position of this part within `msg.attachments()` at parse
+    /// time. Used to re-locate the exact part on extraction, because filenames
+    /// can repeat across parts or be absent entirely.
+    #[serde(default)]
+    pub part_index: usize,
 }

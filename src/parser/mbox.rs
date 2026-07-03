@@ -17,6 +17,17 @@ const READ_BUFFER_SIZE: usize = 1024 * 1024;
 /// Default maximum message size in bytes (256 MB).
 const MAX_MESSAGE_SIZE: usize = 256 * 1024 * 1024;
 
+/// Maximum bytes retained for a single physical line during header scanning.
+/// A line longer than this (an unwrapped multi-GB body run with no newline, or
+/// a corrupt/truncated region) is still consumed from the file in full for
+/// correct offset accounting, but only this many bytes are kept in memory.
+const MAX_LINE_RETAIN: usize = 8 * 1024 * 1024;
+
+/// Maximum bytes retained for one message's accumulated header block. A header
+/// section larger than this (a malformed message with no header/body blank
+/// line) stops accumulating; offset accounting is unaffected.
+const MAX_HEADER_RETAIN: usize = 16 * 1024 * 1024;
+
 /// Streaming MBOX parser.
 ///
 /// Reads through the file sequentially, invoking a caller-supplied callback for
@@ -244,6 +255,17 @@ impl MboxParser {
                 }
                 consumed as u64
             };
+            // Cap what we RETAIN, never what we consumed: `line_len` above is
+            // the true byte count read from the file, so offsets stay exact
+            // while a pathological newline-free run can't blow up memory.
+            if line_buf.len() > MAX_LINE_RETAIN {
+                warn!(
+                    offset = current_offset,
+                    retained = MAX_LINE_RETAIN,
+                    "Oversized line while indexing; truncating retained bytes"
+                );
+                line_buf.truncate(MAX_LINE_RETAIN);
+            }
 
             let kind = classify_from_line(&line_buf);
             if first_line && kind == FromLineKind::GitPatchMarker {
@@ -284,7 +306,7 @@ impl MboxParser {
                     let mut saved = Vec::with_capacity(header_buf.len());
                     std::mem::swap(&mut saved, &mut header_buf);
                     prev_headers = Some(saved);
-                } else {
+                } else if header_buf.len() < MAX_HEADER_RETAIN {
                     header_buf.extend_from_slice(&line_buf);
                 }
             }
@@ -741,5 +763,93 @@ mod tests {
             headers.contains("Date: Wed, 22 Apr 2020"),
             "Date header was dropped at the buffer boundary"
         );
+    }
+
+    #[test]
+    fn test_oversized_line_offsets_stay_exact() {
+        use std::io::Write;
+
+        // Message 1 has an oversized body line (no newline until its end) that
+        // exceeds MAX_LINE_RETAIN, so it is truncated in memory. `current_offset`
+        // must still advance by the full consumed byte count, so message 2's
+        // reported offset is byte-exact.
+        let big_len = MAX_LINE_RETAIN + 1024;
+        let mut data = Vec::new();
+        data.extend_from_slice(b"From a@b.com Thu Jan 01 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: First\n\n");
+        data.extend(std::iter::repeat_n(b'x', big_len));
+        data.push(b'\n');
+        let second_start = data.len() as u64;
+        data.extend_from_slice(b"From c@d.com Fri Jan 02 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: Second\n\n");
+        data.extend_from_slice(b"Body\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut offsets: Vec<u64> = Vec::new();
+        let mut second_headers: Vec<u8> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |off, _len, headers| {
+                    if offsets.len() == 1 {
+                        second_headers = headers.to_vec();
+                    }
+                    offsets.push(off);
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(count, 2, "both messages must be found across the huge line");
+        assert_eq!(offsets.len(), 2);
+        assert_eq!(
+            offsets[1], second_start,
+            "second message offset must stay byte-exact despite the truncated line"
+        );
+        assert!(String::from_utf8_lossy(&second_headers).contains("Subject: Second"));
+    }
+
+    #[test]
+    fn test_header_cap_preserves_normal_multiheader_messages() {
+        use std::io::Write;
+
+        // Two well-formed messages with several headers each. The header
+        // retention cap (MAX_HEADER_RETAIN) must never drop a legitimate header
+        // of a normally-sized message.
+        let mut data = Vec::new();
+        data.extend_from_slice(b"From a@b.com Thu Jan 01 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: First\n");
+        data.extend_from_slice(b"X-Foo: bar\n");
+        data.extend_from_slice(b"Date: Wed, 22 Apr 2020 14:32:19 -0700\n\n");
+        data.extend_from_slice(b"Body one\n");
+        data.extend_from_slice(b"From c@d.com Fri Jan 02 00:00:00 2024\n");
+        data.extend_from_slice(b"Subject: Second\n\n");
+        data.extend_from_slice(b"Body two\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut all_headers: Vec<String> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |_off, _len, headers| {
+                    all_headers.push(String::from_utf8_lossy(headers).into_owned());
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(count, 2);
+        assert!(all_headers[0].contains("Subject: First"));
+        assert!(all_headers[0].contains("X-Foo: bar"));
+        assert!(all_headers[0].contains("Date: Wed, 22 Apr 2020"));
+        assert!(all_headers[1].contains("Subject: Second"));
     }
 }

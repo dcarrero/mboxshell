@@ -52,8 +52,10 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     // Right-aligned help hint
     let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
     let right_text = i18n::tui_help_hint();
-    let padding = area.width as usize - left_len.min(area.width as usize) - right_text.len();
-    if padding > 0 && area.width as usize > left_len + right_text.len() {
+    let padding = (area.width as usize)
+        .saturating_sub(left_len)
+        .saturating_sub(right_text.len());
+    if padding > 0 {
         spans.push(Span::styled(" ".repeat(padding), theme.header_bar));
     }
     spans.push(Span::styled(right_text, theme.header_bar));

@@ -374,7 +374,7 @@ fn parse_size_filter(value: &str) -> Option<SizeFilter> {
     };
 
     let num: u64 = num_str.parse().ok()?;
-    let bytes = num * multiplier;
+    let bytes = num.checked_mul(multiplier)?;
 
     if cmp {
         Some(SizeFilter::GreaterThan(bytes))
@@ -502,6 +502,22 @@ mod tests {
         } else {
             panic!("expected LessThan size filter");
         }
+
+        // Bare-byte suffix.
+        let q = parse_query("size:>500b");
+        if let Some(SizeFilter::GreaterThan(b)) = &q.size_filter {
+            assert_eq!(*b, 500);
+        } else {
+            panic!("expected GreaterThan size filter");
+        }
+    }
+
+    #[test]
+    fn test_parse_size_filter_overflow_is_ignored() {
+        // A value that overflows u64 when multiplied by the unit must yield no
+        // size filter instead of panicking (debug) or wrapping (release).
+        let q = parse_query("size:>99999999999gb");
+        assert!(q.size_filter.is_none());
     }
 
     #[test]
