@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.1
+
+Merge gains an optional source-mailbox header. 6 new tests.
+
+- Feature: **`merge --source-header` injects an `X-Mbox-Source: <origin file name>` header into every merged message**, so a combined archive stays traceable back to which mailbox each email came from. The header is inserted right after the `From ` envelope line (becoming the message's first real header), reuses the message's own line terminator (CRLF vs LF), preserves a leading UTF-8 BOM, and is prepended when a message has no envelope line. The origin file name is sanitized (control chars incl. CR/LF stripped) so a crafted file name can't inject extra headers. Enabling it forces the per-message merge path (it needs message boundaries) instead of the fast raw block copy; a plain merge is unchanged. `merge_mbox_files` takes a new `add_source_header` parameter and `MergeStats` reports `source_header_added`.
+
 ## v0.6.0
 
 Interactive-performance release for large mailboxes (the 50GB / ~500k-message files this project targets). No change to what the TUI shows — only how much work it does per keystroke and per frame. 6 new tests.

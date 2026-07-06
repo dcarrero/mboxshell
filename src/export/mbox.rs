@@ -13,6 +13,8 @@ pub struct MergeStats {
     pub duplicates_removed: u64,
     pub output_size: u64,
     pub input_files: usize,
+    /// Number of messages that got an `X-Mbox-Source` header injected.
+    pub source_header_added: u64,
 }
 
 /// Merge multiple MBOX files into a single output file.
@@ -20,11 +22,18 @@ pub struct MergeStats {
 /// If `dedup` is true, messages with duplicate Message-IDs are skipped
 /// (the first occurrence is kept).
 ///
+/// If `add_source_header` is true, every message gets an
+/// `X-Mbox-Source: <origin file name>` header injected as its first header, so
+/// the merged archive stays traceable back to which mailbox each email came
+/// from. This forces the per-message path (it needs message boundaries), so it
+/// is slower than the raw byte-exact block copy used by a plain no-dedup merge.
+///
 /// The progress callback receives `(current_file, total_files, filename)`.
 pub fn merge_mbox_files(
     inputs: &[PathBuf],
     output: &Path,
     dedup: bool,
+    add_source_header: bool,
     progress: &dyn Fn(usize, usize, &str),
 ) -> anyhow::Result<MergeStats> {
     // Write to a sibling temp file and rename on success, so a mid-merge error
@@ -35,6 +44,7 @@ pub fn merge_mbox_files(
     let mut seen_ids: HashSet<String> = HashSet::new();
     let mut total_messages: u64 = 0;
     let mut duplicates_removed: u64 = 0;
+    let mut source_header_added: u64 = 0;
     let total_files = inputs.len();
 
     for (file_idx, input_path) in inputs.iter().enumerate() {
@@ -44,19 +54,39 @@ pub fn merge_mbox_files(
             .unwrap_or_else(|| input_path.to_string_lossy().to_string());
         progress(file_idx, total_files, &filename);
 
-        if dedup {
-            // Index to get Message-IDs, then copy non-duplicate messages
+        // Both dedup and source-header injection need per-message boundaries, so
+        // they share the parsing path. A plain no-dedup / no-header merge stays
+        // on the fast raw block copy below.
+        if dedup || add_source_header {
+            // The source label is the origin file name (e.g. "Inbox.mbox"),
+            // sanitized so a crafted name can't inject extra headers.
+            let source_label = if add_source_header {
+                sanitize_header_value(&filename)
+            } else {
+                String::new()
+            };
+
+            // Index to get Message-IDs, then copy (and optionally tag) messages.
             let entries = builder::build_index(input_path, false, None)?;
             let mut store = crate::store::reader::MboxStore::open(input_path)?;
 
             for entry in &entries {
-                let id = entry.message_id.clone();
-                if dedup && !id.is_empty() && seen_ids.contains(&id) {
-                    duplicates_removed += 1;
-                    continue;
+                if dedup {
+                    let id = &entry.message_id;
+                    if !id.is_empty() && seen_ids.contains(id) {
+                        duplicates_removed += 1;
+                        continue;
+                    }
+                    if !id.is_empty() {
+                        seen_ids.insert(id.clone());
+                    }
                 }
 
-                let raw = store.get_raw_message(entry)?;
+                let mut raw = store.get_raw_message(entry)?;
+                if add_source_header {
+                    raw = inject_source_header(&raw, &source_label);
+                    source_header_added += 1;
+                }
                 out_file.write_all(&raw)?;
 
                 // Ensure there's a newline separator between messages
@@ -64,9 +94,6 @@ pub fn merge_mbox_files(
                     out_file.write_all(b"\n")?;
                 }
 
-                if !id.is_empty() {
-                    seen_ids.insert(id);
-                }
                 total_messages += 1;
             }
         } else {
@@ -103,7 +130,69 @@ pub fn merge_mbox_files(
         duplicates_removed,
         output_size,
         input_files: total_files,
+        source_header_added,
     })
+}
+
+/// Insert an `X-Mbox-Source: <source>` header into a raw MBOX message.
+///
+/// The header is placed right after the `From ` envelope line (so it becomes
+/// the first real RFC 5322 header) and matches the message's own line
+/// terminator (CRLF vs LF). A message without an envelope line gets the header
+/// prepended. Any leading UTF-8 BOM is preserved. Header injection is safe
+/// because `source` is sanitized by the caller.
+fn inject_source_header(raw: &[u8], source: &str) -> Vec<u8> {
+    // Skip a UTF-8 BOM if the very first message of a file carries one.
+    let start = if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        3
+    } else {
+        0
+    };
+
+    let body = &raw[start..];
+    if body.starts_with(b"From ") {
+        if let Some(rel_nl) = body.iter().position(|&b| b == b'\n') {
+            let nl = start + rel_nl; // index of the '\n' in `raw`
+            // Match the envelope line's terminator so we don't mix CRLF and LF.
+            let terminator: &[u8] = if nl > 0 && raw[nl - 1] == 0x0D {
+                b"\r\n"
+            } else {
+                b"\n"
+            };
+            let insert_pos = nl + 1;
+
+            let mut out = Vec::with_capacity(raw.len() + source.len() + 18);
+            out.extend_from_slice(&raw[..insert_pos]);
+            out.extend_from_slice(b"X-Mbox-Source: ");
+            out.extend_from_slice(source.as_bytes());
+            out.extend_from_slice(terminator);
+            out.extend_from_slice(&raw[insert_pos..]);
+            return out;
+        }
+    }
+
+    // No envelope line: prepend the header (after any BOM).
+    let mut out = Vec::with_capacity(raw.len() + source.len() + 18);
+    out.extend_from_slice(&raw[..start]);
+    out.extend_from_slice(b"X-Mbox-Source: ");
+    out.extend_from_slice(source.as_bytes());
+    out.push(b'\n');
+    out.extend_from_slice(&raw[start..]);
+    out
+}
+
+/// Strip control characters (CR/LF/NUL/DEL…) so an origin file name can never
+/// break out of its header value and inject additional headers.
+fn sanitize_header_value(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| {
+            let u = *c as u32;
+            u >= 0x20 && u != 0x7F
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 #[cfg(test)]
@@ -123,7 +212,7 @@ mod tests {
         std::fs::write(&b, b_bytes).unwrap();
 
         let out = dir.path().join("out.mbox");
-        let stats = merge_mbox_files(&[a, b], &out, false, &|_, _, _| {}).unwrap();
+        let stats = merge_mbox_files(&[a, b], &out, false, false, &|_, _, _| {}).unwrap();
 
         let merged = std::fs::read(&out).unwrap();
         let mut expected = Vec::new();
@@ -144,9 +233,96 @@ mod tests {
         std::fs::write(&b, msg).unwrap();
 
         let out = dir.path().join("out.mbox");
-        let stats = merge_mbox_files(&[a, b], &out, true, &|_, _, _| {}).unwrap();
+        let stats = merge_mbox_files(&[a, b], &out, true, false, &|_, _, _| {}).unwrap();
 
         assert_eq!(stats.duplicates_removed, 1);
         assert_eq!(stats.total_messages, 1);
+        assert_eq!(stats.source_header_added, 0);
+    }
+
+    #[test]
+    fn test_inject_source_header_after_envelope_lf() {
+        let raw = b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n";
+        let out = inject_source_header(raw, "Inbox.mbox");
+        assert_eq!(
+            out,
+            b"From x@y Thu Jan 01 00:00:00 2024\nX-Mbox-Source: Inbox.mbox\nSubject: A\n\nbody\n"
+                .to_vec(),
+            "header must be the first real header, after the From_ line, with LF"
+        );
+    }
+
+    #[test]
+    fn test_inject_source_header_preserves_crlf() {
+        let raw = b"From x@y Thu Jan 01 00:00:00 2024\r\nSubject: A\r\n\r\nbody\r\n";
+        let out = inject_source_header(raw, "Sent");
+        assert_eq!(
+            out,
+            b"From x@y Thu Jan 01 00:00:00 2024\r\nX-Mbox-Source: Sent\r\nSubject: A\r\n\r\nbody\r\n"
+                .to_vec(),
+            "the injected header must reuse the message's CRLF terminator"
+        );
+    }
+
+    #[test]
+    fn test_inject_source_header_preserves_bom() {
+        let mut raw = vec![0xEF, 0xBB, 0xBF];
+        raw.extend_from_slice(b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n");
+        let out = inject_source_header(&raw, "Inbox");
+        let mut expected = vec![0xEF, 0xBB, 0xBF];
+        expected.extend_from_slice(
+            b"From x@y Thu Jan 01 00:00:00 2024\nX-Mbox-Source: Inbox\nSubject: A\n\nbody\n",
+        );
+        assert_eq!(out, expected, "a leading UTF-8 BOM must be preserved");
+    }
+
+    #[test]
+    fn test_inject_source_header_no_envelope_prepends() {
+        let raw = b"Subject: A\n\nbody\n";
+        let out = inject_source_header(raw, "orphan");
+        assert_eq!(
+            out,
+            b"X-Mbox-Source: orphan\nSubject: A\n\nbody\n".to_vec(),
+            "a message with no From_ line gets the header prepended"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_header_value_strips_control_chars() {
+        // A crafted file name trying to inject a second header.
+        let dirty = "evil\r\nBcc: attacker@example.com";
+        assert_eq!(
+            sanitize_header_value(dirty),
+            "evilBcc: attacker@example.com",
+            "CR/LF must be stripped so no extra header can be injected"
+        );
+        assert_eq!(sanitize_header_value("  Inbox.mbox  "), "Inbox.mbox");
+    }
+
+    #[test]
+    fn test_source_header_merge_tags_every_message() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("Inbox.mbox");
+        let b = dir.path().join("Sent.mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &b,
+            b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n",
+        )
+        .unwrap();
+
+        let out = dir.path().join("out.mbox");
+        // dedup off, source header on: proves the two options are independent.
+        let stats = merge_mbox_files(&[a, b], &out, false, true, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.total_messages, 2);
+        assert_eq!(stats.source_header_added, 2);
+        let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
+        assert!(merged.contains("X-Mbox-Source: Inbox.mbox"));
+        assert!(merged.contains("X-Mbox-Source: Sent.mbox"));
     }
 }

@@ -4,6 +4,12 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.6.1
+
+La fusión (merge) gana una cabecera opcional de buzón de origen. 6 tests nuevos.
+
+- Función: **`merge --source-header` inyecta una cabecera `X-Mbox-Source: <nombre del fichero de origen>` en cada mensaje fusionado**, de modo que un archivo combinado sigue siendo trazable al buzón del que provino cada correo. La cabecera se inserta justo después de la línea sobre `From ` (pasa a ser la primera cabecera real del mensaje), reutiliza el terminador de línea del propio mensaje (CRLF o LF), preserva un BOM UTF-8 inicial y se antepone cuando el mensaje no tiene línea sobre. El nombre del fichero de origen se sanea (se eliminan los caracteres de control, incluidos CR/LF) para que un nombre malicioso no pueda inyectar cabeceras adicionales. Activarla fuerza la ruta de fusión por mensaje (necesita las fronteras de cada mensaje) en vez de la copia rápida de bloque; una fusión normal no cambia. `merge_mbox_files` recibe un nuevo parámetro `add_source_header` y `MergeStats` reporta `source_header_added`.
+
 ## v0.6.0
 
 Versión de rendimiento interactivo para buzones grandes (los ficheros de 50 GB / ~500k mensajes que este proyecto busca soportar). No cambia lo que muestra la TUI, solo cuánto trabajo hace por pulsación y por fotograma. 6 tests nuevos.

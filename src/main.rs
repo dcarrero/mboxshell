@@ -80,6 +80,10 @@ enum Commands {
         /// byte-for-byte (preserves original bytes and line endings).
         #[arg(long)]
         no_dedup: bool,
+        /// Inject an `X-Mbox-Source: <origin file name>` header into every
+        /// message so the merged archive stays traceable to its source mailbox.
+        #[arg(long)]
+        source_header: bool,
     },
     /// Extract all attachments
     Attachments {
@@ -228,7 +232,8 @@ fn main() -> anyhow::Result<()> {
             inputs,
             output,
             no_dedup,
-        }) => cmd_merge(&inputs, &output, !no_dedup),
+            source_header,
+        }) => cmd_merge(&inputs, &output, !no_dedup, source_header),
         Some(Commands::Attachments { path, output }) => cmd_attachments(&path, &output, force),
         Some(Commands::Completions { shell }) => cmd_completions(shell),
         Some(Commands::Manpage) => cmd_manpage(),
@@ -547,7 +552,12 @@ fn cmd_export(
 }
 
 /// Merge multiple MBOX files into one.
-fn cmd_merge(inputs: &[PathBuf], output: &Path, dedup: bool) -> anyhow::Result<()> {
+fn cmd_merge(
+    inputs: &[PathBuf],
+    output: &Path,
+    dedup: bool,
+    add_source_header: bool,
+) -> anyhow::Result<()> {
     for input in inputs {
         if !input.exists() {
             anyhow::bail!("{}: {}", i18n::err_file_not_found(), input.display());
@@ -569,6 +579,7 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, dedup: bool) -> anyhow::Result<(
         inputs,
         output,
         dedup,
+        add_source_header,
         &|current, _total, _name| {
             pb.set_position(current as u64);
         },
@@ -591,6 +602,9 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, dedup: bool) -> anyhow::Result<(
             i18n::cli_duplicates_removed(),
             stats.duplicates_removed
         );
+    }
+    if add_source_header {
+        println!("  {:<25} {}", "Tagged with source:", stats.source_header_added);
     }
     println!(
         "  {:<25} {}",
