@@ -132,8 +132,11 @@ mboxshell export correo.mbox --format csv --output resumen.csv
 # Extraer adjuntos
 mboxshell attachments correo.mbox --output ./adjuntos/
 
-# Combinar varios MBOX eliminando duplicados
-mboxshell merge archivo1.mbox archivo2.mbox -o combinado.mbox --dedup
+# Combinar varios MBOX (los duplicados se eliminan por defecto)
+mboxshell merge archivo1.mbox archivo2.mbox -o combinado.mbox
+
+# Combinar etiquetando cada mensaje con el buzón del que viene
+mboxshell merge Inbox.mbox Sent.mbox -o combinado.mbox --source-header
 
 # Generar completions para tu shell
 mboxshell completions bash > /etc/bash_completion.d/mboxshell
@@ -151,7 +154,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell stats <ruta> [--json]` | Mostrar estadisticas de un archivo MBOX |
 | `mboxshell search <ruta> <consulta> [--json]` | Buscar mensajes desde la linea de comandos |
 | `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt, html) |
-| `mboxshell merge <archivos...> -o <salida> [--dedup]` | Combinar varios archivos MBOX en uno |
+| `mboxshell merge <archivos...> -o <salida> [--no-dedup] [--source-header]` | Combinar varios archivos MBOX en uno |
 | `mboxshell attachments <ruta> -o <salida>` | Extraer todos los adjuntos |
 | `mboxshell completions <shell>` | Generar completions de shell (bash, zsh, fish, powershell, elvish) |
 | `mboxshell manpage` | Generar pagina de manual |
@@ -163,6 +166,15 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `-f`, `--force` | Forzar reconstruccion del indice aunque exista |
 | `-v`, `--verbose` | Aumentar verbosidad del log (-v info, -vv debug, -vvv trace) |
 | `--lang <en\|es>` | Forzar idioma de la interfaz (auto-detectado por defecto) |
+
+**Flags de merge:**
+
+| Flag | Descripción |
+|------|-------------|
+| `--no-dedup` | Omitir la detección de Message-ID duplicados y concatenar las entradas byte a byte (la deduplicación está activada por defecto) |
+| `--source-header` | Inyectar una cabecera `X-Mbox-Source: <nombre de buzón>` en cada mensaje, para que el archivo combinado siga siendo trazable hasta el buzón del que vino cada correo |
+
+La etiqueta de origen es el nombre de buzón que tú ves: en una exportación de Apple Mail —una carpeta `Inbox.mbox` que contiene un fichero llamado literalmente `mbox`— pone `Inbox.mbox`, no `mbox`. Los buzones que compartirían etiqueta se desambiguan entre sí (`Trabajo/Inbox.mbox` frente a `Personal/Inbox.mbox`).
 
 ## Interfaz de terminal
 

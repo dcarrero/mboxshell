@@ -80,8 +80,10 @@ enum Commands {
         /// byte-for-byte (preserves original bytes and line endings).
         #[arg(long)]
         no_dedup: bool,
-        /// Inject an `X-Mbox-Source: <origin file name>` header into every
-        /// message so the merged archive stays traceable to its source mailbox.
+        /// Inject an `X-Mbox-Source: <mailbox name>` header into every message
+        /// so the merged archive stays traceable to its source mailbox. The
+        /// name is the one you see (`Inbox.mbox`, not Apple Mail's inner
+        /// `mbox` file).
         #[arg(long)]
         source_header: bool,
     },
@@ -604,7 +606,11 @@ fn cmd_merge(
         );
     }
     if add_source_header {
-        println!("  {:<25} {}", "Tagged with source:", stats.source_header_added);
+        println!(
+            "  {:<25} {}",
+            i18n::cli_tagged_with_source(),
+            stats.source_header_added
+        );
     }
     println!(
         "  {:<25} {}",

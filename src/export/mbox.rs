@@ -159,7 +159,8 @@ fn inject_source_header(raw: &[u8], source: &str) -> Vec<u8> {
     let body = &raw[start..];
     if body.starts_with(b"From ") {
         if let Some(rel_nl) = body.iter().position(|&b| b == b'\n') {
-            let nl = start + rel_nl; // index of the '\n' in `raw`
+            // Index of the newline ending the envelope line, relative to `raw`.
+            let nl = start + rel_nl;
             // Match the envelope line's terminator so we don't mix CRLF and LF.
             let terminator: &[u8] = if nl > 0 && raw[nl - 1] == 0x0D {
                 b"\r\n"
@@ -316,11 +317,7 @@ mod tests {
             b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
         )
         .unwrap();
-        std::fs::write(
-            &b,
-            b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n",
-        )
-        .unwrap();
+        std::fs::write(&b, b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n").unwrap();
 
         let out = dir.path().join("out.mbox");
         // dedup off, source header on: proves the two options are independent.

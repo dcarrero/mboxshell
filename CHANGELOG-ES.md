@@ -6,9 +6,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## v0.6.2
 
-Corrige la cabecera de buzón de origen en las exportaciones de Apple Mail. 7 tests nuevos.
+Corrige la cabecera de buzón de origen en las exportaciones de Apple Mail, y documenta el flag que en v0.6.1 salió sin documentar. 7 tests nuevos (202 en total).
 
 - Corregido: **`merge --source-header` ahora escribe el nombre de buzón que conoce el usuario, no `mbox`.** Apple Mail exporta un buzón como una *carpeta* `Inbox.mbox` que contiene un fichero llamado literalmente `mbox`, que es la ruta que se lee de verdad — así que `X-Mbox-Source` quedaba grabada como `mbox` en todos los mensajes de todos esos buzones, dejando el archivo combinado sin trazabilidad, que es justo para lo que existe la cabecera. La etiqueta se toma ahora del paquete `.mbox` contenedor (`Inbox.mbox`), mientras que un fichero llamado `mbox` que *no* esté dentro de un paquete conserva su propio nombre. Los buzones que compartirían etiqueta se desambiguan entre sí anteponiendo directorios padre (`Trabajo/Inbox.mbox` frente a `Personal/Inbox.mbox`), hasta 4 niveles, y el proceso se detiene cuando un nombre ya no puede crecer, de modo que dos entradas idénticas terminan en vez de trepar hasta la raíz del sistema de ficheros. El mismo nombre se pasa al callback de progreso. Nuevo módulo `mailbox_naming` (`presentation_path` / `display_name` / `unique_display_names`); la etiqueta se sigue saneando antes de llegar a la cabecera.
+- Corregido: **la documentación describía un flag `merge --dedup` que no existe.** La deduplicación está activada por defecto y el flag real es `--no-dedup`; los dos READMEs y los dos manuales decían lo contrario, así que quien copiaba el comando documentado se llevaba un error. `--source-header` salió en v0.6.1 sin documentación ninguna — ahora está cubierto en READMEs y manuales, con la regla de nombres de Apple Mail explicada.
+- Corregido: la línea de resumen del merge `Tagged with source` estaba escrita en inglés a pelo, mientras el resto pasaba por el catálogo de idiomas — ahora está traducida (`Etiquetados con origen`).
+- Mantenimiento: recuperado un `cargo fmt --check` y un `cargo clippy -D warnings` limpios con la toolchain estable actual, cuyo estilo y lints (`clippy::question_mark`) habían empezado a rechazar código que ya estaba en `main`.
 
 ## v0.6.1
 
