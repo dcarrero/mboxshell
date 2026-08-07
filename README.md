@@ -280,6 +280,7 @@ src/
 +-- lib.rs               # Module re-exports
 +-- error.rs             # Error types with thiserror
 +-- config.rs            # TOML configuration
++-- mailbox_naming.rs    # Human-facing mailbox names (Apple Mail packages)
 +-- i18n/                # Internationalization (EN/ES)
 +-- parser/
 |   +-- mbox.rs          # Streaming parser (never loads the file into memory)
@@ -305,7 +306,7 @@ src/
 |   +-- csv.rs           # Export summary to CSV (UTF-8 BOM)
 |   +-- text.rs          # Export to plain text
 |   +-- attachment.rs    # Attachment extraction
-|   +-- mbox.rs          # MBOX merge with deduplication
+|   +-- mbox.rs          # MBOX merge with deduplication and source header
 +-- tui/
     +-- app.rs           # Global state (Elm Architecture)
     +-- event.rs         # Keyboard event handling
