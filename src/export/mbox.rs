@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::index::builder;
+use crate::mailbox_naming;
 
 /// Statistics returned by a merge operation.
 #[derive(Debug)]
@@ -23,12 +24,16 @@ pub struct MergeStats {
 /// (the first occurrence is kept).
 ///
 /// If `add_source_header` is true, every message gets an
-/// `X-Mbox-Source: <origin file name>` header injected as its first header, so
+/// `X-Mbox-Source: <mailbox name>` header injected as its first header, so
 /// the merged archive stays traceable back to which mailbox each email came
 /// from. This forces the per-message path (it needs message boundaries), so it
 /// is slower than the raw byte-exact block copy used by a plain no-dedup merge.
 ///
-/// The progress callback receives `(current_file, total_files, filename)`.
+/// The mailbox name is the one the user sees (`Inbox.mbox`, not Apple Mail's
+/// inner `mbox` file), disambiguated across the inputs when two of them would
+/// otherwise share a name — see [`crate::mailbox_naming`].
+///
+/// The progress callback receives `(current_file, total_files, mailbox_name)`.
 pub fn merge_mbox_files(
     inputs: &[PathBuf],
     output: &Path,
@@ -47,21 +52,23 @@ pub fn merge_mbox_files(
     let mut source_header_added: u64 = 0;
     let total_files = inputs.len();
 
+    // Name every input the way the user sees it, disambiguated as a set: taking
+    // `file_name()` here would label every Apple Mail package "mbox".
+    let mailbox_names = mailbox_naming::unique_display_names(inputs);
+
     for (file_idx, input_path) in inputs.iter().enumerate() {
-        let filename = input_path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| input_path.to_string_lossy().to_string());
-        progress(file_idx, total_files, &filename);
+        let filename = mailbox_names[file_idx].as_str();
+        progress(file_idx, total_files, filename);
 
         // Both dedup and source-header injection need per-message boundaries, so
         // they share the parsing path. A plain no-dedup / no-header merge stays
         // on the fast raw block copy below.
         if dedup || add_source_header {
-            // The source label is the origin file name (e.g. "Inbox.mbox"),
-            // sanitized so a crafted name can't inject extra headers.
+            // The source label is the mailbox name (e.g. "Inbox.mbox"),
+            // sanitized so a crafted name can't inject extra headers. A
+            // disambiguated name may carry a `/`, harmless in a header value.
             let source_label = if add_source_header {
-                sanitize_header_value(&filename)
+                sanitize_header_value(filename)
             } else {
                 String::new()
             };
@@ -324,5 +331,69 @@ mod tests {
         let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
         assert!(merged.contains("X-Mbox-Source: Inbox.mbox"));
         assert!(merged.contains("X-Mbox-Source: Sent.mbox"));
+    }
+
+    #[test]
+    fn test_source_header_names_apple_mail_packages() {
+        // Apple Mail stores each mailbox as a DIRECTORY "Inbox.mbox" holding a
+        // file literally called "mbox" — the path the app actually reads. The
+        // header must carry the package name, not "mbox".
+        let dir = tempfile::tempdir().unwrap();
+        let inbox_pkg = dir.path().join("Inbox.mbox");
+        let sent_pkg = dir.path().join("Sent.mbox");
+        std::fs::create_dir(&inbox_pkg).unwrap();
+        std::fs::create_dir(&sent_pkg).unwrap();
+
+        let inbox = inbox_pkg.join("mbox");
+        let sent = sent_pkg.join("mbox");
+        std::fs::write(
+            &inbox,
+            b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &sent,
+            b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n",
+        )
+        .unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[inbox, sent], &out, true, true, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.source_header_added, 2);
+        let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
+        assert!(merged.contains("X-Mbox-Source: Inbox.mbox"));
+        assert!(merged.contains("X-Mbox-Source: Sent.mbox"));
+        assert!(
+            !merged.contains("X-Mbox-Source: mbox"),
+            "the inner file name must never be used as the source label"
+        );
+    }
+
+    #[test]
+    fn test_source_header_disambiguates_same_named_packages() {
+        // Two accounts, both with an "Inbox.mbox": the labels must stay
+        // distinguishable, otherwise the header can't say where a mail is from.
+        let dir = tempfile::tempdir().unwrap();
+        let work = dir.path().join("Work").join("Inbox.mbox");
+        let personal = dir.path().join("Personal").join("Inbox.mbox");
+        std::fs::create_dir_all(&work).unwrap();
+        std::fs::create_dir_all(&personal).unwrap();
+
+        let a = work.join("mbox");
+        let b = personal.join("mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+        std::fs::write(&b, b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n").unwrap();
+
+        let out = dir.path().join("out.mbox");
+        merge_mbox_files(&[a, b], &out, true, true, &|_, _, _| {}).unwrap();
+
+        let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
+        assert!(merged.contains("X-Mbox-Source: Work/Inbox.mbox"));
+        assert!(merged.contains("X-Mbox-Source: Personal/Inbox.mbox"));
     }
 }

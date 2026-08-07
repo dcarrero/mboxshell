@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.6.2
+
+Fixes the source-mailbox header on Apple Mail exports. 7 new tests.
+
+- Fix: **`merge --source-header` now writes the mailbox name the user knows, not `mbox`.** Apple Mail exports a mailbox as a *directory* `Inbox.mbox` containing a file called literally `mbox`, which is the path actually read — so `X-Mbox-Source` was stamped `mbox` on every message of every such mailbox, making a merged archive untraceable, which is the one thing the header exists for. The label is now taken from the containing `.mbox` package (`Inbox.mbox`), while a file named `mbox` that is *not* inside a package keeps its own name. Mailboxes that would end up sharing a label are disambiguated against each other by prepending parent directories (`Work/Inbox.mbox` vs `Personal/Inbox.mbox`), up to 4 levels, stopping when a name can no longer grow so identical inputs terminate instead of climbing to the filesystem root. The same name is passed to the progress callback. New `mailbox_naming` module (`presentation_path` / `display_name` / `unique_display_names`); the label is still sanitized before it reaches the header.
+
 ## v0.6.1
 
 Merge gains an optional source-mailbox header. 6 new tests.
