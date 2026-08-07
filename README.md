@@ -132,8 +132,11 @@ mboxshell export mail.mbox --format csv --output summary.csv
 # Extract attachments
 mboxshell attachments mail.mbox --output ./attachments/
 
-# Merge multiple MBOX files, removing duplicates
-mboxshell merge file1.mbox file2.mbox -o merged.mbox --dedup
+# Merge multiple MBOX files (duplicates are removed by default)
+mboxshell merge file1.mbox file2.mbox -o merged.mbox
+
+# Merge tagging every message with the mailbox it came from
+mboxshell merge Inbox.mbox Sent.mbox -o merged.mbox --source-header
 
 # Generate shell completions
 mboxshell completions bash > /etc/bash_completion.d/mboxshell
@@ -151,7 +154,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell stats <path> [--json]` | Show statistics about an MBOX file |
 | `mboxshell search <path> <query> [--json]` | Search messages from the command line |
 | `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt, html) |
-| `mboxshell merge <files...> -o <output> [--dedup]` | Merge multiple MBOX files into one |
+| `mboxshell merge <files...> -o <output> [--no-dedup] [--source-header]` | Merge multiple MBOX files into one |
 | `mboxshell attachments <path> -o <output>` | Extract all attachments |
 | `mboxshell completions <shell>` | Generate shell completions (bash, zsh, fish, powershell, elvish) |
 | `mboxshell manpage` | Generate a man page |
@@ -163,6 +166,15 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `-f`, `--force` | Force rebuild index even if one exists |
 | `-v`, `--verbose` | Increase log verbosity (-v info, -vv debug, -vvv trace) |
 | `--lang <en\|es>` | Force interface language (auto-detected by default) |
+
+**Merge flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--no-dedup` | Skip duplicate-Message-ID detection and concatenate the inputs byte-for-byte (dedup is on by default) |
+| `--source-header` | Inject an `X-Mbox-Source: <mailbox name>` header into every message, so a merged archive stays traceable to the mailbox each email came from |
+
+The source label is the mailbox name you see: for an Apple Mail export — a directory `Inbox.mbox` containing a file literally called `mbox` — it reads `Inbox.mbox`, not `mbox`. Mailboxes that would end up sharing a label are disambiguated against each other (`Work/Inbox.mbox` vs `Personal/Inbox.mbox`).
 
 ## Terminal UI
 
@@ -268,6 +280,7 @@ src/
 +-- lib.rs               # Module re-exports
 +-- error.rs             # Error types with thiserror
 +-- config.rs            # TOML configuration
++-- mailbox_naming.rs    # Human-facing mailbox names (Apple Mail packages)
 +-- i18n/                # Internationalization (EN/ES)
 +-- parser/
 |   +-- mbox.rs          # Streaming parser (never loads the file into memory)
@@ -293,7 +306,7 @@ src/
 |   +-- csv.rs           # Export summary to CSV (UTF-8 BOM)
 |   +-- text.rs          # Export to plain text
 |   +-- attachment.rs    # Attachment extraction
-|   +-- mbox.rs          # MBOX merge with deduplication
+|   +-- mbox.rs          # MBOX merge with deduplication and source header
 +-- tui/
     +-- app.rs           # Global state (Elm Architecture)
     +-- event.rs         # Keyboard event handling

@@ -352,12 +352,10 @@ fn parse_flexible_date_end(s: &str) -> Option<NaiveDate> {
 
 /// Parse a size filter like `>1mb` or `<100kb`.
 fn parse_size_filter(value: &str) -> Option<SizeFilter> {
-    let (cmp, rest) = if let Some(r) = value.strip_prefix('>') {
-        (true, r)
-    } else if let Some(r) = value.strip_prefix('<') {
-        (false, r)
-    } else {
-        return None;
+    let (cmp, rest) = match value.strip_prefix('>') {
+        Some(r) => (true, r),
+        // Anything that isn't `>` or `<` is not a size filter at all.
+        None => (false, value.strip_prefix('<')?),
     };
 
     let rest_lower = rest.to_lowercase();

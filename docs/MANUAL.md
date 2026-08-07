@@ -1,7 +1,7 @@
 # mboxShell — User Manual
 
 > Complete guide to every feature of `mboxShell`, the fast terminal MBOX viewer.
-> **Applies to mboxShell v0.6.0.**
+> **Applies to mboxShell v0.6.2.**
 > Spanish version: [MANUAL-ES.md](MANUAL-ES.md) · Short overview: [../README.md](../README.md) · Changes: [../CHANGELOG.md](../CHANGELOG.md)
 
 `mboxShell` opens, searches and exports `.mbox` files of any size (50 GB+) from the terminal, without ever loading the whole file into memory and **without ever modifying the source file** (it is strictly read-only).
@@ -116,7 +116,7 @@ mboxshell export mail.mbox --format eml --output ./emails/
 mboxshell attachments mail.mbox --output ./attachments/
 
 # Merge several mailboxes into one, dropping duplicates
-mboxshell merge a.mbox b.mbox -o merged.mbox --dedup
+mboxshell merge a.mbox b.mbox -o merged.mbox
 ```
 
 ---
@@ -150,7 +150,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `stats <path> [--json]` | Print statistics (message count, date range, top senders, …) |
 | `search <path> <query> [--json]` | Search and print matching messages |
 | `export <path> -o <out> [options]` | Export messages (see below) |
-| `merge <inputs...> -o <out> [--dedup]` | Merge several MBOX files into one |
+| `merge <inputs...> -o <out> [--no-dedup] [--source-header]` | Merge several MBOX files into one |
 | `attachments <path> -o <out>` | Extract all attachments into a directory |
 | `completions <shell>` | Print shell completion script (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Print a man page to stdout |
@@ -406,10 +406,13 @@ In the TUI, press `e` on a message to open the export popup and choose a format 
 ### Merging mailboxes
 
 ```bash
-mboxshell merge inbox.mbox archive.mbox -o all.mbox --dedup
+mboxshell merge inbox.mbox archive.mbox -o all.mbox
+mboxshell merge Inbox.mbox Sent.mbox -o all.mbox --source-header
 ```
 
-`merge` concatenates several MBOX files into one. `--dedup` (on by default) removes duplicate messages (by Message-ID / content), so merging overlapping Takeout exports is safe.
+`merge` concatenates several MBOX files into one. Duplicate messages (by Message-ID) are removed by default, so merging overlapping Takeout exports is safe; pass `--no-dedup` to concatenate the inputs byte-for-byte instead.
+
+`--source-header` injects an `X-Mbox-Source: <mailbox name>` header into every message, so the merged archive stays traceable to the mailbox each email came from. The label is the mailbox name you see: for an Apple Mail export — a directory `Inbox.mbox` holding a file literally called `mbox` — it reads `Inbox.mbox`, not `mbox`. Mailboxes that would share a label are disambiguated against each other (`Work/Inbox.mbox` vs `Personal/Inbox.mbox`).
 
 ### Extracting attachments
 

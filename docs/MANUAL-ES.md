@@ -1,7 +1,7 @@
 # mboxShell — Manual de usuario
 
 > Guía completa de todas las funciones de `mboxShell`, el visor rápido de MBOX para terminal.
-> **Válido para mboxShell v0.6.0.**
+> **Válido para mboxShell v0.6.2.**
 > Versión en inglés: [MANUAL.md](MANUAL.md) · Resumen breve: [../README-ES.md](../README-ES.md) · Cambios: [../CHANGELOG-ES.md](../CHANGELOG-ES.md)
 
 `mboxShell` abre, busca y exporta ficheros `.mbox` de cualquier tamaño (más de 50 GB) desde la terminal, sin cargar nunca el fichero entero en memoria y **sin modificar jamás el fichero original** (es estrictamente de solo lectura).
@@ -116,7 +116,7 @@ mboxshell export correo.mbox --format eml --output ./emails/
 mboxshell attachments correo.mbox --output ./adjuntos/
 
 # Fusionar varios buzones en uno, descartando duplicados
-mboxshell merge a.mbox b.mbox -o fusionado.mbox --dedup
+mboxshell merge a.mbox b.mbox -o fusionado.mbox
 ```
 
 ---
@@ -150,7 +150,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `stats <ruta> [--json]` | Mostrar estadísticas (nº de mensajes, rango de fechas, remitentes top, …) |
 | `search <ruta> <consulta> [--json]` | Buscar y mostrar los mensajes coincidentes |
 | `export <ruta> -o <salida> [opciones]` | Exportar mensajes (ver abajo) |
-| `merge <entradas...> -o <salida> [--dedup]` | Fusionar varios ficheros MBOX en uno |
+| `merge <entradas...> -o <salida> [--no-dedup] [--source-header]` | Fusionar varios ficheros MBOX en uno |
 | `attachments <ruta> -o <salida>` | Extraer todos los adjuntos a una carpeta |
 | `completions <shell>` | Imprimir el script de autocompletado (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Imprimir una página de manual por stdout |
@@ -406,10 +406,13 @@ En la TUI, pulsa `e` sobre un mensaje para abrir el popup de exportación y eleg
 ### Fusionar buzones
 
 ```bash
-mboxshell merge recibidos.mbox archivo.mbox -o todo.mbox --dedup
+mboxshell merge recibidos.mbox archivo.mbox -o todo.mbox
+mboxshell merge Inbox.mbox Sent.mbox -o todo.mbox --source-header
 ```
 
-`merge` concatena varios ficheros MBOX en uno. `--dedup` (activado por defecto) elimina mensajes duplicados (por Message-ID / contenido), así que fusionar exportaciones de Takeout solapadas es seguro.
+`merge` concatena varios ficheros MBOX en uno. Los mensajes duplicados (por Message-ID) se eliminan por defecto, así que fusionar exportaciones de Takeout solapadas es seguro; pasa `--no-dedup` para concatenar las entradas byte a byte.
+
+`--source-header` inyecta una cabecera `X-Mbox-Source: <nombre de buzón>` en cada mensaje, para que el archivo combinado siga siendo trazable hasta el buzón del que vino cada correo. La etiqueta es el nombre de buzón que tú ves: en una exportación de Apple Mail —una carpeta `Inbox.mbox` que contiene un fichero llamado literalmente `mbox`— pone `Inbox.mbox`, no `mbox`. Los buzones que compartirían etiqueta se desambiguan entre sí (`Trabajo/Inbox.mbox` frente a `Personal/Inbox.mbox`).
 
 ### Extraer adjuntos
 

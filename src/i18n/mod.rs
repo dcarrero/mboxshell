@@ -610,6 +610,11 @@ msg!(
     "Duplicates removed",
     "Duplicados eliminados"
 );
+msg!(
+    cli_tagged_with_source,
+    "Tagged with source",
+    "Etiquetados con origen"
+);
 msg!(cli_output_size, "Output size", "Tama\u{f1}o de salida");
 msg!(cli_output_file, "Output file", "Fichero de salida");
 msg!(

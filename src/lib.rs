@@ -8,6 +8,7 @@ pub mod error;
 pub mod export;
 pub mod i18n;
 pub mod index;
+pub mod mailbox_naming;
 pub mod model;
 pub mod parser;
 pub mod search;
