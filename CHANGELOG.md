@@ -4,6 +4,15 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.1
+
+Search semantics: `OR` gains a precedence, and repeated date/size filters stop overwriting each other. 23 new tests (234 total).
+
+- Fix: **`OR` had no precedence — a single `OR` turned every term in the query into an alternative.** `from:alice OR from:bob subject:invoice` did not mean "either sender, about invoices": it returned everything from alice, everything from bob, *and* everything whose subject said invoice, whoever sent it. On a 6,787-message mailbox that is the difference between 49 hits and 2,102. A query is now a list of AND-ed groups, each group a list of OR-ed terms, and `OR` is what puts two terms in the same group — `a OR b c` reads as `(a OR b) AND c`. There are still no parentheses, which is what the syntax always implied. `SearchQuery.terms`/`is_or` give way to `groups` (with `all_terms()` for callers that only need what was parsed), and the full-text pass follows the same shape: it defers whole groups and settles each one after reading the body, so `body:x OR subject:y` behaves. Metadata terms inside a deferred group are judged by the metadata matcher instead of counting as an automatic match.
+- Fix: **`after:X before:Y` was impossible to express.** The parsed query held a single optional date filter, so the second one silently replaced the first and only `before:` survived — half of what the user typed was dropped without a word. Date and size filters now accumulate and are AND-ed, which also makes `size:>1mb size:<5mb` a band instead of a rewrite.
+- Change: **`after:` now includes its own day**; `before:` still excludes its own. So `after:2024-01-01 before:2025-01-01` is exactly the year 2024 — the half-open reading Gmail's operators use, and consistent with the already-inclusive `date:A..B`. A bare `after:2024-06-15` now returns messages from the 15th itself.
+- Docs: both manuals and both READMEs document the precedence rule, the date bounds, and that repeating a filter narrows instead of replacing.
+
 ## v0.7.0
 
 Support for the Google Groups mailboxes a Takeout archive ships alongside the Gmail export. 13 new tests (215 total). **The index format changes, so every existing `.mboxshell.idx` is rebuilt on first open.**

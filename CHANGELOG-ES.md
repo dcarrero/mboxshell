@@ -4,6 +4,15 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.7.1
+
+Semántica de búsqueda: `OR` gana precedencia y los filtros de fecha y tamaño repetidos dejan de pisarse entre sí. 23 tests nuevos (234 en total).
+
+- Corregido: **`OR` no tenía precedencia — un solo `OR` convertía en alternativa todos los términos de la consulta.** `from:ana OR from:luis subject:factura` no significaba «de cualquiera de los dos, sobre facturas»: devolvía todo lo de ana, todo lo de luis *y* todo lo que llevara «factura» en el asunto, viniera de quien viniera. En un buzón de 6.787 mensajes, eso es la diferencia entre 49 resultados y 2.102. Una consulta es ahora una lista de grupos unidos por AND, cada grupo una lista de términos unidos por OR, y `OR` es lo que mete dos términos en el mismo grupo — `a OR b c` se lee como `(a OR b) AND c`. Sigue sin haber paréntesis, que es lo que la sintaxis siempre dio a entender. `SearchQuery.terms`/`is_or` dejan paso a `groups` (con `all_terms()` para quien solo necesite saber qué se ha parseado), y la pasada de texto completo sigue la misma forma: difiere grupos enteros y resuelve cada uno tras leer el cuerpo, así que `body:x OR subject:y` se comporta. Los términos de metadatos dentro de un grupo diferido los juzga el comparador de metadatos en vez de contar como coincidencia automática.
+- Corregido: **`after:X before:Y` era imposible de expresar.** La consulta parseada guardaba un único filtro de fecha opcional, así que el segundo sustituía al primero sin avisar y solo sobrevivía `before:` — la mitad de lo que el usuario escribía se descartaba en silencio. Los filtros de fecha y de tamaño se acumulan ahora con AND, lo que además convierte `size:>1mb size:<5mb` en una banda de verdad en vez de en una sustitución.
+- Cambio: **`after:` incluye ya su propio día**; `before:` sigue excluyendo el suyo. Así que `after:2024-01-01 before:2025-01-01` es exactamente el año 2024 — la lectura semiabierta que usan los operadores de Gmail, y coherente con el `date:A..B`, que ya era inclusivo. Un `after:2024-06-15` a secas devuelve ahora también los mensajes del día 15.
+- Documentación: los dos manuales y los dos READMEs explican la regla de precedencia, los límites de fecha y que repetir un filtro acota en vez de sustituir.
+
 ## v0.7.0
 
 Soporte de los buzones de Google Groups que un archivo de Takeout incluye junto a la exportación de Gmail. 13 tests nuevos (215 en total). **El formato del índice cambia, así que todos los `.mboxshell.idx` existentes se reconstruyen en la primera apertura.**
