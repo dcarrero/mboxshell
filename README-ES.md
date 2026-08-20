@@ -11,13 +11,14 @@
 
 ## Por que existe este proyecto
 
-Cuando exportas tu correo de Gmail con Google Takeout, recibes uno o varios archivos `.mbox` que pueden pesar decenas de gigabytes. No existe una herramienta de terminal multiplataforma que permita abrir, buscar y consultar esos archivos de forma eficiente sin cargarlos enteros en memoria.
+Cuando exportas tu correo de Gmail con Google Takeout, recibes uno o varios archivos `.mbox` que pueden pesar decenas de gigabytes, mas un buzon adicional por cada grupo de Google del que eres propietario, facil de pasar por alto y que puede ser mayor que el propio export de Gmail. No existe una herramienta de terminal multiplataforma que permita abrir, buscar y consultar esos archivos de forma eficiente sin cargarlos enteros en memoria.
 
 `mboxShell` nacio para resolver ese problema: abrir un MBOX de 50 GB en segundos, navegar entre cientos de miles de mensajes con fluidez, buscar por remitente, fecha o contenido, y exportar lo que necesites. Todo desde la terminal, sin interfaz grafica, sin servidor, sin dependencias externas.
 
 ## Casos de uso
 
 - **Consultar backups de Gmail** (Google Takeout) con sus etiquetas originales
+- **Leer los grupos de los que eres propietario**, que Takeout exporta como buzones aparte y que suelen ser los ficheros mas grandes del archivo
 - **Analizar archivos de correo** en servidores, migraciones o auditorias
 - **Buscar mensajes** en archivos MBOX de cualquier origen (Thunderbird, servidores Unix, etc.)
 - **Exportar mensajes** a EML, CSV o texto plano para procesamiento posterior
@@ -241,6 +242,8 @@ from:a OR from:b subject:factura    OR liga mas fuerte: (a OR b) AND asunto
 | Formato | Extension | Descripcion |
 |---------|-----------|-------------|
 | MBOX (mboxrd/mboxo) | `.mbox` | Formato estandar. Google Takeout, Thunderbird, servidores Unix |
+| Export de Google Groups | `temas.mbox` | Dentro de un archivo de Takeout, en `<grupo>@googlegroups.com/`. El nombre del fichero esta traducido (`topics.mbox`, ...), asi que el buzon se nombra por el grupo — ver [`docs/GOOGLE-GROUPS.md`](docs/GOOGLE-GROUPS.md) (en ingles) |
+| Paquete de Apple Mail | `Nombre.mbox/mbox` | Se lee el fichero interior; el buzon se nombra por el paquete |
 
 ## Rendimiento
 

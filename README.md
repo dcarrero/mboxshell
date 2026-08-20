@@ -11,13 +11,14 @@
 
 ## Why this project exists
 
-When you export your email from Gmail using Google Takeout, you get one or more `.mbox` files that can weigh tens of gigabytes. There is no cross-platform terminal tool that lets you open, search and browse those files efficiently without loading them entirely into memory.
+When you export your email from Gmail using Google Takeout, you get one or more `.mbox` files that can weigh tens of gigabytes — plus one more mailbox per Google Group you own, which is easy to miss and can be larger than the Gmail export itself. There is no cross-platform terminal tool that lets you open, search and browse those files efficiently without loading them entirely into memory.
 
 `mboxShell` was built to solve that problem: open a 50 GB MBOX in seconds, navigate hundreds of thousands of messages smoothly, search by sender, date or content, and export whatever you need. All from the terminal, with no GUI, no server, no external dependencies.
 
 ## Use cases
 
 - **Browse Gmail backups** (Google Takeout) with their original labels
+- **Read the groups you own**, exported by Takeout as their own mailboxes — often the largest files in the archive
 - **Analyze mail archives** on servers, during migrations or audits
 - **Search messages** in MBOX files from any source (Thunderbird, Unix servers, etc.)
 - **Export messages** to EML, CSV or plain text for further processing
@@ -241,6 +242,8 @@ from:a OR from:b subject:budget  OR binds tighter: (a OR b) AND subject
 | Format | Extension | Description |
 |--------|-----------|-------------|
 | MBOX (mboxrd/mboxo) | `.mbox` | Standard format. Google Takeout, Thunderbird, Unix servers |
+| Google Groups export | `topics.mbox` | Inside a Takeout archive, at `<group>@googlegroups.com/`. The file name is localised (`temas.mbox`, …), so the mailbox is named after the group — see [`docs/GOOGLE-GROUPS.md`](docs/GOOGLE-GROUPS.md) |
+| Apple Mail package | `Name.mbox/mbox` | The inner file is what gets read; the mailbox is named after the package |
 
 ## Performance
 
