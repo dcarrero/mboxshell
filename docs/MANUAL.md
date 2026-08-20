@@ -361,12 +361,26 @@ mboxShell has one query language used by both the CLI `search` command and the i
 | `has:attachment` | Only messages with attachments | `has:attachment` |
 | `has:no-attachment` | Only messages without attachments | `has:no-attachment` |
 | `date:` | Exact day / month / year, or a range | `date:2024-01-15`, `date:2024-01`, `date:2024`, `date:2024-01-01..2024-06-30` |
-| `before:` / `after:` | Open-ended date bounds | `before:2024-06-01`, `after:2024-01-01` |
+| `before:` / `after:` | Open-ended date bounds. `after:` includes its day, `before:` does not, so the two together read as a half-open range | `before:2024-06-01`, `after:2024-01-01`, `after:2024-01-01 before:2025-01-01` (all of 2024) |
 | `size:` | Size comparison | `size:>1mb`, `size:<100kb` |
 | `"…"` | Quoted exact phrase | `subject:"monthly report"` |
 | *(space)* | Implicit **AND** — all terms must match | `from:john subject:budget` |
-| `OR` | Explicit **OR** — any term matches | `from:alice OR from:bob` |
+| `OR` | Explicit **OR** — any of the joined terms matches. Binds tighter than the implicit AND | `from:alice OR from:bob` |
 | `-` | **NOT** — exclude | `-subject:spam` |
+
+### How `OR` combines with the rest
+
+`OR` binds tighter than the space that means AND, so
+
+```
+from:alice OR from:bob subject:invoice
+```
+
+reads as **(**`from:alice` OR `from:bob`**)** AND `subject:invoice` — mail from either sender, but only about invoices. There are no parentheses: a query is a list of AND-ed groups, and `OR` is what puts two terms in the same group.
+
+`OR` joins *terms*. The `date:`, `before:`, `after:`, `size:` and `has:` filters are always AND-ed on top, so an `OR` written next to one of them leaves it as a plain condition.
+
+Repeating a filter narrows instead of replacing: `after:2024-01-01 before:2025-01-01` is the whole of 2024, and `size:>1mb size:<5mb` is everything between 1 and 5 MB.
 
 ### Multi-word free text
 

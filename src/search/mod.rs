@@ -8,18 +8,15 @@ use std::path::Path;
 
 use crate::model::mail::MailEntry;
 
-use self::query::{parse_query, SearchField, SearchQuery};
+use self::query::{parse_query, SearchQuery};
 
 /// Whether running this query requires reading message bodies from disk
 /// (the slow, cancelable path).
 ///
 /// True when an explicit `body:`/`filename:` term is present, or when a
-/// free-text (`All`) term is used in an AND query — those search the body
-/// as well as metadata. OR queries keep `All` terms metadata-only, so they
-/// never need a body scan on their own.
+/// free-text (`All`) term is used — those search the body as well as metadata.
 pub fn needs_body_scan(query: &SearchQuery) -> bool {
-    let has_all_text = query.terms.iter().any(|t| t.field == SearchField::All);
-    query.needs_fulltext || (has_all_text && !query.is_or)
+    query.groups.iter().any(|g| g.needs_body())
 }
 
 /// High-level search: parse the query, search metadata, optionally run
@@ -35,26 +32,20 @@ pub fn execute(
 ) -> crate::error::Result<(SearchQuery, Vec<usize>)> {
     let query = parse_query(query_str);
 
-    if query.terms.is_empty()
-        && query.date_filter.is_none()
-        && query.size_filter.is_none()
-        && query.has_attachment.is_none()
-    {
+    if query.is_empty() {
         // Empty query — return all
         let all: Vec<usize> = (0..entries.len()).collect();
         return Ok((query, all));
     }
 
-    // Free-text ("Text") terms search everywhere — subject/from/to AND the
-    // message body — but only on AND queries (the popup always emits AND).
-    // On OR queries `All` terms keep metadata-only semantics to avoid dropping
-    // metadata-only matches from the candidate set.
+    // Free-text ("Text") terms search everywhere — subject/from/to *and* the
+    // message body — so they need the slow path just like `body:` does.
     let scan_bodies = needs_body_scan(&query);
 
-    // Phase 1: metadata search (fast). When we will scan bodies for `All`
-    // terms, defer them so a Text term that only appears in the body is not
-    // filtered out before the body is ever read.
-    let mut results = if scan_bodies && !query.is_or {
+    // Phase 1: metadata search (fast). When bodies will be read, groups that
+    // need one are left undecided, so a term that only appears in the body is
+    // not filtered out before the body is ever read.
+    let mut results = if scan_bodies {
         metadata::search_metadata_candidates(entries, &query)
     } else {
         metadata::search_metadata(entries, &query)
@@ -118,6 +109,56 @@ mod tests {
         assert_eq!(
             subjects,
             vec!["Hello World".to_string(), "Re: Hello World".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_or_group_over_body_and_metadata() {
+        // A group mixing a body-only word with a subject term: either side
+        // satisfies the group, so both messages come back.
+        let mut subjects = search_subjects("body:perspective OR subject:\"Meeting tomorrow\"");
+        subjects.sort();
+        assert_eq!(
+            subjects,
+            vec![
+                "Meeting tomorrow".to_string(),
+                "Message with From in body".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_or_group_narrowed_by_an_and_term() {
+        // `(body:perspective OR subject:"Meeting tomorrow") AND from:user5` —
+        // the AND term must still cut the OR group down. Before grouping, the
+        // whole query turned into an OR and returned all three.
+        let subjects =
+            search_subjects("body:perspective OR subject:\"Meeting tomorrow\" from:user5");
+        assert_eq!(subjects, vec!["Meeting tomorrow".to_string()]);
+    }
+
+    #[test]
+    fn test_two_body_groups_are_anded() {
+        // Both body words live in the same message; requiring them as separate
+        // groups must not turn into "either one".
+        assert_eq!(
+            search_subjects("body:perspective body:zzzznotpresent").len(),
+            0
+        );
+    }
+
+    #[test]
+    fn test_free_text_or_survives_the_body_pass() {
+        // Free text searches metadata *or* body. In an OR group, a term that
+        // only matches metadata must not be lost when the body pass runs.
+        let mut subjects = search_subjects("perspective OR Meeting");
+        subjects.sort();
+        assert_eq!(
+            subjects,
+            vec![
+                "Meeting tomorrow".to_string(),
+                "Message with From in body".to_string(),
+            ]
         );
     }
 
