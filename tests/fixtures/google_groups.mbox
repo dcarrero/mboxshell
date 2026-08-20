@@ -1,0 +1,41 @@
+From 28668125511680@xxx Thu Apr 16 09:53:04 +0000 2015
+X-GM-THRID: 28616527183872
+X-Google-Groups: my-group
+X-Google-Thread: 428920,10b56905889cf582
+X-Google-Attributes: gid428920,domainid0,private,googlegroup
+X-Google-Language: SPANISH,ASCII
+X-BeenThere: my-group@googlegroups.com
+Message-ID: <root@example.invalid>
+From: Someone <a@example.invalid>
+To: my-group@googlegroups.com
+Subject: Groups message with no Date header
+Content-Type: text/plain; charset=UTF-8
+
+Opening post, with no Date: header at all.
+
+From 28668125511681@xxx Fri Apr 17 11:00:00 +0000 2015
+X-GM-THRID: 28616527183872
+X-Google-Groups: my-group
+X-BeenThere: my-group@googlegroups.com
+Message-ID: <reply@example.invalid>
+In-Reply-To: <root@example.invalid>
+References: <root@example.invalid>
+From: Other <b@example.invalid>
+To: my-group@googlegroups.com
+Date: Fri, 17 Apr 2015 11:00:00 +0000
+Subject: Re: Groups message with no Date header
+Content-Type: text/plain; charset=UTF-8
+
+Reply in the same conversation.
+
+From 28668125511682@xxx Sat Apr 18 08:30:00 +0000 2015
+X-GM-THRID: 99999999999999
+X-BeenThere: my-group@googlegroups.com
+Message-ID: <other@example.invalid>
+From: Third <c@example.invalid>
+To: my-group@googlegroups.com
+Date: Sat, 18 Apr 2015 08:30:00 +0000
+Subject: Groups message with no Date header
+Content-Type: text/plain; charset=UTF-8
+
+Same subject, different conversation: the thread id must keep them apart.

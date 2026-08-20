@@ -60,7 +60,7 @@ pub fn parse_headers_to_entry(
             .iter()
             .any(|(k, v)| k == "content-disposition" && v.to_lowercase().contains("attachment"));
 
-    let gmail_labels = get_header(&headers, "x-gmail-labels")
+    let gmail_labels: Vec<String> = get_header(&headers, "x-gmail-labels")
         .map(|s| {
             let decoded = decode_encoded_words(&s);
             decoded
@@ -70,6 +70,21 @@ pub fn parse_headers_to_entry(
                 .collect()
         })
         .unwrap_or_default();
+
+    // Google Groups exports carry no `X-Gmail-Labels`, so the sidebar would be
+    // empty for them. Surface the group itself as a virtual label instead.
+    let mut labels = gmail_labels;
+    if let Some(group) = group_label(&headers) {
+        if !labels.iter().any(|l| l == &group) {
+            labels.push(group);
+        }
+    }
+
+    // Google Groups assigns every message an explicit conversation id, which is
+    // exact where the JWZ reference chain is only a reconstruction.
+    let thread_id = get_header(&headers, "x-gm-thrid")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
 
     Ok(MailEntry {
         offset,
@@ -85,7 +100,8 @@ pub fn parse_headers_to_entry(
         has_attachments,
         content_type,
         text_size: 0,
-        labels: gmail_labels,
+        labels,
+        thread_id,
         sequence,
     })
 }
@@ -140,6 +156,31 @@ fn get_header(headers: &[(String, String)], name: &str) -> Option<String> {
         .iter()
         .find(|(k, _)| k == name)
         .map(|(_, v)| v.clone())
+}
+
+/// Virtual label for a Google Groups message, from its Groups-specific headers.
+///
+/// `X-Google-Groups` carries the bare group name and is present on virtually
+/// every message; `X-BeenThere` is the fallback and holds the full posting
+/// address, of which only the local part is used. `X-BeenThere` is restricted
+/// to `googlegroups.com` on purpose: it is a generic mailing-list header
+/// (Mailman writes it too), and turning every list into a label would be a
+/// change nobody asked for.
+fn group_label(headers: &[(String, String)]) -> Option<String> {
+    if let Some(name) = get_header(headers, "x-google-groups") {
+        let name = name.trim();
+        if !name.is_empty() {
+            return Some(name.to_string());
+        }
+    }
+
+    let been_there = get_header(headers, "x-beenthere")?;
+    let been_there = been_there.trim().to_lowercase();
+    let (local, domain) = been_there.split_once('@')?;
+    if domain != "googlegroups.com" || local.is_empty() {
+        return None;
+    }
+    Some(local.to_string())
 }
 
 /// Decode RFC 2047 encoded-words in a header value.
@@ -415,6 +456,10 @@ pub fn parse_date(date_str: &str) -> Option<DateTime<Utc>> {
         "%d %b %Y %H:%M:%S %Z",
         "%d %b %Y %H:%M:%S",
         "%b %d %H:%M:%S %Y",
+        // Google Groups Takeout writes the `From_` envelope date with the
+        // timezone offset *before* the year: `Thu Apr 16 09:53:04 +0000 2015`.
+        // Must stay after plain asctime, which it does not shadow.
+        "%b %d %H:%M:%S %z %Y",
         "%Y-%m-%dT%H:%M:%S%z",
         "%Y-%m-%dT%H:%M:%SZ",
         "%Y-%m-%d %H:%M:%S %z",

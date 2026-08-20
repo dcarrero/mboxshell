@@ -228,6 +228,7 @@ mod tests {
             content_type: "text/plain".to_string(),
             text_size: 500,
             labels: vec![],
+            thread_id: None,
             sequence: 0,
         }
     }

@@ -182,6 +182,7 @@ mod tests {
             content_type: "text/html".to_string(),
             text_size: 0,
             labels: vec![],
+            thread_id: None,
             sequence: 0,
         }
     }

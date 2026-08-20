@@ -37,12 +37,14 @@
 | **Index validation** | The index is tied to the source via file size, modification time and a SHA-256 of the file's first bytes. If the MBOX changes, the index is rebuilt automatically. |
 | **On-demand bodies** | Message bodies are decoded only when you open a message, then kept in a small LRU cache (50 messages by default). |
 | **Gmail labels** | `X-Gmail-Labels` headers (from Google Takeout) are surfaced as virtual folders in a sidebar. |
+| **Google Groups** | A Takeout archive also exports every group you own as its own mailbox. mboxShell names it after the group and uses the group as a virtual label — see [Google Groups mailboxes](GOOGLE-GROUPS.md). |
 
 ### Supported input formats
 
 | Format | Path | Notes |
 |--------|------|-------|
 | MBOX (mboxrd / mboxo) | `file.mbox` | Google Takeout, Thunderbird, Unix servers |
+| Google Groups export | `<group>@googlegroups.com/topics.mbox` | Inside a Takeout archive; file name is localised (`temas.mbox`, …) |
 | EML | `message.eml` | A single RFC 5322 message |
 | EML directory | `folder/` | A folder containing several `.eml` files |
 
@@ -134,7 +136,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 
 | Flag | Description |
 |------|-------------|
-| `-f`, `--force` | Force a full index rebuild even if a valid index exists |
+| `-f`, `--force` | Force a full index rebuild even if a valid index exists. Accepted before the subcommand (`mboxshell -f index x.mbox`) or after it (`mboxshell index x.mbox -f`). In `export`, `-f` means `--format`, so there use `--force` in full. |
 | `-v`, `-vv`, `-vvv` | Increase log verbosity (`info`, `debug`, `trace`) |
 | `--lang <en\|es>` | Force the interface language (auto-detected from the locale by default) |
 | `-h`, `--help` | Show help |
@@ -164,6 +166,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `--query <q>` | Only export messages matching this [search query](#7-search) |
 | `--qp` | Re-encode 8-bit text as quoted-printable so the `.eml` is pure 7-bit ASCII (helps strict tools like `eml-extractor`). **EML only.** |
 | `--raw-html` | Keep the original HTML body **unsanitized** (scripts, `on*`, iframes preserved). For local archival only — never serve these files. **HTML only.** |
+| `--force` | Rebuild the index first. Spelled out in full here: `-f` is `--format`. |
 
 #### `stats` output
 

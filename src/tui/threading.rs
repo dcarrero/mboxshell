@@ -150,17 +150,34 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
     // Step 4: Prune empty containers with a single child — promote the child.
     // (We skip full pruning for simplicity and just collect threads from roots.)
 
-    // Step 5: Group by subject (merge roots with same normalized subject).
-    let mut subject_map: HashMap<String, Vec<String>> = HashMap::new();
+    // Step 5: Merge roots that belong together.
+    //
+    // The mailbox's own conversation id wins when it has one (`X-GM-THRID`, in
+    // Gmail and Google Groups exports): it is exact, where merging by
+    // normalized subject both over-merges (every "Hello" becomes one thread)
+    // and under-merges (a reply whose subject was edited splits off).
+    // Messages without an id keep the subject heuristic.
+    // Keyed by conversation id or subject; the value keeps the subject to show
+    // alongside the roots, since the key is no longer always the subject.
+    let mut subject_map: HashMap<String, (String, Vec<String>)> = HashMap::new();
     for rid in &root_ids {
-        let subj = root_subject(rid, &containers, entries);
-        subject_map.entry(subj).or_default().push(rid.clone());
+        let subject = root_subject(rid, &containers, entries);
+        // NUL never occurs in a subject, so an id key can never collide with one.
+        let key = match root_thread_id(rid, &containers, entries) {
+            Some(tid) => format!("\u{0}thrid\u{0}{tid}"),
+            None => subject.clone(),
+        };
+        subject_map
+            .entry(key)
+            .or_insert_with(|| (subject, Vec::new()))
+            .1
+            .push(rid.clone());
     }
 
     // Build Thread objects
     let mut threads: Vec<Thread> = Vec::new();
 
-    for (subject, group_root_ids) in &subject_map {
+    for (subject, group_root_ids) in subject_map.values() {
         let mut nodes: Vec<(usize, usize)> = Vec::new();
         let mut oldest = DateTime::<Utc>::MAX_UTC;
         let mut newest = DateTime::<Utc>::MIN_UTC;
@@ -313,6 +330,29 @@ fn root_subject(
     String::new()
 }
 
+/// Explicit conversation id for a root container, from its own message or —
+/// when the root is an empty placeholder — its first child with a message.
+///
+/// Mirrors [`root_subject`], which resolves the same way.
+fn root_thread_id(
+    root_id: &str,
+    containers: &HashMap<String, Container>,
+    entries: &[MailEntry],
+) -> Option<String> {
+    let c = containers.get(root_id)?;
+    if let Some(idx) = c.entry_index {
+        return entries.get(idx).and_then(|e| e.thread_id.clone());
+    }
+    for child_id in &c.children {
+        if let Some(child) = containers.get(child_id.as_str()) {
+            if let Some(idx) = child.entry_index {
+                return entries.get(idx).and_then(|e| e.thread_id.clone());
+            }
+        }
+    }
+    None
+}
+
 /// Normalize a Message-ID by stripping angle brackets and whitespace.
 fn normalize_id(id: &str) -> String {
     id.trim()
@@ -376,6 +416,7 @@ mod tests {
             content_type: "text/plain".to_string(),
             text_size: 100,
             labels: Vec::new(),
+            thread_id: None,
             sequence: idx,
         }
     }

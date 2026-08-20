@@ -4,7 +4,14 @@
 //! single file literally called `mbox`. Taking `file_name()` of the path we
 //! actually read therefore yields `"mbox"` for every such mailbox — useless as
 //! a label, and actively misleading in the `X-Mbox-Source` header written by a
-//! merge. These helpers name a mailbox the way the user sees it.
+//! merge.
+//!
+//! Google Groups exports in a Takeout archive have the same shape with
+//! different names: the file is always `topics.mbox` (`temas.mbox` in a Spanish
+//! export, and so on for every other locale), and what identifies the mailbox
+//! is the directory around it — `<group>@googlegroups.com`.
+//!
+//! These helpers name a mailbox the way the user sees it.
 
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
@@ -13,20 +20,39 @@ use std::path::{Component, Path, PathBuf};
 /// Without a cap, identical paths would climb to the filesystem root forever.
 const MAX_LEVELS: usize = 4;
 
+/// Suffix of the directory that names a Google Groups mailbox in a Takeout
+/// export: `.../grupos propios/<group>@googlegroups.com/temas.mbox`.
+const GROUPS_DIR_SUFFIX: &str = "@googlegroups.com";
+
 /// The path that represents the mailbox *to the user*: the containing
-/// `Name.mbox` package when `path` is Apple Mail's inner file, `path` itself
+/// directory when `path` is a file inside a mailbox package, `path` itself
 /// otherwise.
+///
+/// Two packages are recognised:
+/// * Apple Mail — a file literally called `mbox` inside `Name.mbox`.
+/// * Google Groups (Takeout) — any file inside `<group>@googlegroups.com`,
+///   because the file name itself is localised (`topics.mbox`, `temas.mbox`, …)
+///   and never identifies the group.
 ///
 /// A file called `mbox` that is *not* inside a `.mbox` package keeps its own
 /// name — it is a mailbox in its own right (Thunderbird stores look like this).
 pub fn presentation_path(path: &Path) -> &Path {
+    let parent = path.parent();
+
+    // Google Groups: the parent directory is the group address.
+    if let Some(parent) = parent {
+        if is_groups_dir(parent) {
+            return parent;
+        }
+    }
+
     let is_inner = path
         .file_name()
         .is_some_and(|n| n.eq_ignore_ascii_case("mbox"));
     if !is_inner {
         return path;
     }
-    match path.parent() {
+    match parent {
         Some(parent)
             if parent
                 .extension()
@@ -36,6 +62,16 @@ pub fn presentation_path(path: &Path) -> &Path {
         }
         _ => path,
     }
+}
+
+/// Whether `dir` is a Takeout Google Groups directory (`<group>@googlegroups.com`).
+///
+/// The local part must be non-empty, so a directory called exactly
+/// `@googlegroups.com` is not mistaken for a group.
+fn is_groups_dir(dir: &Path) -> bool {
+    dir.file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .is_some_and(|n| n.len() > GROUPS_DIR_SUFFIX.len() && n.ends_with(GROUPS_DIR_SUFFIX))
 }
 
 /// Visible name of a single mailbox: `Inbox.mbox` for `…/Account/Inbox.mbox/mbox`.
@@ -122,6 +158,38 @@ mod tests {
         assert_eq!(
             presentation_path(path),
             Path::new("/tmp/Account/Inbox.mbox"),
+        );
+    }
+
+    #[test]
+    fn test_display_name_google_groups_export() {
+        // Takeout names every group mailbox `topics.mbox` (localised); the
+        // group is the directory around it.
+        let path = Path::new("/tmp/Takeout/Groups/my-group@googlegroups.com/topics.mbox");
+        assert_eq!(display_name(path), "my-group@googlegroups.com");
+
+        // Spanish export: same layout, translated file name.
+        let es =
+            Path::new("/tmp/Takeout/Grupos/grupos propios/mi-grupo@googlegroups.com/temas.mbox");
+        assert_eq!(display_name(es), "mi-grupo@googlegroups.com");
+    }
+
+    #[test]
+    fn test_groups_dir_needs_a_local_part() {
+        // A directory that is only the domain names nothing; keep the file name.
+        let path = Path::new("/tmp/@googlegroups.com/topics.mbox");
+        assert_eq!(display_name(path), "topics.mbox");
+    }
+
+    #[test]
+    fn test_unique_display_names_across_several_groups() {
+        let paths = vec![
+            PathBuf::from("/tmp/Takeout/Groups/one@googlegroups.com/topics.mbox"),
+            PathBuf::from("/tmp/Takeout/Groups/two@googlegroups.com/topics.mbox"),
+        ];
+        assert_eq!(
+            unique_display_names(&paths),
+            vec!["one@googlegroups.com", "two@googlegroups.com"],
         );
     }
 

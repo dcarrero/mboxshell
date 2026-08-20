@@ -37,8 +37,9 @@ Need to peek at an MBOX file without installing anything? Try [Online Mbox Viewe
 - **Never loads the file into memory.** Uses streaming I/O with a 1 MB buffer. A 100 GB MBOX uses roughly the same ~500 MB of RAM as a 1 GB one (only the metadata index lives in memory).
 - **Persistent indexing.** The first open creates a binary index (`.mboxshell.idx`) so subsequent opens take less than a second.
 - **Full Gmail support.** Detects and displays `X-Gmail-Labels` as virtual folders in a sidebar panel, letting you filter by Inbox, Sent, Starred, custom labels, etc.
+- **Google Groups mailboxes.** Reads the `topics.mbox` files a Takeout archive ships for every group you own, names them after the group instead of the meaningless file name, shows the group as a virtual label, and threads conversations by the exact `X-GM-THRID` id.
 - **Correct encodings.** Decodes RFC 2047 encoded-words, supports UTF-8, ISO-8859-1, Windows-1252, KOI8-R, and any charset recognized by `encoding_rs`.
-- **Conversation threading.** Groups messages into threads using the JWZ algorithm (the same one used by Netscape/Mozilla).
+- **Conversation threading.** Groups messages into threads using the JWZ algorithm (the same one used by Netscape/Mozilla), or the mailbox's own conversation id when it has one.
 - **Advanced search.** Field-specific filtering (`from:`, `subject:`, `date:`, `body:`, `has:attachment`, `label:`, etc.), date ranges, size filters, AND/OR operators, and negation.
 - **Flexible export.** Individual or bulk export to EML, CSV (Excel-compatible), plain text. Decoded attachment extraction.
 - **Single binary.** No runtime, no dependencies. A ~5 MB executable that runs on Linux, macOS and Windows.
@@ -163,7 +164,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 
 | Flag | Description |
 |------|-------------|
-| `-f`, `--force` | Force rebuild index even if one exists |
+| `-f`, `--force` | Force rebuild index even if one exists (in `export`, `-f` is `--format` — spell out `--force` there) |
 | `-v`, `--verbose` | Increase log verbosity (-v info, -vv debug, -vvv trace) |
 | `--lang <en\|es>` | Force interface language (auto-detected by default) |
 

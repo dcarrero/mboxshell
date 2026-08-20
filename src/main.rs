@@ -20,7 +20,11 @@ struct Cli {
     file: Option<PathBuf>,
 
     /// Force rebuild index even if one already exists
-    #[arg(short, long, global = true)]
+    ///
+    /// Not `global = true`: `export` uses `-f` for `--format`, and a global
+    /// short would claim `-f` in every subcommand. Each subcommand that
+    /// indexes carries its own copy via [`ForceArg`] instead.
+    #[arg(short, long)]
     force: bool,
 
     /// Verbose logging (-v info, -vv debug, -vvv trace)
@@ -32,17 +36,35 @@ struct Cli {
     lang: Option<String>,
 }
 
+/// Shared `-f/--force` flag for the subcommands that build an index.
+#[derive(clap::Args, Clone, Copy)]
+struct ForceArg {
+    /// Force rebuild index even if one already exists
+    #[arg(short, long)]
+    force: bool,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Open a file in the TUI
-    Open { path: PathBuf },
+    Open {
+        path: PathBuf,
+        #[command(flatten)]
+        force: ForceArg,
+    },
     /// Index an MBOX file
-    Index { path: PathBuf },
+    Index {
+        path: PathBuf,
+        #[command(flatten)]
+        force: ForceArg,
+    },
     /// Show statistics
     Stats {
         path: PathBuf,
         #[arg(long)]
         json: bool,
+        #[command(flatten)]
+        force: ForceArg,
     },
     /// Search messages
     Search {
@@ -50,6 +72,8 @@ enum Commands {
         query: String,
         #[arg(long)]
         json: bool,
+        #[command(flatten)]
+        force: ForceArg,
     },
     /// Export messages
     Export {
@@ -70,6 +94,9 @@ enum Commands {
         /// these files. Only affects --format=html.
         #[arg(long)]
         raw_html: bool,
+        /// Force rebuild index even if one already exists
+        #[arg(long)]
+        force: bool,
     },
     /// Merge multiple MBOX files
     Merge {
@@ -92,6 +119,8 @@ enum Commands {
         path: PathBuf,
         #[arg(short, long)]
         output: PathBuf,
+        #[command(flatten)]
+        force: ForceArg,
     },
     /// Generate shell completions
     Completions {
@@ -200,20 +229,29 @@ fn main() -> anyhow::Result<()> {
     };
     setup_logging(log_level, &config);
 
-    let force = cli.force;
+    // `-f` before the subcommand (`mboxshell -f index x.mbox`) and after it
+    // (`mboxshell index x.mbox -f`) both mean the same thing.
+    let root_force = cli.force;
 
     match cli.command {
-        Some(Commands::Index { path }) => cmd_index(&path, force),
-        Some(Commands::Stats { path, json }) => cmd_stats(&path, json, force),
-        Some(Commands::Open { path }) => cmd_open(&path, force),
+        Some(Commands::Index { path, force }) => cmd_index(&path, root_force || force.force),
+        Some(Commands::Stats { path, json, force }) => {
+            cmd_stats(&path, json, root_force || force.force)
+        }
+        Some(Commands::Open { path, force }) => cmd_open(&path, root_force || force.force),
         None => {
             if let Some(path) = cli.file {
-                cmd_open(&path, force)
+                cmd_open(&path, root_force)
             } else {
                 cmd_open_interactive()
             }
         }
-        Some(Commands::Search { path, query, json }) => cmd_search(&path, &query, json, force),
+        Some(Commands::Search {
+            path,
+            query,
+            json,
+            force,
+        }) => cmd_search(&path, &query, json, root_force || force.force),
         Some(Commands::Export {
             path,
             format,
@@ -221,12 +259,13 @@ fn main() -> anyhow::Result<()> {
             query,
             qp,
             raw_html,
+            force,
         }) => cmd_export(
             &path,
             &format,
             &output,
             query.as_deref(),
-            force,
+            root_force || force,
             qp,
             raw_html,
         ),
@@ -236,7 +275,11 @@ fn main() -> anyhow::Result<()> {
             no_dedup,
             source_header,
         }) => cmd_merge(&inputs, &output, !no_dedup, source_header),
-        Some(Commands::Attachments { path, output }) => cmd_attachments(&path, &output, force),
+        Some(Commands::Attachments {
+            path,
+            output,
+            force,
+        }) => cmd_attachments(&path, &output, root_force || force.force),
         Some(Commands::Completions { shell }) => cmd_completions(shell),
         Some(Commands::Manpage) => cmd_manpage(),
     }

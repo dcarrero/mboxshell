@@ -37,8 +37,9 @@ Si prefieres una experiencia grafica nativa en macOS, echa un vistazo a [mboxVie
 - **No carga el archivo en memoria.** Usa lectura streaming con buffer de 1 MB. Un MBOX de 100 GB consume los mismos ~500 MB de RAM que uno de 1 GB (solo el indice de metadatos vive en memoria).
 - **Indexacion persistente.** La primera apertura crea un indice binario (`.mboxshell.idx`) que permite abrir el archivo en menos de un segundo en sucesivas ejecuciones.
 - **Soporte completo de Gmail.** Detecta y muestra las etiquetas de `X-Gmail-Labels` como carpetas virtuales en un panel lateral, permitiendo filtrar por Inbox, Sent, Starred, etiquetas personalizadas, etc.
+- **Buzones de Google Groups.** Lee los ficheros `temas.mbox` que un archivo de Takeout incluye por cada grupo del que eres propietario, los nombra por el grupo en lugar de por el nombre de fichero (que no dice nada), muestra el grupo como etiqueta virtual y agrupa las conversaciones por el identificador exacto `X-GM-THRID`.
 - **Codificaciones correctas.** Decodifica encoded-words (RFC 2047), soporta UTF-8, ISO-8859-1, Windows-1252, KOI8-R y cualquier charset reconocido por `encoding_rs`.
-- **Vista de conversaciones.** Agrupa mensajes en hilos usando el algoritmo JWZ (el mismo que usaba Netscape/Mozilla).
+- **Vista de conversaciones.** Agrupa mensajes en hilos usando el algoritmo JWZ (el mismo que usaba Netscape/Mozilla), o el identificador de conversación propio del buzón cuando lo tiene.
 - **Busqueda avanzada.** Filtrado por campo (`from:`, `subject:`, `date:`, `body:`, `has:attachment`, `label:`, etc.), rangos de fechas, tamano, operadores AND/OR y negacion.
 - **Exportacion flexible.** Mensajes individuales o en masa a EML, CSV (compatible Excel), texto plano. Extraccion de adjuntos decodificados.
 - **Binario unico.** Sin runtime, sin dependencias. Un ejecutable de ~5 MB que funciona en Linux, macOS y Windows.
@@ -163,7 +164,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 
 | Flag | Descripcion |
 |------|-------------|
-| `-f`, `--force` | Forzar reconstruccion del indice aunque exista |
+| `-f`, `--force` | Forzar reconstruccion del indice aunque exista (en `export`, `-f` es `--format`: ahi hay que escribir `--force` entero) |
 | `-v`, `--verbose` | Aumentar verbosidad del log (-v info, -vv debug, -vvv trace) |
 | `--lang <en\|es>` | Forzar idioma de la interfaz (auto-detectado por defecto) |
 
