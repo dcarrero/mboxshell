@@ -7,7 +7,9 @@ use chrono::Datelike;
 
 use crate::model::mail::MailEntry;
 
-use super::query::{DateFilter, SearchField, SearchOperator, SearchQuery, SearchTerm, SizeFilter};
+use super::query::{
+    DateFilter, SearchField, SearchOperator, SearchQuery, SearchTerm, SizeFilter, TermGroup,
+};
 
 /// Search the index metadata and return matching entry indices.
 ///
@@ -26,41 +28,36 @@ pub fn search_metadata(entries: &[MailEntry], query: &SearchQuery) -> Vec<usize>
         .collect()
 }
 
-/// Like [`search_metadata`], but for AND queries it does **not** require
-/// `All` (free-text "Text") terms to match metadata — those are deferred to
-/// the full-text pass in [`super::fulltext`] so a Text term can also match the
-/// message body. Field-specific terms (`subject:`, `from:`, …) and the
-/// date/size/attachment filters still apply.
+/// Like [`search_metadata`], but groups that need the message body are left
+/// undecided here — [`super::fulltext`] settles them once it has read the
+/// body. Groups that can be decided from metadata alone, and the
+/// date/size/attachment filters, still apply, so this narrows the candidate
+/// set as much as metadata allows.
 ///
-/// For OR queries this behaves identically to [`search_metadata`] (deferring
-/// `All` terms would incorrectly drop entries that match only via metadata).
+/// A group needs the body when any of its terms is `body:`, `filename:`, or a
+/// free-text term (which matches metadata *or* body).
 pub fn search_metadata_candidates(entries: &[MailEntry], query: &SearchQuery) -> Vec<usize> {
-    let defer_all = !query.is_or;
     entries
         .iter()
         .enumerate()
-        .filter(|(_, entry)| entry_matches(entry, query, defer_all))
+        .filter(|(_, entry)| entry_matches(entry, query, true))
         .map(|(i, _)| i)
         .collect()
 }
 
 /// Check whether a single entry matches the query.
 ///
-/// When `defer_all` is set, `All` (free-text) terms are ignored here — the
-/// caller is expected to verify them against the body in the full-text pass.
-fn entry_matches(entry: &MailEntry, query: &SearchQuery, defer_all: bool) -> bool {
-    // 1. Date filter (cheapest to check)
-    if let Some(ref df) = query.date_filter {
-        if !matches_date(entry, df) {
-            return false;
-        }
+/// When `defer_body` is set, groups that need the message body are skipped —
+/// the caller is expected to settle them in the full-text pass.
+fn entry_matches(entry: &MailEntry, query: &SearchQuery, defer_body: bool) -> bool {
+    // 1. Date filters (cheapest to check), all of which must hold
+    if !query.date_filters.iter().all(|df| matches_date(entry, df)) {
+        return false;
     }
 
-    // 2. Size filter
-    if let Some(ref sf) = query.size_filter {
-        if !matches_size(entry, sf) {
-            return false;
-        }
+    // 2. Size filters, all of which must hold
+    if !query.size_filters.iter().all(|sf| matches_size(entry, sf)) {
+        return false;
     }
 
     // 3. Attachment filter
@@ -70,35 +67,38 @@ fn entry_matches(entry: &MailEntry, query: &SearchQuery, defer_all: bool) -> boo
         }
     }
 
-    // 4. Text terms (skip body:/filename: terms — those need fulltext).
-    //    When `defer_all` is set, also skip free-text `All` terms so they can
-    //    be matched against the body in the full-text pass.
-    let text_terms: Vec<&SearchTerm> = query
-        .terms
+    // 4. Term groups: AND between groups, OR inside each one.
+    //
+    //    A group that needs the body is either skipped (the full-text pass
+    //    will settle it) or, when there is no full-text pass, evaluated on
+    //    metadata alone — which is what its body:/filename: terms already did
+    //    before this existed.
+    query
+        .groups
         .iter()
-        .filter(|t| t.field != SearchField::Body && t.field != SearchField::Filename)
-        .filter(|t| !(defer_all && t.field == SearchField::All))
-        .collect();
+        .all(|group| group_matches(entry, group, defer_body))
+}
 
-    if text_terms.is_empty() {
+/// Whether an entry satisfies one OR-group.
+fn group_matches(entry: &MailEntry, group: &TermGroup, defer_body: bool) -> bool {
+    if defer_body && group.needs_body() {
         return true;
     }
-
-    if query.is_or {
-        // OR: any term must match
-        text_terms
-            .iter()
-            .any(|term| term_matches_entry(entry, term))
-    } else {
-        // AND: all terms must match
-        text_terms
-            .iter()
-            .all(|term| term_matches_entry(entry, term))
-    }
+    group
+        .terms
+        .iter()
+        .any(|term| term_matches_entry(entry, term))
 }
 
 /// Check if a text term matches an entry's metadata.
-fn term_matches_entry(entry: &MailEntry, term: &SearchTerm) -> bool {
+///
+/// `Body` and `Filename` terms cannot be judged here and count as a match, so
+/// a metadata pass never rejects an entry over something only the body could
+/// settle. The full-text pass evaluates those for real.
+///
+/// Shared with [`super::fulltext`]: a group deferred to the body pass can hold
+/// metadata terms too, and those must be judged the same way in both passes.
+pub(crate) fn term_matches_entry(entry: &MailEntry, term: &SearchTerm) -> bool {
     let raw_match = match term.field {
         SearchField::All => all_matches_metadata(entry, &term.operator),
         SearchField::From => {
@@ -181,8 +181,11 @@ fn matches_date(entry: &MailEntry, filter: &DateFilter) -> bool {
     match filter {
         DateFilter::Exact(d) => date == *d,
         DateFilter::Range(start, end) => date >= *start && date <= *end,
+        // `before:` excludes its day and `after:` includes it, so
+        // `after:2024-01-01 before:2025-01-01` is exactly the year 2024 — the
+        // half-open reading, and the one Gmail's own operators use.
         DateFilter::Before(d) => date < *d,
-        DateFilter::After(d) => date > *d,
+        DateFilter::After(d) => date >= *d,
         DateFilter::Month(year, month) => date.year() == *year && date.month() == *month,
         DateFilter::Year(year) => date.year() == *year,
     }
@@ -254,6 +257,104 @@ mod tests {
         let q = parse_query("from:alice");
         let results = search_metadata(&entries, &q);
         assert_eq!(results, vec![0]);
+    }
+
+    #[test]
+    fn test_or_binds_tighter_than_and() {
+        // `(from:alice OR from:bob) AND subject:budget`. Carol's mail matches
+        // the subject only, and used to come back because `OR` turned the
+        // whole query into "any term matches".
+        let entries = vec![
+            make_entry("alice@example.com", "Budget Report", "2024-01-15"),
+            make_entry("bob@example.com", "Budget Draft", "2024-01-16"),
+            make_entry("carol@example.com", "Budget Notes", "2024-01-17"),
+            make_entry("alice@example.com", "Holiday plans", "2024-01-18"),
+        ];
+        let q = parse_query("from:alice OR from:bob subject:budget");
+        assert_eq!(search_metadata(&entries, &q), vec![0, 1]);
+    }
+
+    #[test]
+    fn test_or_group_alone_matches_any() {
+        let entries = vec![
+            make_entry("alice@example.com", "One", "2024-01-15"),
+            make_entry("bob@example.com", "Two", "2024-01-16"),
+            make_entry("carol@example.com", "Three", "2024-01-17"),
+        ];
+        let q = parse_query("from:alice OR from:bob");
+        assert_eq!(search_metadata(&entries, &q), vec![0, 1]);
+    }
+
+    #[test]
+    fn test_and_still_requires_every_group() {
+        let entries = vec![
+            make_entry("alice@example.com", "Budget", "2024-01-15"),
+            make_entry("alice@example.com", "Holiday", "2024-01-16"),
+            make_entry("bob@example.com", "Budget", "2024-01-17"),
+        ];
+        let q = parse_query("from:alice subject:budget");
+        assert_eq!(search_metadata(&entries, &q), vec![0]);
+    }
+
+    #[test]
+    fn test_or_group_combines_with_filters() {
+        // Filters are AND-ed on top of the groups, never OR-ed into them.
+        let entries = vec![
+            make_entry("alice@example.com", "One", "2024-01-15"),
+            make_entry("bob@example.com", "Two", "2023-01-16"),
+            make_entry("carol@example.com", "Three", "2024-01-17"),
+        ];
+        let q = parse_query("from:alice OR from:bob date:2024");
+        assert_eq!(search_metadata(&entries, &q), vec![0]);
+    }
+
+    #[test]
+    fn test_negation_inside_an_or_group() {
+        let entries = vec![
+            make_entry("alice@example.com", "One", "2024-01-15"),
+            make_entry("bob@example.com", "Two", "2024-01-16"),
+            make_entry("carol@example.com", "Three", "2024-01-17"),
+        ];
+        // "from bob, or anyone who is not carol" — everything but carol.
+        let q = parse_query("from:bob OR -from:carol");
+        assert_eq!(search_metadata(&entries, &q), vec![0, 1]);
+    }
+
+    #[test]
+    fn test_after_is_inclusive_and_before_is_not() {
+        // `after:X before:Y` is the half-open range [X, Y), so a full calendar
+        // year is `after:2024-01-01 before:2025-01-01`.
+        let entries = vec![
+            make_entry("a@example.com", "before", "2023-12-31"),
+            make_entry("a@example.com", "first day", "2024-01-01"),
+            make_entry("a@example.com", "mid", "2024-06-15"),
+            make_entry("a@example.com", "last day", "2024-12-31"),
+            make_entry("a@example.com", "after", "2025-01-01"),
+        ];
+        let q = parse_query("after:2024-01-01 before:2025-01-01");
+        assert_eq!(search_metadata(&entries, &q), vec![1, 2, 3]);
+
+        // Each bound on its own.
+        assert_eq!(
+            search_metadata(&entries, &parse_query("after:2024-06-15")),
+            vec![2, 3, 4]
+        );
+        assert_eq!(
+            search_metadata(&entries, &parse_query("before:2024-06-15")),
+            vec![0, 1]
+        );
+    }
+
+    #[test]
+    fn test_date_range_stays_inclusive_on_both_ends() {
+        let entries = vec![
+            make_entry("a@example.com", "before", "2023-12-31"),
+            make_entry("a@example.com", "start", "2024-01-01"),
+            make_entry("a@example.com", "end", "2024-06-30"),
+            make_entry("a@example.com", "after", "2024-07-01"),
+        ];
+        let q = parse_query("date:2024-01-01..2024-06-30");
+        assert_eq!(search_metadata(&entries, &q), vec![1, 2]);
     }
 
     #[test]

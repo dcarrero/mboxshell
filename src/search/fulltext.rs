@@ -11,8 +11,8 @@ use tracing::debug;
 use crate::model::mail::MailEntry;
 use crate::store::reader::MboxStore;
 
-use super::metadata::all_matches_metadata;
-use super::query::{SearchField, SearchOperator, SearchQuery, SearchTerm};
+use super::metadata::{all_matches_metadata, term_matches_entry};
+use super::query::{SearchField, SearchOperator, SearchQuery, SearchTerm, TermGroup};
 
 /// Search inside message bodies by reading from the MBOX file.
 ///
@@ -28,20 +28,13 @@ pub fn search_fulltext(
     query: &SearchQuery,
     progress: &dyn Fn(usize, usize) -> bool,
 ) -> crate::error::Result<Vec<usize>> {
-    // Terms that require reading the message: body:/filename: and the
-    // free-text `All` terms (which "search everywhere": metadata or body).
-    let scan_terms: Vec<&SearchTerm> = query
-        .terms
-        .iter()
-        .filter(|t| {
-            matches!(
-                t.field,
-                SearchField::Body | SearchField::Filename | SearchField::All
-            )
-        })
-        .collect();
+    // Groups the metadata pass could not settle: those holding a body:,
+    // filename:, or free-text term (the last matches metadata *or* body).
+    // Every one of them still has to hold, so they are AND-ed, while the terms
+    // inside each are OR-ed — the same shape the metadata pass applies.
+    let scan_groups: Vec<&TermGroup> = query.groups.iter().filter(|g| g.needs_body()).collect();
 
-    if scan_terms.is_empty() {
+    if scan_groups.is_empty() {
         // Nothing to scan — all candidates pass
         return Ok(candidates.to_vec());
     }
@@ -58,7 +51,7 @@ pub fn search_fulltext(
         }
 
         let entry = &entries[idx];
-        let matches = match check_body_match(&mut store, entry, &scan_terms, query.is_or) {
+        let matches = match check_body_match(&mut store, entry, &scan_groups) {
             Ok(m) => m,
             Err(e) => {
                 debug!(offset = entry.offset, error = %e, "Skipping message in fulltext search");
@@ -77,16 +70,17 @@ pub fn search_fulltext(
     Ok(results)
 }
 
-/// Check whether a single message matches the scan terms by reading its body.
+/// Check whether a single message satisfies the deferred groups by reading its
+/// body.
 ///
 /// Handles `body:`, `filename:`, and free-text `All` terms. `All` terms match
 /// if the needle is found in the entry's metadata (subject/from/to) **or** the
-/// decoded body text — the "search everywhere" semantics users expect.
+/// decoded body text — the "search everywhere" semantics users expect. Every
+/// group must hold (AND); within a group, any term suffices (OR).
 fn check_body_match(
     store: &mut MboxStore,
     entry: &MailEntry,
-    scan_terms: &[&SearchTerm],
-    is_or: bool,
+    scan_groups: &[&TermGroup],
 ) -> crate::error::Result<bool> {
     let body = store.get_message(entry)?;
     let text = body.text.as_deref().unwrap_or("");
@@ -118,7 +112,11 @@ fn check_body_match(
                         }
                     }
             }
-            _ => true,
+            // A deferred group can hold metadata terms beside the body ones
+            // (`body:x OR subject:y`); those are judged exactly as the
+            // metadata pass would. `term_matches_entry` applies negation
+            // itself, so return its verdict directly.
+            _ => return term_matches_entry(entry, term),
         };
 
         if term.negated {
@@ -128,11 +126,9 @@ fn check_body_match(
         }
     };
 
-    let result = if is_or {
-        scan_terms.iter().any(|t| check_term(t))
-    } else {
-        scan_terms.iter().all(|t| check_term(t))
-    };
+    let result = scan_groups
+        .iter()
+        .all(|group| group.terms.iter().any(&check_term));
 
     Ok(result)
 }

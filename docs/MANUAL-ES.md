@@ -361,12 +361,26 @@ mboxShell tiene un único lenguaje de consulta usado tanto por el comando `searc
 | `has:attachment` | Solo mensajes con adjuntos | `has:attachment` |
 | `has:no-attachment` | Solo mensajes sin adjuntos | `has:no-attachment` |
 | `date:` | Día / mes / año exacto, o un rango | `date:2024-01-15`, `date:2024-01`, `date:2024`, `date:2024-01-01..2024-06-30` |
-| `before:` / `after:` | Límites de fecha abiertos | `before:2024-06-01`, `after:2024-01-01` |
+| `before:` / `after:` | Límites de fecha abiertos. `after:` incluye su día y `before:` no, así que juntos forman un rango semiabierto | `before:2024-06-01`, `after:2024-01-01`, `after:2024-01-01 before:2025-01-01` (todo 2024) |
 | `size:` | Comparación de tamaño | `size:>1mb`, `size:<100kb` |
 | `"…"` | Frase exacta entrecomillada | `subject:"informe mensual"` |
 | *(espacio)* | **AND** implícito — todos los términos deben coincidir | `from:juan subject:presupuesto` |
-| `OR` | **OR** explícito — coincide cualquier término | `from:ana OR from:luis` |
+| `OR` | **OR** explícito — vale cualquiera de los términos que une. Liga más fuerte que el AND implícito | `from:ana OR from:luis` |
 | `-` | **NOT** — excluir | `-subject:spam` |
+
+### Cómo se combina `OR` con lo demás
+
+`OR` liga más fuerte que el espacio que significa AND, así que
+
+```
+from:ana OR from:luis subject:factura
+```
+
+se lee como **(**`from:ana` OR `from:luis`**)** AND `subject:factura` — correo de cualquiera de los dos, pero solo sobre facturas. No hay paréntesis: una consulta es una lista de grupos unidos por AND, y `OR` es lo que mete dos términos en el mismo grupo.
+
+`OR` une *términos*. Los filtros `date:`, `before:`, `after:`, `size:` y `has:` se aplican siempre con AND por encima, así que un `OR` escrito al lado de uno de ellos lo deja como una condición normal.
+
+Repetir un filtro acota en vez de sustituir: `after:2024-01-01 before:2025-01-01` es todo 2024, y `size:>1mb size:<5mb` es lo que pese entre 1 y 5 MB.
 
 ### Texto libre de varias palabras
 

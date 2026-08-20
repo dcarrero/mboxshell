@@ -30,6 +30,15 @@
 //! - `term1 OR term2` — explicit OR
 //! - `-term` — NOT (exclude)
 //! - `"exact phrase"` — quoted phrase
+//!
+//! `OR` binds tighter than the implicit AND, so
+//! `from:alice OR from:bob subject:invoice` reads as
+//! `(from:alice OR from:bob) AND subject:invoice`. There are no parentheses:
+//! a query is a list of AND-ed groups, each group a list of OR-ed terms.
+//!
+//! `OR` only joins *terms*. Date, size and attachment filters are always
+//! AND-ed, so an `OR` next to one of them (`from:a OR has:attachment`) leaves
+//! the filter as a plain AND condition.
 
 use chrono::NaiveDate;
 
@@ -64,9 +73,9 @@ pub enum DateFilter {
     Exact(NaiveDate),
     /// Inclusive range.
     Range(NaiveDate, NaiveDate),
-    /// Before a date (exclusive).
+    /// Strictly before a date; the day itself does not match.
     Before(NaiveDate),
-    /// After a date (exclusive).
+    /// On or after a date; the day itself matches.
     After(NaiveDate),
     /// All days in a month.
     Month(i32, u32),
@@ -89,22 +98,64 @@ pub struct SearchTerm {
     pub negated: bool,
 }
 
+/// One or more terms joined by `OR`. An entry satisfies the group when it
+/// matches **any** of them.
+///
+/// A group of one is the common case — a term with no `OR` beside it.
+#[derive(Debug, Clone)]
+pub struct TermGroup {
+    pub terms: Vec<SearchTerm>,
+}
+
+impl TermGroup {
+    /// Whether any term in the group has to read the message body.
+    ///
+    /// `All` (free-text) counts: it matches metadata *or* body, so the group
+    /// cannot be settled without the body unless it already matched.
+    pub fn needs_body(&self) -> bool {
+        self.terms.iter().any(|t| {
+            matches!(
+                t.field,
+                SearchField::Body | SearchField::Filename | SearchField::All
+            )
+        })
+    }
+}
+
 /// A fully parsed search query.
+///
+/// The term groups are AND-ed together and each group is OR-ed internally, so
+/// `a OR b c` is `(a OR b) AND c`. Date, size and attachment filters apply on
+/// top of all of them.
 #[derive(Debug, Clone)]
 pub struct SearchQuery {
-    /// Text-based search terms (AND by default).
-    pub terms: Vec<SearchTerm>,
-    /// Optional date filter.
-    pub date_filter: Option<DateFilter>,
-    /// Optional size filter.
-    pub size_filter: Option<SizeFilter>,
+    /// Term groups, AND-ed together.
+    pub groups: Vec<TermGroup>,
+    /// Date filters, AND-ed together, so `after:X before:Y` is a range.
+    pub date_filters: Vec<DateFilter>,
+    /// Size filters, AND-ed together, so `size:>1mb size:<10mb` is a band.
+    pub size_filters: Vec<SizeFilter>,
     /// Explicit attachment filter: `Some(true)` for has:attachment,
     /// `Some(false)` for has:no-attachment, `None` if unspecified.
     pub has_attachment: Option<bool>,
-    /// Whether any term targets the Body field (requires full-text search).
+    /// Whether any term targets the Body or Filename field (requires
+    /// full-text search).
     pub needs_fulltext: bool,
-    /// Whether this is an OR query (any term matches) vs AND (all must match).
-    pub is_or: bool,
+}
+
+impl SearchQuery {
+    /// Every term of every group, flattened.
+    pub fn all_terms(&self) -> impl Iterator<Item = &SearchTerm> {
+        self.groups.iter().flat_map(|g| g.terms.iter())
+    }
+
+    /// Whether the query carries no terms and no filters.
+    pub fn is_empty(&self) -> bool {
+        self.groups.is_empty()
+            && self.date_filters.is_empty()
+            && self.size_filters.is_empty()
+            && self.has_attachment.is_none()
+    }
 }
 
 /// Parse a query string into a structured [`SearchQuery`].
@@ -113,23 +164,34 @@ pub struct SearchQuery {
 pub fn parse_query(input: &str) -> SearchQuery {
     let input = input.trim();
 
-    let mut terms = Vec::new();
-    let mut date_filter = None;
-    let mut size_filter = None;
+    let mut groups: Vec<TermGroup> = Vec::new();
+    let mut date_filters = Vec::new();
+    let mut size_filters = Vec::new();
     let mut has_attachment = None;
     let mut needs_fulltext = false;
-    let mut is_or = false;
+    // Set by an `OR` token: the next term joins the group before it instead of
+    // opening one of its own.
+    let mut join_previous = false;
 
     let tokens = tokenize(input);
 
-    // Check for OR between tokens
-    let has_or = tokens.iter().any(|t| t == "OR");
-    if has_or {
-        is_or = true;
+    // Collect a term into the current group — the previous one right after an
+    // `OR`, a fresh one otherwise.
+    macro_rules! push_term {
+        ($term:expr) => {{
+            let term = $term;
+            match groups.last_mut() {
+                Some(group) if join_previous => group.terms.push(term),
+                _ => groups.push(TermGroup { terms: vec![term] }),
+            }
+        }};
     }
 
     for token in &tokens {
         if token == "OR" {
+            // A dangling `OR` — leading, trailing, or next to a filter rather
+            // than a term — has nothing to join and is ignored.
+            join_previous = true;
             continue;
         }
 
@@ -141,51 +203,51 @@ pub fn parse_query(input: &str) -> SearchQuery {
 
         // Field:value pairs
         if let Some(value) = token.strip_prefix("from:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::From,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("to:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::To,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("cc:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::Cc,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("subject:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::Subject,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("body:") {
             needs_fulltext = true;
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::Body,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("label:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::Label,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("filename:") {
             needs_fulltext = true;
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::Filename,
                 operator: make_operator(value),
                 negated,
             });
         } else if let Some(value) = token.strip_prefix("id:") {
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::MessageId,
                 operator: make_operator(value),
                 negated,
@@ -197,34 +259,35 @@ pub fn parse_query(input: &str) -> SearchQuery {
                 _ => {}
             }
         } else if let Some(value) = token.strip_prefix("date:") {
-            date_filter = parse_date_filter(value);
+            // Filters accumulate instead of replacing each other, so
+            // `after:X before:Y` is a range rather than just whichever came
+            // last, and a nonsensical combination returns nothing rather than
+            // silently dropping half of what was typed.
+            date_filters.extend(parse_date_filter(value));
         } else if let Some(value) = token.strip_prefix("before:") {
-            if let Some(d) = parse_naive_date(value) {
-                date_filter = Some(DateFilter::Before(d));
-            }
+            date_filters.extend(parse_naive_date(value).map(DateFilter::Before));
         } else if let Some(value) = token.strip_prefix("after:") {
-            if let Some(d) = parse_naive_date(value) {
-                date_filter = Some(DateFilter::After(d));
-            }
+            date_filters.extend(parse_naive_date(value).map(DateFilter::After));
         } else if let Some(value) = token.strip_prefix("size:") {
-            size_filter = parse_size_filter(value);
+            size_filters.extend(parse_size_filter(value));
         } else {
             // Plain text — search All fields
-            terms.push(SearchTerm {
+            push_term!(SearchTerm {
                 field: SearchField::All,
                 operator: make_operator(token),
                 negated,
             });
         }
+
+        join_previous = false;
     }
 
     SearchQuery {
-        terms,
-        date_filter,
-        size_filter,
+        groups,
+        date_filters,
+        size_filters,
         has_attachment,
         needs_fulltext,
-        is_or,
     }
 }
 
@@ -385,12 +448,30 @@ fn parse_size_filter(value: &str) -> Option<SizeFilter> {
 mod tests {
     use super::*;
 
+    /// Every term of the query, flattened — most assertions here predate
+    /// grouping and only care about what was parsed, not how it was grouped.
+    fn terms(q: &SearchQuery) -> Vec<&SearchTerm> {
+        q.all_terms().collect()
+    }
+
+    /// The single date filter of a query that has exactly one.
+    fn only_date(q: &SearchQuery) -> &DateFilter {
+        assert_eq!(q.date_filters.len(), 1, "expected exactly one date filter");
+        &q.date_filters[0]
+    }
+
+    /// The single size filter of a query that has exactly one.
+    fn only_size(q: &SearchQuery) -> &SizeFilter {
+        assert_eq!(q.size_filters.len(), 1, "expected exactly one size filter");
+        &q.size_filters[0]
+    }
+
     #[test]
     fn test_parse_simple_query() {
         let q = parse_query("hello");
-        assert_eq!(q.terms.len(), 1);
-        assert_eq!(q.terms[0].field, SearchField::All);
-        assert!(!q.terms[0].negated);
+        assert_eq!(terms(&q).len(), 1);
+        assert_eq!(terms(&q)[0].field, SearchField::All);
+        assert!(!terms(&q)[0].negated);
         assert!(!q.needs_fulltext);
     }
 
@@ -399,32 +480,32 @@ mod tests {
         // The Search Filters "Text" field emits its value verbatim, so a
         // multi-word value tokenizes into one free-text term per word, ANDed.
         let q = parse_query("multi word search");
-        assert_eq!(q.terms.len(), 3);
-        assert!(q.terms.iter().all(|t| t.field == SearchField::All));
-        assert!(!q.is_or);
+        assert_eq!(terms(&q).len(), 3);
+        assert!(terms(&q).iter().all(|t| t.field == SearchField::All));
+        assert_eq!(q.groups.len(), 3, "no OR, so each term is its own group");
     }
 
     #[test]
     fn test_parse_field_query() {
         let q = parse_query("from:user@example.com subject:hello");
-        assert_eq!(q.terms.len(), 2);
-        assert_eq!(q.terms[0].field, SearchField::From);
-        assert_eq!(q.terms[1].field, SearchField::Subject);
+        assert_eq!(terms(&q).len(), 2);
+        assert_eq!(terms(&q)[0].field, SearchField::From);
+        assert_eq!(terms(&q)[1].field, SearchField::Subject);
     }
 
     #[test]
     fn test_parse_negation() {
         let q = parse_query("-subject:spam");
-        assert_eq!(q.terms.len(), 1);
-        assert!(q.terms[0].negated);
-        assert_eq!(q.terms[0].field, SearchField::Subject);
+        assert_eq!(terms(&q).len(), 1);
+        assert!(terms(&q)[0].negated);
+        assert_eq!(terms(&q)[0].field, SearchField::Subject);
     }
 
     #[test]
     fn test_parse_has_attachment() {
         let q = parse_query("has:attachment");
         assert_eq!(q.has_attachment, Some(true));
-        assert!(q.terms.is_empty());
+        assert!(terms(&q).is_empty());
     }
 
     #[test]
@@ -436,8 +517,7 @@ mod tests {
     #[test]
     fn test_parse_date_exact() {
         let q = parse_query("date:2024-01-15");
-        assert!(q.date_filter.is_some());
-        if let Some(DateFilter::Exact(d)) = &q.date_filter {
+        if let DateFilter::Exact(d) = only_date(&q) {
             assert_eq!(d.to_string(), "2024-01-15");
         } else {
             panic!("expected Exact date filter");
@@ -447,7 +527,7 @@ mod tests {
     #[test]
     fn test_parse_date_range() {
         let q = parse_query("date:2024-01-01..2024-06-30");
-        if let Some(DateFilter::Range(s, e)) = &q.date_filter {
+        if let DateFilter::Range(s, e) = only_date(&q) {
             assert_eq!(s.to_string(), "2024-01-01");
             assert_eq!(e.to_string(), "2024-06-30");
         } else {
@@ -458,18 +538,18 @@ mod tests {
     #[test]
     fn test_parse_date_month() {
         let q = parse_query("date:2024-01");
-        if let Some(DateFilter::Month(y, m)) = &q.date_filter {
+        if let DateFilter::Month(y, m) = only_date(&q) {
             assert_eq!(*y, 2024);
             assert_eq!(*m, 1);
         } else {
-            panic!("expected Month date filter, got {:?}", q.date_filter);
+            panic!("expected Month date filter");
         }
     }
 
     #[test]
     fn test_parse_date_year() {
         let q = parse_query("date:2024");
-        if let Some(DateFilter::Year(y)) = &q.date_filter {
+        if let DateFilter::Year(y) = only_date(&q) {
             assert_eq!(*y, 2024);
         } else {
             panic!("expected Year date filter");
@@ -478,24 +558,43 @@ mod tests {
 
     #[test]
     fn test_parse_before_after() {
-        let q = parse_query("before:2024-06-01");
-        assert!(matches!(q.date_filter, Some(DateFilter::Before(_))));
+        assert!(matches!(
+            only_date(&parse_query("before:2024-06-01")),
+            DateFilter::Before(_)
+        ));
+        assert!(matches!(
+            only_date(&parse_query("after:2024-01-01")),
+            DateFilter::After(_)
+        ));
+    }
 
-        let q = parse_query("after:2024-01-01");
-        assert!(matches!(q.date_filter, Some(DateFilter::After(_))));
+    #[test]
+    fn test_date_filters_accumulate() {
+        // `after:` and `before:` together describe a range. Only the last one
+        // used to survive, so half of what the user typed was dropped.
+        let q = parse_query("after:2024-01-01 before:2025-01-01");
+        assert_eq!(q.date_filters.len(), 2);
+        assert!(matches!(q.date_filters[0], DateFilter::After(_)));
+        assert!(matches!(q.date_filters[1], DateFilter::Before(_)));
+    }
+
+    #[test]
+    fn test_size_filters_accumulate() {
+        let q = parse_query("size:>1mb size:<10mb");
+        assert_eq!(q.size_filters.len(), 2);
     }
 
     #[test]
     fn test_parse_size_filter() {
         let q = parse_query("size:>1mb");
-        if let Some(SizeFilter::GreaterThan(b)) = &q.size_filter {
+        if let SizeFilter::GreaterThan(b) = only_size(&q) {
             assert_eq!(*b, 1024 * 1024);
         } else {
             panic!("expected GreaterThan size filter");
         }
 
         let q = parse_query("size:<100kb");
-        if let Some(SizeFilter::LessThan(b)) = &q.size_filter {
+        if let SizeFilter::LessThan(b) = only_size(&q) {
             assert_eq!(*b, 100 * 1024);
         } else {
             panic!("expected LessThan size filter");
@@ -503,7 +602,7 @@ mod tests {
 
         // Bare-byte suffix.
         let q = parse_query("size:>500b");
-        if let Some(SizeFilter::GreaterThan(b)) = &q.size_filter {
+        if let SizeFilter::GreaterThan(b) = only_size(&q) {
             assert_eq!(*b, 500);
         } else {
             panic!("expected GreaterThan size filter");
@@ -515,28 +614,94 @@ mod tests {
         // A value that overflows u64 when multiplied by the unit must yield no
         // size filter instead of panicking (debug) or wrapping (release).
         let q = parse_query("size:>99999999999gb");
-        assert!(q.size_filter.is_none());
+        assert!(q.size_filters.is_empty());
     }
 
     #[test]
     fn test_parse_body_triggers_fulltext() {
         let q = parse_query("body:important");
         assert!(q.needs_fulltext);
-        assert_eq!(q.terms[0].field, SearchField::Body);
+        assert_eq!(terms(&q)[0].field, SearchField::Body);
     }
 
     #[test]
     fn test_parse_or_query() {
         let q = parse_query("from:alice OR from:bob");
-        assert!(q.is_or);
-        assert_eq!(q.terms.len(), 2);
+        assert_eq!(q.groups.len(), 1, "OR keeps both terms in one group");
+        assert_eq!(q.groups[0].terms.len(), 2);
     }
 
     #[test]
+    fn test_or_binds_tighter_than_implicit_and() {
+        // `(from:alice OR from:bob) AND subject:invoice` — the whole query used
+        // to become an OR, so anything with a matching subject came back too.
+        let q = parse_query("from:alice OR from:bob subject:invoice");
+        assert_eq!(q.groups.len(), 2);
+        assert_eq!(q.groups[0].terms.len(), 2);
+        assert_eq!(q.groups[0].terms[0].field, SearchField::From);
+        assert_eq!(q.groups[0].terms[1].field, SearchField::From);
+        assert_eq!(q.groups[1].terms.len(), 1);
+        assert_eq!(q.groups[1].terms[0].field, SearchField::Subject);
+    }
+
+    #[test]
+    fn test_or_chain_stays_in_one_group() {
+        let q = parse_query("a OR b OR c");
+        assert_eq!(q.groups.len(), 1);
+        assert_eq!(q.groups[0].terms.len(), 3);
+    }
+
+    #[test]
+    fn test_and_only_query_is_one_group_per_term() {
+        let q = parse_query("from:alice subject:invoice");
+        assert_eq!(q.groups.len(), 2);
+        assert!(q.groups.iter().all(|g| g.terms.len() == 1));
+    }
+
+    #[test]
+    fn test_dangling_or_is_ignored() {
+        // Leading, trailing and doubled `OR` have nothing to join.
+        for input in [
+            "OR from:alice",
+            "from:alice OR",
+            "from:alice OR OR from:bob",
+        ] {
+            let q = parse_query(input);
+            assert!(!q.groups.is_empty(), "{input} parsed to nothing");
+            assert!(
+                q.all_terms().all(|t| t.field == SearchField::From),
+                "{input} produced a stray term"
+            );
+        }
+        // The doubled OR still joins the two it sits between.
+        assert_eq!(parse_query("from:alice OR OR from:bob").groups.len(), 1);
+    }
+
+    #[test]
+    fn test_or_next_to_a_filter_falls_back_to_and() {
+        // `OR` joins terms, not filters: the date filter stays an AND
+        // condition and the term next to it opens its own group.
+        let q = parse_query("date:2024 OR from:alice");
+        assert_eq!(q.date_filters.len(), 1);
+        assert_eq!(q.groups.len(), 1);
+        assert_eq!(q.groups[0].terms.len(), 1);
+    }
+
+    #[test]
+    fn test_group_needs_body() {
+        assert!(parse_query("body:hello").groups[0].needs_body());
+        assert!(parse_query("filename:report.pdf").groups[0].needs_body());
+        // Free-text searches metadata *or* body, so it needs the body too.
+        assert!(parse_query("hello").groups[0].needs_body());
+        assert!(!parse_query("subject:hello").groups[0].needs_body());
+        // A mixed group needs the body because one of its terms does.
+        assert!(parse_query("subject:hello OR body:hello").groups[0].needs_body());
+    }
+    #[test]
     fn test_parse_quoted_phrase() {
         let q = parse_query("subject:\"hello world\"");
-        assert_eq!(q.terms.len(), 1);
-        if let SearchOperator::Exact(ref s) = q.terms[0].operator {
+        assert_eq!(terms(&q).len(), 1);
+        if let SearchOperator::Exact(ref s) = terms(&q)[0].operator {
             assert_eq!(s, "hello world");
         } else {
             panic!("expected Exact operator");
@@ -546,19 +711,19 @@ mod tests {
     #[test]
     fn test_parse_combined_query() {
         let q = parse_query("from:user1 subject:budget date:2024-01..2024-06 has:attachment");
-        assert_eq!(q.terms.len(), 2);
-        assert_eq!(q.terms[0].field, SearchField::From);
-        assert_eq!(q.terms[1].field, SearchField::Subject);
-        assert!(q.date_filter.is_some());
+        assert_eq!(terms(&q).len(), 2);
+        assert_eq!(terms(&q)[0].field, SearchField::From);
+        assert_eq!(terms(&q)[1].field, SearchField::Subject);
+        assert_eq!(q.date_filters.len(), 1);
         assert_eq!(q.has_attachment, Some(true));
     }
 
     #[test]
     fn test_parse_empty_query() {
         let q = parse_query("");
-        assert!(q.terms.is_empty());
-        assert!(q.date_filter.is_none());
-        assert!(q.size_filter.is_none());
+        assert!(terms(&q).is_empty());
+        assert!(q.date_filters.is_empty());
+        assert!(q.size_filters.is_empty());
         assert!(q.has_attachment.is_none());
     }
 }

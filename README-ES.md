@@ -224,13 +224,16 @@ has:no-attachment                   Solo mensajes sin adjuntos
 label:Inbox                         Filtrar por etiqueta de Gmail
 date:2024-01                        Mensajes de enero 2024
 date:2024-01-01..2024-06-30         Rango de fechas
-before:2024-06-01                   Antes de una fecha
-after:2024-01-01                    Despues de una fecha
+before:2024-06-01                   Antes de una fecha (ese dia excluido)
+after:2024-01-01                    Desde una fecha (ese dia incluido)
+after:2024-01-01 before:2025-01-01  Todo 2024
 size:>1mb                           Mensajes de mas de 1 MB
+size:>1mb size:<5mb                 Entre 1 y 5 MB
 -subject:spam                       Excluir mensajes con "spam"
 "frase exacta"                      Buscar frase completa
 from:juan subject:presupuesto       AND implicito (ambos deben coincidir)
 term1 OR term2                      OR explicito
+from:a OR from:b subject:factura    OR liga mas fuerte: (a OR b) AND asunto
 ```
 
 ## Formatos de entrada soportados
