@@ -8,7 +8,7 @@
 //! │  flags: u32                          │
 //! │  message_count: u64                  │
 //! │  mbox_file_size: u64                 │
-//! │  mbox_modified_time: i64             │
+//! │  mbox_modified_time: i64 (nanos)     │
 //! │  sha256_first_4kb: [u8; 32]         │
 //! │  (padding to 128 bytes)              │
 //! ├──────────────────────────────────────┤
@@ -28,7 +28,10 @@ pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 /// v3: bumped again (layout still unchanged) because the unreleased v2
 /// parser rejected bare `From ` separators (GYB-style mboxes), so v2
 /// indexes built from `main` may carry mis-split boundaries.
-pub const VERSION: u32 = 3;
+/// v4: `MailEntry` gained `thread_id` (`X-GM-THRID`), and
+/// `mbox_modified_time` switched from seconds to nanoseconds — both change
+/// what an index means, so v3 files are rebuilt.
+pub const VERSION: u32 = 4;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;
@@ -49,7 +52,11 @@ pub struct IndexHeader {
     pub message_count: u64,
     /// Size of the original MBOX file when the index was built.
     pub mbox_file_size: u64,
-    /// Modification time of the MBOX file (Unix timestamp in seconds).
+    /// Modification time of the MBOX file (Unix timestamp in nanoseconds).
+    ///
+    /// Nanoseconds, not seconds: at 1-second resolution a mailbox rewritten
+    /// within the same second as its index looked unchanged, and the stale
+    /// index was served for a file that had moved underneath it.
     pub mbox_modified_time: i64,
     /// SHA-256 of the first 4 KB of the MBOX file.
     pub sha256_first_4kb: [u8; 32],

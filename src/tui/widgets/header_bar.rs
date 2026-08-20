@@ -13,11 +13,10 @@ use crate::tui::theme::current_theme;
 pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let theme = current_theme();
 
-    let file_name = app
-        .mbox_path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| app.mbox_path.to_string_lossy().to_string());
+    // `file_name()` is not a usable label for every mailbox: Apple Mail's is
+    // literally `mbox`, and a Google Groups export's is the localised
+    // `topics.mbox` / `temas.mbox`. Both are named by their directory instead.
+    let file_name = crate::mailbox_naming::display_name(&app.mbox_path);
 
     let total = app.entries.len();
     let visible = app.visible_count();

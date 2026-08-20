@@ -148,12 +148,7 @@ fn load_index_from_file(
         return Ok(None);
     }
 
-    let mbox_mtime = mbox_meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+    let mbox_mtime = mtime_nanos(&mbox_meta);
 
     if header.mbox_modified_time != mbox_mtime {
         debug!("MBOX modification time changed");
@@ -199,12 +194,7 @@ fn load_index_from_file(
 fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
     let mbox_meta = std::fs::metadata(mbox_path).map_err(|e| MboxError::io(mbox_path, e))?;
 
-    let mbox_mtime = mbox_meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+    let mbox_mtime = mtime_nanos(&mbox_meta);
 
     let hash = sha256_first_n(mbox_path, HASH_PREFIX_LEN)?;
 
@@ -259,6 +249,21 @@ fn write_index_to_file(path: &Path, header: &[u8], entries: &[u8]) -> anyhow::Re
 }
 
 /// Compute SHA-256 of the first `n` bytes of a file.
+/// Modification time of a file as nanoseconds since the Unix epoch.
+///
+/// Nanoseconds rather than seconds: a mailbox rewritten in the same second the
+/// index was written looked unchanged at 1-second resolution, and the stale
+/// index was served for a file that had moved underneath it. Times before the
+/// epoch, or beyond what an `i64` of nanoseconds can hold (year 2262), fall
+/// back to `0` — the index is then simply rebuilt.
+fn mtime_nanos(meta: &std::fs::Metadata) -> i64 {
+    meta.modified()
+        .ok()
+        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+        .and_then(|d| i64::try_from(d.as_nanos()).ok())
+        .unwrap_or(0)
+}
+
 fn sha256_first_n(path: &Path, n: usize) -> anyhow::Result<[u8; 32]> {
     let file = File::open(path).map_err(|e| MboxError::io(path, e))?;
     // Read exactly the first `n` bytes (or the whole file if shorter) with a

@@ -97,6 +97,7 @@ mod tests {
             content_type: "text/plain".to_string(),
             text_size: 100,
             labels: Vec::new(),
+            thread_id: None,
             sequence: idx,
         }
     }

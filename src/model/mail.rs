@@ -54,7 +54,19 @@ pub struct MailEntry {
     pub text_size: u64,
 
     /// Gmail labels from the `X-Gmail-Labels` header.
+    ///
+    /// Google Groups mailboxes have no such header; for those, the group name
+    /// (`X-Google-Groups` / `X-BeenThere`) is added here as a virtual label so
+    /// the sidebar works for a whole Takeout archive, not just its Gmail half.
     pub labels: Vec<String>,
+
+    /// Explicit conversation id when the mailbox provides one (`X-GM-THRID`,
+    /// written by Gmail and Google Groups exports).
+    ///
+    /// Threading prefers it over the reconstructed JWZ chain: it is the id the
+    /// server itself assigned, so it groups a conversation correctly even when
+    /// `References`/`In-Reply-To` are missing or mangled.
+    pub thread_id: Option<String>,
 
     /// Sequential index within the MBOX (0, 1, 2, …).
     pub sequence: u64,

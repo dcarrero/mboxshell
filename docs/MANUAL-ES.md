@@ -37,12 +37,14 @@
 | **Validación del índice** | El índice se vincula al origen mediante tamaño, fecha de modificación y un SHA-256 de los primeros bytes. Si el MBOX cambia, el índice se reconstruye automáticamente. |
 | **Cuerpos bajo demanda** | Los cuerpos se decodifican solo al abrir el mensaje y se mantienen en una pequeña caché LRU (50 mensajes por defecto). |
 | **Etiquetas de Gmail** | Las cabeceras `X-Gmail-Labels` (de Google Takeout) aparecen como carpetas virtuales en una barra lateral. |
+| **Google Groups** | Un archivo de Takeout exporta además cada grupo del que eres propietario como un buzón aparte. mboxShell lo nombra por el grupo y usa el grupo como etiqueta virtual — ver [Buzones de Google Groups](GOOGLE-GROUPS.md) (en inglés). |
 
 ### Formatos de entrada soportados
 
 | Formato | Ruta | Notas |
 |---------|------|-------|
 | MBOX (mboxrd / mboxo) | `fichero.mbox` | Google Takeout, Thunderbird, servidores Unix |
+| Export de Google Groups | `<grupo>@googlegroups.com/temas.mbox` | Dentro de un archivo de Takeout; el nombre del fichero está traducido (`topics.mbox`, …) |
 | EML | `mensaje.eml` | Un único mensaje RFC 5322 |
 | Carpeta de EML | `carpeta/` | Una carpeta con varios ficheros `.eml` |
 
@@ -134,7 +136,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 
 | Flag | Descripción |
 |------|-------------|
-| `-f`, `--force` | Forzar la reconstrucción completa del índice aunque exista uno válido |
+| `-f`, `--force` | Forzar la reconstrucción completa del índice aunque exista uno válido. Se acepta antes del subcomando (`mboxshell -f index x.mbox`) o después (`mboxshell index x.mbox -f`). En `export`, `-f` significa `--format`, así que ahí hay que escribir `--force` entero. |
 | `-v`, `-vv`, `-vvv` | Aumentar el detalle del log (`info`, `debug`, `trace`) |
 | `--lang <en\|es>` | Forzar el idioma de la interfaz (por defecto se autodetecta del locale) |
 | `-h`, `--help` | Mostrar ayuda |
@@ -164,6 +166,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `--query <q>` | Exportar solo los mensajes que coincidan con esta [consulta](#7-búsqueda) |
 | `--qp` | Recodificar el texto de 8 bits como quoted-printable para que el `.eml` sea ASCII de 7 bits puro (ayuda a herramientas estrictas como `eml-extractor`). **Solo EML.** |
 | `--raw-html` | Mantener el cuerpo HTML original **sin sanear** (se conservan scripts, `on*`, iframes). Solo para archivado local — nunca sirvas estos ficheros. **Solo HTML.** |
+| `--force` | Reconstruye el índice antes de exportar. Aquí se escribe entero: `-f` es `--format`. |
 
 #### Salida de `stats`
 

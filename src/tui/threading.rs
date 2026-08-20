@@ -67,6 +67,19 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
             continue;
         }
 
+        // A repeated Message-ID would take over the container of the message
+        // that claimed it first, whose index is then referenced by nothing and
+        // silently vanishes from the threaded view. Give the later copy an id of
+        // its own; it still links to the conversation through its references.
+        let mid = if containers
+            .get(&mid)
+            .is_some_and(|c: &Container| c.entry_index.is_some())
+        {
+            format!("__dup_{idx}__")
+        } else {
+            mid
+        };
+
         // Get or create this message's container
         let c = containers.entry(mid.clone()).or_insert_with(|| Container {
             entry_index: None,
@@ -150,17 +163,34 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
     // Step 4: Prune empty containers with a single child — promote the child.
     // (We skip full pruning for simplicity and just collect threads from roots.)
 
-    // Step 5: Group by subject (merge roots with same normalized subject).
-    let mut subject_map: HashMap<String, Vec<String>> = HashMap::new();
+    // Step 5: Merge roots that belong together.
+    //
+    // The mailbox's own conversation id wins when it has one (`X-GM-THRID`, in
+    // Gmail and Google Groups exports): it is exact, where merging by
+    // normalized subject both over-merges (every "Hello" becomes one thread)
+    // and under-merges (a reply whose subject was edited splits off).
+    // Messages without an id keep the subject heuristic.
+    // Keyed by conversation id or subject; the value keeps the subject to show
+    // alongside the roots, since the key is no longer always the subject.
+    let mut subject_map: HashMap<String, (String, Vec<String>)> = HashMap::new();
     for rid in &root_ids {
-        let subj = root_subject(rid, &containers, entries);
-        subject_map.entry(subj).or_default().push(rid.clone());
+        let subject = root_subject(rid, &containers, entries);
+        // NUL never occurs in a subject, so an id key can never collide with one.
+        let key = match root_thread_id(rid, &containers, entries) {
+            Some(tid) => format!("\u{0}thrid\u{0}{tid}"),
+            None => subject.clone(),
+        };
+        subject_map
+            .entry(key)
+            .or_insert_with(|| (subject, Vec::new()))
+            .1
+            .push(rid.clone());
     }
 
     // Build Thread objects
     let mut threads: Vec<Thread> = Vec::new();
 
-    for (subject, group_root_ids) in &subject_map {
+    for (subject, group_root_ids) in subject_map.values() {
         let mut nodes: Vec<(usize, usize)> = Vec::new();
         let mut oldest = DateTime::<Utc>::MAX_UTC;
         let mut newest = DateTime::<Utc>::MIN_UTC;
@@ -313,6 +343,29 @@ fn root_subject(
     String::new()
 }
 
+/// Explicit conversation id for a root container, from its own message or —
+/// when the root is an empty placeholder — its first child with a message.
+///
+/// Mirrors [`root_subject`], which resolves the same way.
+fn root_thread_id(
+    root_id: &str,
+    containers: &HashMap<String, Container>,
+    entries: &[MailEntry],
+) -> Option<String> {
+    let c = containers.get(root_id)?;
+    if let Some(idx) = c.entry_index {
+        return entries.get(idx).and_then(|e| e.thread_id.clone());
+    }
+    for child_id in &c.children {
+        if let Some(child) = containers.get(child_id.as_str()) {
+            if let Some(idx) = child.entry_index {
+                return entries.get(idx).and_then(|e| e.thread_id.clone());
+            }
+        }
+    }
+    None
+}
+
 /// Normalize a Message-ID by stripping angle brackets and whitespace.
 fn normalize_id(id: &str) -> String {
     id.trim()
@@ -376,8 +429,37 @@ mod tests {
             content_type: "text/plain".to_string(),
             text_size: 100,
             labels: Vec::new(),
+            thread_id: None,
             sequence: idx,
         }
+    }
+
+    #[test]
+    fn test_duplicate_message_id_keeps_both_messages() {
+        // A mailbox can hold the same Message-ID twice (a copy of a message
+        // that was also delivered through a list). The later copy used to take
+        // over the first one's container, dropping a message from the view.
+        let now = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        let entries = vec![
+            make_entry(0, "<same@example.invalid>", None, vec![], "Hello", now),
+            make_entry(1, "<same@example.invalid>", None, vec![], "Hello", now),
+        ];
+        let nodes = flatten_threads_to_indices(&build_threads(&entries));
+        assert_eq!(nodes.len(), 2, "neither copy may disappear");
+        let shown: Vec<usize> = nodes.iter().map(|(i, _)| *i).collect();
+        assert!(shown.contains(&0) && shown.contains(&1));
+    }
+
+    #[test]
+    fn test_thread_id_separates_same_subject_conversations() {
+        let now = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        let mut a = make_entry(0, "<a@example.invalid>", None, vec![], "Hello", now);
+        let mut b = make_entry(1, "<b@example.invalid>", None, vec![], "Hello", now);
+        // Subject alone merges them; the explicit ids must not.
+        assert_eq!(build_threads(&[a.clone(), b.clone()]).len(), 1);
+        a.thread_id = Some("111".to_string());
+        b.thread_id = Some("222".to_string());
+        assert_eq!(build_threads(&[a, b]).len(), 2);
     }
 
     #[test]
