@@ -65,7 +65,20 @@ Coverage measured over the 6,787-message reference mailbox:
 | `X-Google-Groups` | 6,785 / 6,787 | Bare group name, no domain |
 | `X-BeenThere` | 4,029 / 6,787 | Full posting address |
 | `Date:` | 6,787 / 6,787 (100%) | So the envelope date is never needed here |
-| `X-Gmail-Labels` | 0 / 6,787 | **Absent** — Groups mailboxes have no labels |
+| `X-Gmail-Labels` | 6 / 6,787 | Not Gmail labels — topic *state* (see below) |
+
+`X-Gmail-Labels` deserves a note: it is present, but it does not carry Gmail
+labels. Google reuses the header to record **topic state**, localised like
+everything else and RFC 2047-encoded where needed:
+
+```
+X-Gmail-Labels: El tema se ha fijado
+X-Gmail-Labels: =?UTF-8?Q?Las_respuestas_del_tema_est=C3=A1n_bloqueadas?=
+```
+
+Six messages out of 6,787 carry one. They are worth keeping — they are the only
+record that a topic was pinned or locked — which is why the group label is
+*added* to whatever the header holds instead of replacing it.
 
 Line endings are CRLF, and not consistently: the same header appears with and
 without a trailing `\r` across messages in one file. **Trim the value** or the
@@ -106,8 +119,9 @@ header.
 
 ### 3.3 Group as a virtual label
 
-Since `X-Gmail-Labels` is absent, a label sidebar built only on it stays empty
-for these mailboxes. mboxShell derives a virtual label instead:
+A label sidebar built only on `X-Gmail-Labels` is all but empty for these
+mailboxes — 6 messages out of 6,787, and what it holds is topic state rather
+than a label anyone filters by. mboxShell derives a virtual label as well:
 
 1. `X-Google-Groups`, trimmed, if non-empty → use as-is (`medios-y-redes-general`).
 2. Otherwise `X-BeenThere`, **only if the domain is `googlegroups.com`** → use
@@ -166,7 +180,8 @@ For the macOS and Windows apps:
 - [ ] Never trust the envelope sender; use `From:`.
 - [ ] Trim header values before comparing (mixed CRLF).
 - [ ] Derive the label: `X-Google-Groups`, else `X-BeenThere` restricted to
-      `googlegroups.com`.
+      `googlegroups.com`. Add it to `X-Gmail-Labels` rather than replacing —
+      in a Groups mailbox that header holds topic state worth keeping.
 - [ ] Name the mailbox after the group directory, and use that name wherever
       the source mailbox is recorded.
 - [ ] Prefer `X-GM-THRID` over subject merging when grouping conversations.
