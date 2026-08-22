@@ -4,6 +4,12 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.7.2
+
+Exportar una selección como buzón nuevo. 7 tests nuevos (241 en total).
+
+- Función: **`export --format mbox` escribe los mensajes seleccionados en un único buzón MBOX nuevo.** Hasta ahora una selección se podía exportar a `.eml` / CSV / texto / HTML —una carpeta de ficheros— pero nunca de vuelta como buzón, así que no había forma de entregar *una parte* de un archivo en el mismo formato en que llegó. Junto con `--query` este es el flujo de entrega: filtrar una exportación grande (un volcado de Google Vault, un archivo de Takeout) hasta quedarse con los mensajes que de verdad procede entregar —una petición legal, una solicitud de registros, un buzón que tiene que leer otra persona— y producir un buzón que contenga solo esos. Un mensaje leído de un MBOX se copia byte a byte, conservando su propia línea sobre `From ` y el escapado que trajera el origen, porque reescribir el sobre solo podría corromper un archivo que ya era válido; a un mensaje sin línea sobre (uno que venía de un EML) se le sintetiza una —`asctime` de C en UTC, con el día alineado a dos columnas e independiente del locale— más el escapado con `>` de las líneas del cuerpo que empiezan por `From `, sin el cual el resultado no es un buzón legible. Cada registro termina en salto de línea. La salida se confirma con fichero temporal y renombrado, igual que la fusión, de modo que un fallo a media exportación nunca deja un buzón a medio escribir con el nombre que pidió el usuario; el fichero de origen no se toca nunca. Nuevos `export::mbox::export_mbox` y `export::mbox::mbox_record`.
+
 ## v0.7.1
 
 Semántica de búsqueda: `OR` gana precedencia y los filtros de fecha y tamaño repetidos dejan de pisarse entre sí. 23 tests nuevos (234 en total).

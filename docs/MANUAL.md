@@ -114,6 +114,9 @@ mboxshell search mail.mbox "from:user@gmail.com date:2024"
 # Export to individual .eml files
 mboxshell export mail.mbox --format eml --output ./emails/
 
+# Export just the matching messages as a new mailbox
+mboxshell export mail.mbox --format mbox --query "subject:invoice" -o invoices.mbox
+
 # Extract every attachment
 mboxshell attachments mail.mbox --output ./attachments/
 
@@ -161,8 +164,8 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 
 | Option | Description |
 |--------|-------------|
-| `-f`, `--format <fmt>` | `eml` (default), `csv`, `txt` (or `text`), `html` |
-| `-o`, `--output <path>` | Output directory (per-message formats) or file (csv) — **required** |
+| `-f`, `--format <fmt>` | `eml` (default), `csv`, `txt` (or `text`), `html`, `mbox` |
+| `-o`, `--output <path>` | Output directory (per-message formats) or file (`csv`, `mbox`) — **required**. Given a directory, `csv`/`mbox` write `export.csv` / `export.mbox` inside it. |
 | `--query <q>` | Only export messages matching this [search query](#7-search) |
 | `--qp` | Re-encode 8-bit text as quoted-printable so the `.eml` is pure 7-bit ASCII (helps strict tools like `eml-extractor`). **EML only.** |
 | `--raw-html` | Keep the original HTML body **unsanitized** (scripts, `on*`, iframes preserved). For local archival only — never serve these files. **HTML only.** |
@@ -411,11 +414,21 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 | CSV | `csv` | a single `.csv` summary file | UTF-8 with BOM (Excel-friendly); separator configurable |
 | Plain text | `txt` / `text` | one `.txt` per message | Decoded text body |
 | HTML | `html` | one standalone `.html` per message | Body sanitized by default; `--raw-html` keeps it untouched (local archival only) |
+| MBOX | `mbox` | a single new `.mbox` mailbox | The selection written back out as a mailbox. Messages read from an MBOX are copied byte for byte; ones without an envelope line get a `From ` line and `From `-quoting synthesized. The source file is never modified. |
 
 Combine with `--query` to export only matching messages:
 
 ```bash
 mboxshell export mail.mbox -f eml -o ./out/ --query "label:Important after:2023-01-01"
+```
+
+`--format mbox` plus `--query` is the handover flow: filter a large archive down to the messages
+that actually belong in a delivery — a legal request, a records request, a mailbox someone else
+has to read — and produce a mailbox containing only those.
+
+```bash
+mboxshell export vault-export.mbox --format mbox -o handover.mbox \
+  --query "from:cfo@acme.com after:2024-01-01 before:2024-06-30"
 ```
 
 In the TUI, press `e` on a message to open the export popup and choose a format interactively.

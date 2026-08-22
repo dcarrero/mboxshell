@@ -131,6 +131,9 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 mboxshell export correo.mbox --format eml --output ./emails/
 mboxshell export correo.mbox --format csv --output resumen.csv
 
+# Entregar solo una parte del archivo: un buzón nuevo con lo que coincide
+mboxshell export correo.mbox --format mbox --query "from:legal@acme.com" -o entrega.mbox
+
 # Extraer adjuntos
 mboxshell attachments correo.mbox --output ./adjuntos/
 
@@ -155,7 +158,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell index <ruta> [-f/--force]` | Construir o reconstruir el indice binario |
 | `mboxshell stats <ruta> [--json]` | Mostrar estadisticas de un archivo MBOX |
 | `mboxshell search <ruta> <consulta> [--json]` | Buscar mensajes desde la linea de comandos |
-| `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt, html) |
+| `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt, html, mbox) |
 | `mboxshell merge <archivos...> -o <salida> [--no-dedup] [--source-header]` | Combinar varios archivos MBOX en uno |
 | `mboxshell attachments <ruta> -o <salida>` | Extraer todos los adjuntos |
 | `mboxshell completions <shell>` | Generar completions de shell (bash, zsh, fish, powershell, elvish) |

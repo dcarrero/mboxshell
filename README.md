@@ -131,6 +131,9 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 mboxshell export mail.mbox --format eml --output ./emails/
 mboxshell export mail.mbox --format csv --output summary.csv
 
+# Hand over only part of an archive: a new mailbox with just the matches
+mboxshell export mail.mbox --format mbox --query "from:legal@acme.com" -o handover.mbox
+
 # Extract attachments
 mboxshell attachments mail.mbox --output ./attachments/
 
@@ -155,7 +158,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell index <path> [-f/--force]` | Build or rebuild the binary index |
 | `mboxshell stats <path> [--json]` | Show statistics about an MBOX file |
 | `mboxshell search <path> <query> [--json]` | Search messages from the command line |
-| `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt, html) |
+| `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt, html, mbox) |
 | `mboxshell merge <files...> -o <output> [--no-dedup] [--source-header]` | Merge multiple MBOX files into one |
 | `mboxshell attachments <path> -o <output>` | Extract all attachments |
 | `mboxshell completions <shell>` | Generate shell completions (bash, zsh, fish, powershell, elvish) |

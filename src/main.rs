@@ -78,8 +78,13 @@ enum Commands {
     /// Export messages
     Export {
         path: PathBuf,
+        /// Output format: eml, csv, txt, html or mbox. `mbox` writes the
+        /// selection (see --query) to a single new mailbox file — the way to
+        /// hand over only part of an archive.
         #[arg(short, long, default_value = "eml")]
         format: String,
+        /// Destination. A folder for eml/txt/html; a file for csv and mbox
+        /// (a folder gets `export.csv` / `export.mbox` written inside it).
         #[arg(short, long)]
         output: PathBuf,
         #[arg(long)]
@@ -581,6 +586,34 @@ fn cmd_export(
                 i18n::cli_exported_html(),
                 count,
                 i18n::cli_html_files()
+            );
+        }
+        "mbox" => {
+            // One new mailbox holding just the selection — the handover flow.
+            // Like CSV this writes a file, not a folder of files.
+            let mbox_path = if output.extension().is_some() {
+                output.to_path_buf()
+            } else {
+                output.join("export.mbox")
+            };
+            if let Some(parent) = mbox_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let count = mboxshell::export::mbox::export_mbox(
+                &mut store,
+                &selected,
+                &mbox_path,
+                &|current, _total| {
+                    pb.set_position(current as u64);
+                },
+            )?;
+            pb.finish_and_clear();
+            println!(
+                "  {} {} ({} {})",
+                i18n::cli_exported_mbox(),
+                mbox_path.display(),
+                count,
+                i18n::cli_mbox_messages()
             );
         }
         _ => {
