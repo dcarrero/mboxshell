@@ -589,14 +589,20 @@ msg!(cli_txt_files, ".txt file(s)", "fichero(s) .txt");
 msg!(cli_exported_html, "Exported", "Exportado");
 msg!(cli_html_files, ".html file(s)", "fichero(s) .html");
 msg!(
+    cli_exported_mbox,
+    "Exported MBOX mailbox to",
+    "Buz\u{f3}n MBOX exportado en"
+);
+msg!(cli_mbox_messages, "message(s)", "mensaje(s)");
+msg!(
     cli_unknown_format,
     "Unknown export format",
     "Formato de exportaci\u{f3}n desconocido"
 );
 msg!(
     cli_supported_formats,
-    "Supported: eml, csv, txt, html",
-    "Soportados: eml, csv, txt, html"
+    "Supported: eml, csv, txt, html, mbox",
+    "Soportados: eml, csv, txt, html, mbox"
 );
 msg!(
     cli_merge_complete,

@@ -1,4 +1,4 @@
-//! Merge multiple MBOX files into one.
+//! Write MBOX mailboxes: merge several into one, or export a selection as a new one.
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 
 use crate::index::builder;
 use crate::mailbox_naming;
+use crate::model::mail::MailEntry;
+use crate::store::reader::MboxStore;
 
 /// Statistics returned by a merge operation.
 #[derive(Debug)]
@@ -141,6 +143,98 @@ pub fn merge_mbox_files(
     })
 }
 
+/// Write `entries` out as a single new MBOX mailbox at `output`.
+///
+/// This is the delivery half of the tool: filter a large archive down to the
+/// messages that actually belong in a handover — a legal request, a records
+/// request, a mailbox someone else has to read — and produce a mailbox holding
+/// only those. The source file is never touched.
+///
+/// The progress callback receives `(current, total)` and returns the number of
+/// messages written.
+pub fn export_mbox(
+    store: &mut MboxStore,
+    entries: &[&MailEntry],
+    output: &Path,
+    progress: &dyn Fn(usize, usize),
+) -> anyhow::Result<usize> {
+    // Same commit discipline as the merge: write to a sibling temp file and
+    // rename on success, so a mid-export error never leaves a half-written
+    // mailbox behind under the name the user asked for.
+    let tmp_output = output.with_extension("mbox.tmp");
+    let mut out_file = std::io::BufWriter::new(std::fs::File::create(&tmp_output)?);
+
+    let total = entries.len();
+    for (i, entry) in entries.iter().enumerate() {
+        progress(i, total);
+        let raw = store.get_raw_message(entry)?;
+        out_file.write_all(&mbox_record(&raw, entry))?;
+    }
+    progress(total, total);
+
+    out_file.flush()?;
+    drop(out_file);
+    std::fs::rename(&tmp_output, output)?;
+
+    Ok(total)
+}
+
+/// One mbox record: separator line, message, trailing newline.
+///
+/// A message read out of an MBOX already carries its own `From ` line and
+/// whatever quoting the source used, so it is copied verbatim — rewriting the
+/// envelope could only corrupt an archive that was already valid. A message
+/// that came from an EML has neither, so both are synthesized.
+pub fn mbox_record(raw: &[u8], entry: &MailEntry) -> Vec<u8> {
+    let mut out = if raw.starts_with(b"From ") {
+        raw.to_vec()
+    } else {
+        let mut v = from_line(entry);
+        append_from_quoted(&mut v, raw);
+        v
+    };
+    if out.last() != Some(&b'\n') {
+        out.push(b'\n');
+    }
+    out
+}
+
+/// `From sender Thu Jan  4 09:00:00 2024` — the mbox separator line.
+///
+/// The timestamp is C `asctime` in UTC with the day-of-month space-padded to
+/// two columns (`%e`). It must not follow the machine's locale; chrono's
+/// weekday and month names are fixed English, so the format stays stable.
+fn from_line(entry: &MailEntry) -> Vec<u8> {
+    let stamp = entry.date.format("%a %b %e %H:%M:%S %Y");
+
+    // Whitespace inside the address would split the line into extra fields.
+    let address: String = entry
+        .from
+        .address
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    let sender = if address.is_empty() {
+        "MAILER-DAEMON"
+    } else {
+        address.as_str()
+    };
+
+    format!("From {sender} {stamp}\n").into_bytes()
+}
+
+/// Append `raw`, prefixing body lines that start with `From ` with `>` so they
+/// are not read back as the start of the next message.
+fn append_from_quoted(out: &mut Vec<u8>, raw: &[u8]) {
+    out.reserve(raw.len());
+    for line in raw.split_inclusive(|&b| b == b'\n') {
+        if line.starts_with(b"From ") {
+            out.push(b'>');
+        }
+        out.extend_from_slice(line);
+    }
+}
+
 /// Insert an `X-Mbox-Source: <source>` header into a raw MBOX message.
 ///
 /// The header is placed right after the `From ` envelope line (so it becomes
@@ -206,6 +300,127 @@ fn sanitize_header_value(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A message stamped 2024-01-04 09:00:00 UTC — a single-digit day, so the
+    /// two-column padding of the `From ` line is actually exercised.
+    fn sample_entry() -> MailEntry {
+        use crate::model::address::EmailAddress;
+        use chrono::TimeZone;
+        MailEntry {
+            offset: 0,
+            length: 100,
+            date: chrono::Utc.with_ymd_and_hms(2024, 1, 4, 9, 0, 0).unwrap(),
+            from: EmailAddress {
+                display_name: "Test User".to_string(),
+                address: "test@example.com".to_string(),
+            },
+            to: vec![],
+            cc: vec![],
+            subject: "Hello".to_string(),
+            message_id: "<msg@test>".to_string(),
+            in_reply_to: None,
+            references: vec![],
+            has_attachments: false,
+            content_type: "text/plain".to_string(),
+            text_size: 50,
+            labels: vec![],
+            sequence: 0,
+            thread_id: None,
+        }
+    }
+
+    #[test]
+    fn test_mbox_record_keeps_mbox_message_verbatim() {
+        let raw = b"From user@x.com Thu Jan  4 10:00:00 2024\nSubject: Hi\n\nbody\n";
+        let out = mbox_record(raw, &sample_entry());
+        // A message that already came out of a mailbox is copied as-is:
+        // rewriting its envelope line could only corrupt a valid archive.
+        assert_eq!(out, raw.to_vec());
+    }
+
+    #[test]
+    fn test_mbox_record_adds_envelope_line_for_eml() {
+        let raw = b"Subject: Hi\n\nbody\n";
+        let out = String::from_utf8(mbox_record(raw, &sample_entry())).unwrap();
+        // asctime, UTC, day space-padded to two columns and locale-independent.
+        assert!(
+            out.starts_with("From test@example.com Thu Jan  4 09:00:00 2024\n"),
+            "unexpected envelope line: {out}"
+        );
+        assert!(out.contains("Subject: Hi"));
+    }
+
+    #[test]
+    fn test_mbox_record_quotes_from_lines_in_eml_body() {
+        let raw = b"Subject: Hi\n\nFrom here it broke\nok\n";
+        let out = String::from_utf8(mbox_record(raw, &sample_entry())).unwrap();
+        // Otherwise that body line reads back as the start of the next message.
+        assert!(out.contains("\n>From here it broke\n"), "not quoted: {out}");
+        assert!(out.contains("\nok\n"));
+    }
+
+    #[test]
+    fn test_mbox_record_ends_with_newline() {
+        let raw = b"Subject: Hi\n\nno trailing newline";
+        let out = mbox_record(raw, &sample_entry());
+        assert_eq!(out.last(), Some(&b'\n'));
+    }
+
+    #[test]
+    fn test_from_line_falls_back_to_mailer_daemon() {
+        let mut entry = sample_entry();
+        entry.from.address = String::new();
+        let line = String::from_utf8(from_line(&entry)).unwrap();
+        // An empty sender would leave "From  Thu…", which parses as a message
+        // whose sender is the weekday.
+        assert!(line.starts_with("From MAILER-DAEMON "), "got: {line}");
+    }
+
+    #[test]
+    fn test_from_line_strips_whitespace_from_address() {
+        let mut entry = sample_entry();
+        entry.from.address = "a b@x.com".to_string();
+        let line = String::from_utf8(from_line(&entry)).unwrap();
+        // Whitespace would split the line into extra fields.
+        assert!(line.starts_with("From ab@x.com Thu Jan  4 "), "got: {line}");
+    }
+
+    #[test]
+    fn test_export_mbox_writes_a_readable_mailbox() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("source.mbox");
+        std::fs::write(
+            &src,
+            b"From a@x Thu Jan 01 00:00:00 2024\nMessage-ID: <1@x>\nSubject: A\n\nbody\n\
+              From b@x Fri Jan 02 00:00:00 2024\nMessage-ID: <2@x>\nSubject: B\n\nhi\n\
+              From c@x Sat Jan 03 00:00:00 2024\nMessage-ID: <3@x>\nSubject: C\n\nbye\n",
+        )
+        .unwrap();
+
+        let entries = builder::build_index(&src, false, None).unwrap();
+        assert_eq!(entries.len(), 3);
+        let mut store = MboxStore::open(&src).unwrap();
+
+        // Export a selection — the whole point: only these go in the handover.
+        let selection = vec![&entries[0], &entries[2]];
+        let out = dir.path().join("selection.mbox");
+        let n = export_mbox(&mut store, &selection, &out, &|_, _| {}).unwrap();
+        assert_eq!(n, 2);
+
+        // The result must be a mailbox the tool can read back.
+        let reexported = builder::build_index(&out, true, None).unwrap();
+        assert_eq!(
+            reexported.len(),
+            2,
+            "the export must re-index as 2 messages"
+        );
+        assert_eq!(reexported[0].subject, "A");
+        assert_eq!(reexported[1].subject, "C");
+        // The source is never touched.
+        assert_eq!(builder::build_index(&src, true, None).unwrap().len(), 3);
+        // And no temp file is left behind on success.
+        assert!(!dir.path().join("selection.mbox.tmp").exists());
+    }
 
     #[test]
     fn test_non_dedup_merge_preserves_bytes() {

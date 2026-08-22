@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.2
+
+Export a selection back out as a new mailbox. 7 new tests (241 total).
+
+- Feature: **`export --format mbox` writes the selected messages to a single new MBOX mailbox.** Until now a selection could be exported as `.eml` / CSV / text / HTML — a folder of files — but never back as a mailbox, so there was no way to hand over *part* of an archive in the format it came in. Combined with `--query` this is the delivery flow: filter a large export (a Google Vault dump, a Takeout archive) down to the messages that actually belong in a handover — a legal request, a records request, a mailbox someone else has to read — and produce a mailbox containing only those. A message read out of an MBOX is copied byte for byte, keeping its own `From ` envelope line and whatever quoting the source used, because rewriting an envelope could only corrupt an archive that was already valid; a message with no envelope line (one that came from an EML) gets one synthesized — C `asctime` in UTC with the day space-padded to two columns, locale-independent — plus `>`-quoting of body lines starting with `From `, without which the result is not a readable mailbox. Every record ends in a newline. The output is committed by temp-file-and-rename, like the merge, so a mid-export failure never leaves a half-written mailbox under the name the user asked for; the source file is never touched. New `export::mbox::export_mbox` and `export::mbox::mbox_record`.
+
 ## v0.7.1
 
 Search semantics: `OR` gains a precedence, and repeated date/size filters stop overwriting each other. 23 new tests (234 total).

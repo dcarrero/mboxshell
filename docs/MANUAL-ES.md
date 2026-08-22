@@ -114,6 +114,9 @@ mboxshell search correo.mbox "from:user@gmail.com date:2024"
 # Exportar a ficheros .eml individuales
 mboxshell export correo.mbox --format eml --output ./emails/
 
+# Exportar solo los mensajes que coinciden como un buzón nuevo
+mboxshell export correo.mbox --format mbox --query "subject:factura" -o facturas.mbox
+
 # Extraer todos los adjuntos
 mboxshell attachments correo.mbox --output ./adjuntos/
 
@@ -161,8 +164,8 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 
 | Opción | Descripción |
 |--------|-------------|
-| `-f`, `--format <fmt>` | `eml` (por defecto), `csv`, `txt` (o `text`), `html` |
-| `-o`, `--output <ruta>` | Carpeta de salida (formatos por mensaje) o fichero (csv) — **obligatorio** |
+| `-f`, `--format <fmt>` | `eml` (por defecto), `csv`, `txt` (o `text`), `html`, `mbox` |
+| `-o`, `--output <ruta>` | Carpeta de salida (formatos por mensaje) o fichero (`csv`, `mbox`) — **obligatorio**. Si le das una carpeta, `csv`/`mbox` escriben dentro `export.csv` / `export.mbox`. |
 | `--query <q>` | Exportar solo los mensajes que coincidan con esta [consulta](#7-búsqueda) |
 | `--qp` | Recodificar el texto de 8 bits como quoted-printable para que el `.eml` sea ASCII de 7 bits puro (ayuda a herramientas estrictas como `eml-extractor`). **Solo EML.** |
 | `--raw-html` | Mantener el cuerpo HTML original **sin sanear** (se conservan scripts, `on*`, iframes). Solo para archivado local — nunca sirvas estos ficheros. **Solo HTML.** |
@@ -411,11 +414,21 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 | CSV | `csv` | un único fichero `.csv` resumen | UTF-8 con BOM (compatible con Excel); separador configurable |
 | Texto plano | `txt` / `text` | un `.txt` por mensaje | Cuerpo de texto decodificado |
 | HTML | `html` | un `.html` independiente por mensaje | Cuerpo saneado por defecto; `--raw-html` lo deja intacto (solo archivado local) |
+| MBOX | `mbox` | un único buzón `.mbox` nuevo | La selección escrita de vuelta como buzón. Los mensajes leídos de un MBOX se copian byte a byte; a los que no tienen línea sobre se les sintetiza la línea `From ` y el escapado de `From `. El fichero de origen nunca se modifica. |
 
 Combínalo con `--query` para exportar solo los mensajes coincidentes:
 
 ```bash
 mboxshell export correo.mbox -f eml -o ./salida/ --query "label:Importante after:2023-01-01"
+```
+
+`--format mbox` junto con `--query` es el flujo de entrega: filtrar un archivo grande hasta quedarse
+con los mensajes que de verdad procede entregar —una petición legal, una solicitud de registros, un
+buzón que tiene que leer otra persona— y producir un buzón que contenga solo esos.
+
+```bash
+mboxshell export export-vault.mbox --format mbox -o entrega.mbox \
+  --query "from:cfo@acme.com after:2024-01-01 before:2024-06-30"
 ```
 
 En la TUI, pulsa `e` sobre un mensaje para abrir el popup de exportación y elegir un formato de forma interactiva.
