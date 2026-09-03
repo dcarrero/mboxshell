@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.3
+
+The Mac app moved to a new domain.
+
+- Docs: **mboxViewer now lives at `mboxviewerpro.com`.** Both READMEs and both manuals still pointed at `mboxviewer.net`, the macOS app's former domain. The repository's own project link points at the new domain too.
+
 ## v0.7.2
 
 Export a selection back out as a new mailbox. 7 new tests (241 total).

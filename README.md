@@ -27,7 +27,7 @@ When you export your email from Gmail using Google Takeout, you get one or more 
 
 ## Also on Mac: mboxViewer
 
-If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewer.net) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
+If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewerpro.com) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
 
 ## Also in your browser: Online Mbox Viewer
 

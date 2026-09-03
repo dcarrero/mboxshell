@@ -94,7 +94,7 @@ sudo cp target/release/mboxshell /usr/local/bin/
 cargo install --git https://github.com/dcarrero/mboxshell.git
 ```
 
-> **Alternativa gráfica en macOS:** si prefieres una app nativa, consulta [mboxViewer](https://mboxviewer.net) — el mismo motor de parseo con interfaz de escritorio.
+> **Alternativa gráfica en macOS:** si prefieres una app nativa, consulta [mboxViewer](https://mboxviewerpro.com) — el mismo motor de parseo con interfaz de escritorio.
 
 ---
 

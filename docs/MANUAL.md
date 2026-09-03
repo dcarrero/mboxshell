@@ -94,7 +94,7 @@ sudo cp target/release/mboxshell /usr/local/bin/
 cargo install --git https://github.com/dcarrero/mboxshell.git
 ```
 
-> **macOS GUI alternative:** if you prefer a native graphical app, see [mboxViewer](https://mboxviewer.net) — same parsing engine, desktop interface.
+> **macOS GUI alternative:** if you prefer a native graphical app, see [mboxViewer](https://mboxviewerpro.com) — same parsing engine, desktop interface.
 
 ---
 
