@@ -109,12 +109,14 @@ fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<Attachmen
             .map(|d: &mail_parser::ContentType| d.ctype() == "inline")
             .unwrap_or(false);
 
+        let content_id = part.content_id().and_then(bare_content_id);
+
         result.push(AttachmentMeta {
             filename,
             content_type,
             size: part.contents().len() as u64,
             encoding: String::new(), // mail-parser already decoded it
-            content_id: None,
+            content_id,
             is_inline,
             content_offset: 0,
             content_length: part.contents().len() as u64,
@@ -123,6 +125,20 @@ fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<Attachmen
     }
 
     result
+}
+
+/// A `Content-ID` as HTML references it after `cid:`: no angle brackets, no
+/// surrounding whitespace, no control characters. `None` when nothing is left.
+fn bare_content_id(raw: &str) -> Option<String> {
+    let id: String = raw
+        .trim()
+        .trim_start_matches('<')
+        .trim_end_matches('>')
+        .trim()
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect();
+    (!id.is_empty()).then_some(id)
 }
 
 /// Skip the `From ` separator line at the start of MBOX messages.
@@ -338,5 +354,52 @@ PAYLOAD\r\n\
         );
         let body = extract_body_fallback(data);
         assert!(body.starts_with("body line 1"), "body was: {body:?}");
+    }
+
+    #[test]
+    fn test_inline_image_carries_content_id() {
+        let raw = b"From a@x Thu Jan 01 00:00:00 2024\n\
+MIME-Version: 1.0\n\
+Content-Type: multipart/related; boundary=\"b\"\n\
+\n\
+--b\n\
+Content-Type: text/html; charset=utf-8\n\
+\n\
+<img src=\"cid:logo123@example.com\">\n\
+--b\n\
+Content-Type: image/png; name=\"logo.png\"\n\
+Content-Disposition: inline; filename=\"logo.png\"\n\
+Content-ID: <logo123@example.com>\n\
+Content-Transfer-Encoding: base64\n\
+\n\
+iVBORw0KGgo=\n\
+--b\n\
+Content-Type: application/pdf; name=\"doc.pdf\"\n\
+Content-Disposition: attachment; filename=\"doc.pdf\"\n\
+Content-Transfer-Encoding: base64\n\
+\n\
+JVBERi0=\n\
+--b--\n";
+        let atts = list_attachments(raw).unwrap();
+        assert_eq!(atts.len(), 2);
+        let logo = atts.iter().find(|a| a.filename == "logo.png").unwrap();
+        assert_eq!(logo.content_id.as_deref(), Some("logo123@example.com"));
+        assert!(logo.is_inline);
+        let pdf = atts.iter().find(|a| a.filename == "doc.pdf").unwrap();
+        assert_eq!(pdf.content_id, None);
+        // The body path fills it too (it is what the exporters use).
+        let body = parse_message_body(raw).unwrap();
+        assert!(body
+            .attachments
+            .iter()
+            .any(|a| a.content_id.as_deref() == Some("logo123@example.com")));
+    }
+
+    #[test]
+    fn test_bare_content_id() {
+        assert_eq!(bare_content_id(" <a@b> ").as_deref(), Some("a@b"));
+        assert_eq!(bare_content_id("a@b").as_deref(), Some("a@b"));
+        assert_eq!(bare_content_id("<a\r\n@b>").as_deref(), Some("a@b"));
+        assert_eq!(bare_content_id("<>"), None);
     }
 }
