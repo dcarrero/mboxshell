@@ -1509,6 +1509,7 @@ dependencies = [
  "indicatif",
  "lru",
  "mail-parser",
+ "memchr",
  "predicates",
  "quoted_printable",
  "ratatui",

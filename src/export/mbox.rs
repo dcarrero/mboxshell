@@ -1,13 +1,18 @@
 //! Write MBOX mailboxes: merge several into one, or export a selection as a new one.
 
 use std::collections::HashSet;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+
+use sha2::{Digest, Sha256};
 
 use crate::index::builder;
 use crate::mailbox_naming;
 use crate::model::mail::MailEntry;
 use crate::store::reader::MboxStore;
+
+/// Block size used to stream a mailbox through the fast (no-dedup) merge path.
+const MERGE_COPY_BLOCK: usize = 1024 * 1024;
 
 /// Statistics returned by a merge operation.
 #[derive(Debug)]
@@ -22,8 +27,12 @@ pub struct MergeStats {
 
 /// Merge multiple MBOX files into a single output file.
 ///
-/// If `dedup` is true, messages with duplicate Message-IDs are skipped
-/// (the first occurrence is kept).
+/// If `dedup` is true, a message is skipped when an earlier one had the same
+/// Message-ID **and** the same content (SHA-256 of the raw message minus its
+/// `From ` envelope line). Matching on the Message-ID alone would let anyone
+/// who can get a message into one of the inputs make a legitimate message
+/// disappear, just by reusing its Message-ID. Messages without a Message-ID
+/// are never deduplicated.
 ///
 /// If `add_source_header` is true, every message gets an
 /// `X-Mbox-Source: <mailbox name>` header injected as its first header, so
@@ -34,6 +43,9 @@ pub struct MergeStats {
 /// The mailbox name is the one the user sees (`Inbox.mbox`, not Apple Mail's
 /// inner `mbox` file), disambiguated across the inputs when two of them would
 /// otherwise share a name — see [`crate::mailbox_naming`].
+///
+/// The output must not be one of the inputs: that is refused with an error
+/// before anything is written.
 ///
 /// The progress callback receives `(current_file, total_files, mailbox_name)`.
 pub fn merge_mbox_files(
@@ -47,12 +59,16 @@ pub fn merge_mbox_files(
     // never leaves a half-written or corrupt output in place. Buffer the writes
     // to avoid one syscall per message on the dedup path.
     let tmp_output = output.with_extension("mbox.tmp");
+    ensure_not_an_input(output, &tmp_output, inputs.iter().map(PathBuf::as_path))?;
+    let mut guard = TempFileGuard::new(&tmp_output);
     let mut out_file = std::io::BufWriter::new(std::fs::File::create(&tmp_output)?);
-    let mut seen_ids: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<(String, [u8; 32])> = HashSet::new();
     let mut total_messages: u64 = 0;
     let mut duplicates_removed: u64 = 0;
     let mut source_header_added: u64 = 0;
     let total_files = inputs.len();
+    // Last byte written so far, so consecutive inputs can be kept apart.
+    let mut last_byte: Option<u8> = None;
 
     // Name every input the way the user sees it, disambiguated as a set: taking
     // `file_name()` here would label every Apple Mail package "mbox".
@@ -80,21 +96,23 @@ pub fn merge_mbox_files(
             let mut store = crate::store::reader::MboxStore::open(input_path)?;
 
             for entry in &entries {
-                if dedup {
-                    let id = &entry.message_id;
-                    if !id.is_empty() && seen_ids.contains(id) {
+                let mut raw = store.get_raw_message(entry)?;
+
+                if dedup && !entry.message_id.is_empty() {
+                    let key = (entry.message_id.clone(), content_digest(&raw));
+                    if seen.contains(&key) {
                         duplicates_removed += 1;
                         continue;
                     }
-                    if !id.is_empty() {
-                        seen_ids.insert(id.clone());
-                    }
+                    seen.insert(key);
                 }
 
-                let mut raw = store.get_raw_message(entry)?;
                 if add_source_header {
                     raw = inject_source_header(&raw, &source_label);
                     source_header_added += 1;
+                }
+                if last_byte.is_some_and(|b| b != b'\n') {
+                    out_file.write_all(b"\n")?;
                 }
                 out_file.write_all(&raw)?;
 
@@ -102,35 +120,40 @@ pub fn merge_mbox_files(
                 if !raw.ends_with(b"\n") {
                     out_file.write_all(b"\n")?;
                 }
+                last_byte = Some(b'\n');
 
                 total_messages += 1;
             }
         } else {
             // Byte-exact concatenation — no dedup. Never decode as UTF-8 (real
-            // mail carries 8-bit bytes that would abort `lines()`) and never
-            // rewrite line endings (CRLF must survive for byte-exact archival).
-            let bytes = std::fs::read(input_path)?;
-            let mut message_count: u64 = 0;
-            let mut at_line_start = true;
-            for window in bytes.split_inclusive(|&b| b == b'\n') {
-                if at_line_start && window.starts_with(b"From ") {
-                    message_count += 1;
-                }
-                at_line_start = window.last() == Some(&b'\n');
+            // mail carries 8-bit bytes) and never rewrite line endings (CRLF
+            // must survive for byte-exact archival). Streamed in blocks: a
+            // multi-GB mailbox must not be loaded into memory whole.
+            //
+            // An input that does not end in a newline would glue its last line
+            // to the next input's `From ` line, and that message would vanish
+            // on re-index. A single `\n` is inserted between them in that case.
+            if last_byte.is_some_and(|b| b != b'\n') {
+                out_file.write_all(b"\n")?;
+                last_byte = Some(b'\n');
             }
-            out_file.write_all(&bytes)?;
-
-            total_messages += message_count;
+            let input = std::fs::File::open(input_path)?;
+            let copied = copy_counting_from_lines(input, &mut out_file, MERGE_COPY_BLOCK)?;
+            if copied.last_byte.is_some() {
+                last_byte = copied.last_byte;
+            }
+            total_messages += copied.messages;
         }
     }
     progress(total_files, total_files, "done");
 
     // Commit atomically: flush the buffer, then rename the temp file over the
-    // destination. On any earlier error the temp file is left behind (harmless)
-    // and the real output is never touched.
+    // destination. On any earlier error the guard removes the temp file and the
+    // real output is never touched.
     out_file.flush()?;
     drop(out_file);
     std::fs::rename(&tmp_output, output)?;
+    guard.disarm();
 
     let output_size = std::fs::metadata(output)?.len();
 
@@ -148,7 +171,8 @@ pub fn merge_mbox_files(
 /// This is the delivery half of the tool: filter a large archive down to the
 /// messages that actually belong in a handover — a legal request, a records
 /// request, a mailbox someone else has to read — and produce a mailbox holding
-/// only those. The source file is never touched.
+/// only those. The source file is never touched: an `output` that is the
+/// source mailbox itself is refused with an error before anything is written.
 ///
 /// The progress callback receives `(current, total)` and returns the number of
 /// messages written.
@@ -162,6 +186,8 @@ pub fn export_mbox(
     // rename on success, so a mid-export error never leaves a half-written
     // mailbox behind under the name the user asked for.
     let tmp_output = output.with_extension("mbox.tmp");
+    ensure_not_an_input(output, &tmp_output, std::iter::once(store.path()))?;
+    let mut guard = TempFileGuard::new(&tmp_output);
     let mut out_file = std::io::BufWriter::new(std::fs::File::create(&tmp_output)?);
 
     let total = entries.len();
@@ -175,8 +201,203 @@ pub fn export_mbox(
     out_file.flush()?;
     drop(out_file);
     std::fs::rename(&tmp_output, output)?;
+    guard.disarm();
 
     Ok(total)
+}
+
+/// Removes a temp output file on drop unless disarmed, so an export or merge
+/// that fails half-way does not leave a stray `*.mbox.tmp` next to the output.
+///
+/// Declare it *before* the writer on that file: locals drop in reverse order,
+/// so the file handle is closed before the removal (required on Windows).
+struct TempFileGuard {
+    path: PathBuf,
+    armed: bool,
+}
+
+impl TempFileGuard {
+    fn new(path: &Path) -> Self {
+        Self {
+            path: path.to_path_buf(),
+            armed: true,
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        if self.armed {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
+/// Refuse to write over a mailbox that is being read.
+///
+/// Both the destination and its temp file are checked: creating the temp file
+/// truncates whatever is at that path, and the final rename replaces the
+/// destination — either would destroy a source mailbox.
+fn ensure_not_an_input<'a>(
+    output: &Path,
+    tmp_output: &Path,
+    inputs: impl Iterator<Item = &'a Path>,
+) -> anyhow::Result<()> {
+    for input in inputs {
+        for target in [output, tmp_output] {
+            if same_file(target, input) {
+                anyhow::bail!(
+                    "refusing to write to {}: it is the source mailbox {}",
+                    target.display(),
+                    input.display()
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Whether two paths name the same existing file.
+///
+/// A path that does not exist yet cannot be an existing input. On Unix, device
+/// and inode are compared, which also catches hard links; elsewhere the
+/// canonical paths are (symlinks, `..`, relative vs absolute).
+fn same_file(a: &Path, b: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        match (std::fs::metadata(a), std::fs::metadata(b)) {
+            (Ok(ma), Ok(mb)) => ma.dev() == mb.dev() && ma.ino() == mb.ino(),
+            _ => false,
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+            (Ok(ca), Ok(cb)) => ca == cb,
+            _ => false,
+        }
+    }
+}
+
+/// SHA-256 of a raw message as deduplication evidence.
+///
+/// The `From ` envelope line (and a leading BOM) is left out: it records when
+/// and from where the message was delivered into *that* mailbox, so the same
+/// email exported twice legitimately differs there. Trailing line breaks are
+/// left out too, because the last message of a file may lack the blank line
+/// that separates it from a following one.
+fn content_digest(raw: &[u8]) -> [u8; 32] {
+    let mut body = raw.strip_prefix(&[0xEF, 0xBB, 0xBF][..]).unwrap_or(raw);
+    if body.starts_with(b"From ") {
+        body = match body.iter().position(|&b| b == b'\n') {
+            Some(nl) => &body[nl + 1..],
+            None => &[],
+        };
+    }
+    let end = body
+        .iter()
+        .rposition(|&b| b != b'\n' && b != b'\r')
+        .map_or(0, |p| p + 1);
+    Sha256::digest(&body[..end]).into()
+}
+
+/// What [`copy_counting_from_lines`] saw.
+struct CopiedMailbox {
+    /// `From ` lines found at the start of a line.
+    messages: u64,
+    /// Last byte copied, `None` for an empty input.
+    last_byte: Option<u8>,
+}
+
+/// Copy `input` to `out` in blocks of `block_size` bytes, counting the lines
+/// that start with `From ` on the way.
+///
+/// The line-start state is carried across blocks, so a `From ` split by a
+/// block boundary — or starting exactly at one — is counted exactly once.
+fn copy_counting_from_lines(
+    mut input: impl Read,
+    out: &mut impl Write,
+    block_size: usize,
+) -> std::io::Result<CopiedMailbox> {
+    let mut buf = vec![0u8; block_size.max(1)];
+    let mut counter = FromLineCounter::default();
+    let mut last_byte = None;
+    loop {
+        let n = match input.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        };
+        let block = &buf[..n];
+        counter.feed(block);
+        out.write_all(block)?;
+        last_byte = block.last().copied();
+    }
+    Ok(CopiedMailbox {
+        messages: counter.count,
+        last_byte,
+    })
+}
+
+/// Streaming counter of lines that start with `From `.
+struct FromLineCounter {
+    /// Inside the first bytes of a line, still able to become `From `.
+    candidate: bool,
+    /// How many bytes of `From ` the current candidate has matched.
+    matched: usize,
+    count: u64,
+}
+
+impl Default for FromLineCounter {
+    fn default() -> Self {
+        // The first byte of the input is the start of a line.
+        Self {
+            candidate: true,
+            matched: 0,
+            count: 0,
+        }
+    }
+}
+
+impl FromLineCounter {
+    const PATTERN: &'static [u8] = b"From ";
+
+    fn feed(&mut self, block: &[u8]) {
+        let mut i = 0;
+        loop {
+            if self.candidate {
+                let need = &Self::PATTERN[self.matched..];
+                let avail = &block[i..];
+                let n = need.len().min(avail.len());
+                if avail[..n] == need[..n] {
+                    self.matched += n;
+                    i += n;
+                    if self.matched < Self::PATTERN.len() {
+                        // Block exhausted mid-match: resume with the next one.
+                        return;
+                    }
+                    self.count += 1;
+                }
+                // Matched or not, this line is settled; a mismatching byte is
+                // not consumed, since it may itself be the newline.
+                self.candidate = false;
+            }
+            match memchr::memchr(b'\n', &block[i..]) {
+                Some(p) => {
+                    i += p + 1;
+                    self.candidate = true;
+                    self.matched = 0;
+                }
+                None => return,
+            }
+        }
+    }
 }
 
 /// One mbox record: separator line, message, trailing newline.
@@ -607,5 +828,289 @@ mod tests {
         let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
         assert!(merged.contains("X-Mbox-Source: Work/Inbox.mbox"));
         assert!(merged.contains("X-Mbox-Source: Personal/Inbox.mbox"));
+    }
+
+    #[test]
+    fn test_dedup_ignores_forged_message_id() {
+        // An attacker's message reusing a legitimate Message-ID, seen first,
+        // must not make the legitimate message disappear from the merge.
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        std::fs::write(
+            &a,
+            b"From evil@x Thu Jan 01 00:00:00 2024\nMessage-ID: <victim@id>\nSubject: spoof\n\nnothing\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &b,
+            b"From boss@x Fri Jan 02 00:00:00 2024\nMessage-ID: <victim@id>\nSubject: contract\n\nthe real one\n",
+        )
+        .unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[a, b], &out, true, false, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.duplicates_removed, 0);
+        assert_eq!(stats.total_messages, 2);
+        let merged = String::from_utf8(std::fs::read(&out).unwrap()).unwrap();
+        assert!(merged.contains("the real one"));
+    }
+
+    #[test]
+    fn test_dedup_ignores_envelope_line_differences() {
+        // The same email exported twice differs only in its `From ` line (and
+        // in the trailing blank line of a last-in-file message): still a copy.
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nMessage-ID: <same@id>\nSubject: A\n\nbody\n\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &b,
+            b"From other@z Sun Mar 03 12:00:00 2024\nMessage-ID: <same@id>\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[a, b], &out, true, false, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.duplicates_removed, 1);
+        assert_eq!(stats.total_messages, 1);
+    }
+
+    #[test]
+    fn test_dedup_never_drops_messages_without_message_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let msg: &[u8] = b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n";
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        std::fs::write(&a, msg).unwrap();
+        std::fs::write(&b, msg).unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[a, b], &out, true, false, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.duplicates_removed, 0);
+        assert_eq!(stats.total_messages, 2);
+    }
+
+    #[test]
+    fn test_non_dedup_merge_separates_input_without_trailing_newline() {
+        // A mailbox that does not end in a newline used to glue its last line
+        // to the next mailbox's `From ` line, losing that message on re-index.
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nno newline",
+        )
+        .unwrap();
+        std::fs::write(&b, b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n").unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[a, b], &out, false, false, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.total_messages, 2);
+        let reindexed = builder::build_index(&out, true, None).unwrap();
+        assert_eq!(reindexed.len(), 2, "the reported count must match the file");
+        assert_eq!(reindexed[1].subject, "B");
+    }
+
+    #[test]
+    fn test_dedup_merge_separates_input_without_trailing_newline() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nMessage-ID: <1@x>\nSubject: A\n\nno newline",
+        )
+        .unwrap();
+        std::fs::write(
+            &b,
+            b"From z@w Fri Jan 02 00:00:00 2024\nMessage-ID: <2@x>\nSubject: B\n\nhi\n",
+        )
+        .unwrap();
+
+        let out = dir.path().join("out.mbox");
+        let stats = merge_mbox_files(&[a, b], &out, true, false, &|_, _, _| {}).unwrap();
+
+        assert_eq!(stats.total_messages, 2);
+        assert_eq!(builder::build_index(&out, true, None).unwrap().len(), 2);
+    }
+
+    /// Reference count: lines starting with `From `, computed in one pass.
+    fn naive_from_lines(data: &[u8]) -> u64 {
+        let mut count = 0;
+        let mut at_line_start = true;
+        for line in data.split_inclusive(|&b| b == b'\n') {
+            if at_line_start && line.starts_with(b"From ") {
+                count += 1;
+            }
+            at_line_start = line.last() == Some(&b'\n');
+        }
+        count
+    }
+
+    #[test]
+    fn test_copy_counting_from_line_at_block_start() {
+        // With 7-byte blocks, the second `From ` starts exactly at offset 7,
+        // the first byte of the second block, right after a newline that ended
+        // the first block.
+        let data = b"From a\nFrom b\nxFrom c\nFro\nFrom";
+        assert_eq!(&data[7..12], b"From ");
+        let mut out = Vec::new();
+        let copied = copy_counting_from_lines(&data[..], &mut out, 7).unwrap();
+        assert_eq!(copied.messages, 2);
+        assert_eq!(out, data.to_vec());
+        assert_eq!(copied.last_byte, Some(b'm'));
+    }
+
+    #[test]
+    fn test_copy_counting_matches_single_pass_for_every_block_size() {
+        let data: &[u8] = b"From a@b Thu Jan 01 00:00:00 2024\r\nSubject: x\r\n\r\n\
+            From here in the body? no, this is a new message by mbox rules\n\
+            >From quoted\n\n\nFrom  \nFrom\nFro m\nFFrom x\n\xff\xfeFrom y\nFrom z";
+        let expected = naive_from_lines(data);
+        assert_eq!(expected, 4);
+        for block in 1..=40 {
+            let mut out = Vec::new();
+            let copied = copy_counting_from_lines(data, &mut out, block).unwrap();
+            assert_eq!(copied.messages, expected, "block size {block}");
+            assert_eq!(out, data.to_vec(), "block size {block}");
+        }
+        let copied = copy_counting_from_lines(&b""[..], &mut Vec::new(), 4).unwrap();
+        assert_eq!((copied.messages, copied.last_byte), (0, None));
+    }
+
+    #[test]
+    fn test_export_mbox_refuses_to_overwrite_its_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("source.mbox");
+        let original: &[u8] = b"From a@x Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n\
+              From b@x Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n";
+        std::fs::write(&src, original).unwrap();
+        let entries = builder::build_index(&src, false, None).unwrap();
+        let mut store = MboxStore::open(&src).unwrap();
+        let selection = vec![&entries[0]];
+
+        // Same path, and the same file reached through a different spelling.
+        let spelled = dir.path().join(".").join("source.mbox");
+        for target in [src.clone(), spelled] {
+            let err = export_mbox(&mut store, &selection, &target, &|_, _| {});
+            assert!(err.is_err(), "writing over the source must be refused");
+        }
+        assert_eq!(std::fs::read(&src).unwrap(), original);
+        assert!(!dir.path().join("source.mbox.tmp").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_export_mbox_refuses_source_through_a_link() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("source.mbox");
+        let original: &[u8] = b"From a@x Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n";
+        std::fs::write(&src, original).unwrap();
+        let entries = builder::build_index(&src, false, None).unwrap();
+        let mut store = MboxStore::open(&src).unwrap();
+        let selection = vec![&entries[0]];
+
+        let sym = dir.path().join("sym.mbox");
+        std::os::unix::fs::symlink(&src, &sym).unwrap();
+        let hard = dir.path().join("hard.mbox");
+        std::fs::hard_link(&src, &hard).unwrap();
+        for target in [sym, hard] {
+            assert!(export_mbox(&mut store, &selection, &target, &|_, _| {}).is_err());
+        }
+        assert_eq!(std::fs::read(&src).unwrap(), original);
+    }
+
+    #[test]
+    fn test_merge_refuses_output_that_is_an_input() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        let b = dir.path().join("b.mbox");
+        let a_bytes: &[u8] = b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n";
+        std::fs::write(&a, a_bytes).unwrap();
+        std::fs::write(&b, b"From z@w Fri Jan 02 00:00:00 2024\nSubject: B\n\nhi\n").unwrap();
+
+        for dedup in [false, true] {
+            let res = merge_mbox_files(&[a.clone(), b.clone()], &a, dedup, false, &|_, _, _| {});
+            assert!(res.is_err(), "merging into an input must be refused");
+            assert_eq!(std::fs::read(&a).unwrap(), a_bytes);
+        }
+
+        // An input named like the output's temp file would be truncated by it.
+        let tmp_named = dir.path().join("c.mbox.tmp");
+        std::fs::write(&tmp_named, a_bytes).unwrap();
+        let out = dir.path().join("c.mbox");
+        assert!(merge_mbox_files(
+            std::slice::from_ref(&tmp_named),
+            &out,
+            false,
+            false,
+            &|_, _, _| {}
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&tmp_named).unwrap(), a_bytes);
+    }
+
+    #[test]
+    fn test_merge_failure_removes_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.mbox");
+        std::fs::write(
+            &a,
+            b"From x@y Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+        let missing = dir.path().join("missing.mbox");
+
+        let out = dir.path().join("out.mbox");
+        for dedup in [false, true] {
+            let res = merge_mbox_files(
+                &[a.clone(), missing.clone()],
+                &out,
+                dedup,
+                false,
+                &|_, _, _| {},
+            );
+            assert!(res.is_err());
+            assert!(!out.exists());
+            assert!(
+                !dir.path().join("out.mbox.tmp").exists(),
+                "temp file left behind"
+            );
+        }
+    }
+
+    #[test]
+    fn test_export_failure_removes_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("source.mbox");
+        std::fs::write(
+            &src,
+            b"From a@x Thu Jan 01 00:00:00 2024\nSubject: A\n\nbody\n",
+        )
+        .unwrap();
+        let entries = builder::build_index(&src, false, None).unwrap();
+        let mut store = MboxStore::open(&src).unwrap();
+
+        // An entry pointing past the end of the file fails half-way through.
+        let mut broken = entries[0].clone();
+        broken.offset = 1 << 40;
+        let selection = vec![&entries[0], &broken];
+        let out = dir.path().join("sel.mbox");
+        assert!(export_mbox(&mut store, &selection, &out, &|_, _| {}).is_err());
+        assert!(!out.exists());
+        assert!(
+            !dir.path().join("sel.mbox.tmp").exists(),
+            "temp file left behind"
+        );
     }
 }
