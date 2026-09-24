@@ -176,7 +176,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 
 | Flag | Descripción |
 |------|-------------|
-| `--no-dedup` | Omitir la detección de Message-ID duplicados y concatenar las entradas byte a byte (la deduplicación está activada por defecto) |
+| `--no-dedup` | Omitir la detección de duplicados y concatenar las entradas byte a byte, añadiendo solo un salto de línea tras una entrada que no termine en uno (la deduplicación está activada por defecto: un mensaje es duplicado cuando su Message-ID y su contenido coinciden con los de uno anterior) |
 | `--source-header` | Inyectar una cabecera `X-Mbox-Source: <nombre de buzón>` en cada mensaje, para que el archivo combinado siga siendo trazable hasta el buzón del que vino cada correo |
 
 La etiqueta de origen es el nombre de buzón que tú ves: en una exportación de Apple Mail —una carpeta `Inbox.mbox` que contiene un fichero llamado literalmente `mbox`— pone `Inbox.mbox`, no `mbox`. Los buzones que compartirían etiqueta se desambiguan entre sí (`Trabajo/Inbox.mbox` frente a `Personal/Inbox.mbox`).

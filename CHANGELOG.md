@@ -4,6 +4,19 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.4
+
+Security and correctness hardening of merge, export, CSV and threading. 20 new tests (261 total).
+
+- Fix: **merge deduplication could be poisoned to make a legitimate message disappear.** Two messages were duplicates as soon as they shared a Message-ID, so a message planted in an earlier input with the Message-ID of a legitimate one silently removed the legitimate one from the merged archive. A message is now a duplicate only when the Message-ID **and** a SHA-256 of its content match an earlier one; the content hash leaves out the `From ` envelope line (it records the delivery into *that* mailbox, so the same email exported twice legitimately differs there) and trailing line breaks. Messages without a Message-ID are still never deduplicated. A consequence: two copies of one email whose headers differ (for example different `X-Gmail-Labels` in two Takeout exports) are now both kept.
+- Fix: **`merge --no-dedup` lost the first message of an input when the previous input did not end in a newline.** Its last line swallowed the next `From ` line, so the merge reported N messages while the output re-indexed as fewer. A newline is now inserted between inputs in that case (and the dedup/source-header path keeps inputs apart the same way).
+- Fix: **`merge --no-dedup` read every input whole into memory**, which for the multi-GB mailboxes this tool targets meant multi-GB of RAM. Inputs are now streamed in 1 MiB blocks, counting `From ` lines at line start with the state carried across blocks. `memchr`, already in the dependency tree through `serde_json`, is now a direct dependency.
+- Fix: **`export --format mbox` and `merge` refuse to write over one of their own source mailboxes** (the destination, or its `.mbox.tmp`, being the same file as an input: same device and inode on Unix, so symlinks and hard links are caught; same canonical path elsewhere). Before, the final rename replaced the source mailbox with the export. New `MboxStore::path()`.
+- Fix: **a failed export or merge no longer leaves its `.mbox.tmp` behind.**
+- Fix: **CSV export: cells containing `;` are now quoted**, since spreadsheets in locales that use the comma as decimal separator (Excel in es-ES, de-DE, fr-FR…) split fields on `;`. The To, CC and Labels columns formula-guard every item before joining them with `; `, so no fragment after a `;` can start with `=`, `+`, `-` or `@`; the guard also looks past leading spaces.
+- Fix: **threading: a crafted Message-ID could hide a message from the threaded view.** The keys invented for messages without a Message-ID (`__synth_N__`) and for the second copy of a repeated one (`__dup_N__`) were valid Message-IDs that a message could carry. They now start with NUL, which is stripped from every real id.
+- Fix: **attachments never carried their `Content-ID`** (`AttachmentMeta.content_id` was always `None`), so inline `cid:` images could not be resolved by anything built on the attachment list. It is now read from the part's `Content-ID` header, without angle brackets.
+
 ## v0.7.3
 
 The Mac app moved to a new domain.
