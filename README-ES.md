@@ -42,7 +42,7 @@ Si prefieres una experiencia grafica nativa en macOS, echa un vistazo a [mboxVie
 - **Codificaciones correctas.** Decodifica encoded-words (RFC 2047), soporta UTF-8, ISO-8859-1, Windows-1252, KOI8-R y cualquier charset reconocido por `encoding_rs`.
 - **Vista de conversaciones.** Agrupa mensajes en hilos usando el algoritmo JWZ (el mismo que usaba Netscape/Mozilla), o el identificador de conversación propio del buzón cuando lo tiene.
 - **Busqueda avanzada.** Filtrado por campo (`from:`, `subject:`, `date:`, `body:`, `has:attachment`, `label:`, etc.), rangos de fechas, tamano, operadores AND/OR y negacion.
-- **Exportacion flexible.** Mensajes individuales o en masa a EML, CSV (compatible Excel), texto plano. Extraccion de adjuntos decodificados.
+- **Exportacion flexible.** Mensajes individuales o en masa a EML, CSV (compatible Excel), texto plano, HTML, un MBOX nuevo o un Maildir. Extraccion de adjuntos decodificados.
 - **Binario unico.** Sin runtime, sin dependencias. Un ejecutable de ~5 MB que funciona en Linux, macOS y Windows.
 - **Interfaz de terminal completa.** Navegacion con teclado (estilo vi), tres modos de layout, barra de busqueda interactiva, atajos configurables.
 - **Bilingue.** Interfaz disponible en ingles y espanol, deteccion automatica del idioma del sistema.
@@ -134,6 +134,9 @@ mboxshell export correo.mbox --format csv --output resumen.csv
 # Entregar solo una parte del archivo: un buzón nuevo con lo que coincide
 mboxshell export correo.mbox --format mbox --query "from:legal@acme.com" -o entrega.mbox
 
+# Convertir a Maildir (leído/respondido/destacado se conservan como flags de Maildir)
+mboxshell export correo.mbox --format maildir -o ~/Maildir/Archivo
+
 # Extraer adjuntos
 mboxshell attachments correo.mbox --output ./adjuntos/
 
@@ -158,7 +161,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell index <ruta> [-f/--force]` | Construir o reconstruir el indice binario |
 | `mboxshell stats <ruta> [--json]` | Mostrar estadisticas de un archivo MBOX |
 | `mboxshell search <ruta> <consulta> [--json]` | Buscar mensajes desde la linea de comandos |
-| `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt, html, mbox) |
+| `mboxshell export <ruta> -f <formato> -o <salida> [--query <q>]` | Exportar mensajes (formatos: eml, csv, txt, html, mbox, maildir) |
 | `mboxshell merge <archivos...> -o <salida> [--no-dedup] [--source-header]` | Combinar varios archivos MBOX en uno |
 | `mboxshell attachments <ruta> -o <salida>` | Extraer todos los adjuntos |
 | `mboxshell completions <shell>` | Generar completions de shell (bash, zsh, fish, powershell, elvish) |

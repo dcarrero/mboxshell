@@ -98,7 +98,7 @@ fn eml_filename(entry: &MailEntry) -> String {
 }
 
 /// Strip the `From ` separator line from raw MBOX message bytes.
-fn skip_from_line(raw: &[u8]) -> &[u8] {
+pub(crate) fn skip_from_line(raw: &[u8]) -> &[u8] {
     if raw.starts_with(b"From ") {
         // Find the end of the first line
         if let Some(pos) = raw.iter().position(|&b| b == b'\n') {
@@ -114,7 +114,7 @@ fn skip_from_line(raw: &[u8]) -> &[u8] {
 /// was escaped by prepending an extra `>`. To produce a standards-compliant
 /// RFC 5322 message we strip exactly one leading `>` from those lines.
 /// Also trims a trailing blank line that MBOX adds as a message separator.
-fn unescape_mboxrd(body: &[u8]) -> Vec<u8> {
+pub(crate) fn unescape_mboxrd(body: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(body.len());
     let mut at_line_start = true;
 

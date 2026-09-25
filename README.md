@@ -42,7 +42,7 @@ Need to peek at an MBOX file without installing anything? Try [Online Mbox Viewe
 - **Correct encodings.** Decodes RFC 2047 encoded-words, supports UTF-8, ISO-8859-1, Windows-1252, KOI8-R, and any charset recognized by `encoding_rs`.
 - **Conversation threading.** Groups messages into threads using the JWZ algorithm (the same one used by Netscape/Mozilla), or the mailbox's own conversation id when it has one.
 - **Advanced search.** Field-specific filtering (`from:`, `subject:`, `date:`, `body:`, `has:attachment`, `label:`, etc.), date ranges, size filters, AND/OR operators, and negation.
-- **Flexible export.** Individual or bulk export to EML, CSV (Excel-compatible), plain text. Decoded attachment extraction.
+- **Flexible export.** Individual or bulk export to EML, CSV (Excel-compatible), plain text, HTML, a new MBOX or a Maildir. Decoded attachment extraction.
 - **Single binary.** No runtime, no dependencies. A ~5 MB executable that runs on Linux, macOS and Windows.
 - **Full terminal UI.** Keyboard navigation (vi-style), three layout modes, interactive search bar, configurable shortcuts.
 - **Bilingual.** Interface available in English and Spanish, auto-detected from system locale.
@@ -134,6 +134,9 @@ mboxshell export mail.mbox --format csv --output summary.csv
 # Hand over only part of an archive: a new mailbox with just the matches
 mboxshell export mail.mbox --format mbox --query "from:legal@acme.com" -o handover.mbox
 
+# Convert to Maildir (read/replied/flagged state kept as Maildir flags)
+mboxshell export mail.mbox --format maildir -o ~/Maildir/Archive
+
 # Extract attachments
 mboxshell attachments mail.mbox --output ./attachments/
 
@@ -158,7 +161,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell index <path> [-f/--force]` | Build or rebuild the binary index |
 | `mboxshell stats <path> [--json]` | Show statistics about an MBOX file |
 | `mboxshell search <path> <query> [--json]` | Search messages from the command line |
-| `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt, html, mbox) |
+| `mboxshell export <path> -f <format> -o <output> [--query <q>]` | Export messages (formats: eml, csv, txt, html, mbox, maildir) |
 | `mboxshell merge <files...> -o <output> [--no-dedup] [--source-header]` | Merge multiple MBOX files into one |
 | `mboxshell attachments <path> -o <output>` | Extract all attachments |
 | `mboxshell completions <shell>` | Generate shell completions (bash, zsh, fish, powershell, elvish) |

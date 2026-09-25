@@ -417,6 +417,7 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 | Texto plano | `txt` / `text` | un `.txt` por mensaje | Cuerpo de texto decodificado |
 | HTML | `html` | un `.html` independiente por mensaje | Cuerpo saneado por defecto; `--raw-html` lo deja intacto (solo archivado local) |
 | MBOX | `mbox` | un único buzón `.mbox` nuevo | La selección escrita de vuelta como buzón. Los mensajes leídos de un MBOX se copian byte a byte; a los que no tienen línea sobre se les sintetiza la línea `From ` y el escapado de `From `. El fichero de origen nunca se modifica. |
+| Maildir | `maildir` | un directorio Maildir (`cur/`, `new/`, `tmp/`) | Un fichero por mensaje en `cur/`, sin la línea `From ` del mbox y deshaciendo el escapado `>From `. `Status:`/`X-Status:` (y las etiquetas `Opened`/`Starred` de Gmail) pasan a flags de Maildir (`S`, `R`, `F`, `T`, `D`); la fecha de cada fichero es la del mensaje. Exportar a un Maildir existente añade y nunca sobrescribe. En Windows el separador de flags es `;` en vez de `:`. |
 
 Combínalo con `--query` para exportar solo los mensajes coincidentes:
 

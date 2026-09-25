@@ -620,14 +620,9 @@ msg!(
 );
 msg!(cli_mbox_messages, "message(s)", "mensaje(s)");
 msg!(
-    cli_unknown_format,
-    "Unknown export format",
-    "Formato de exportaci\u{f3}n desconocido"
-);
-msg!(
-    cli_supported_formats,
-    "Supported: eml, csv, txt, html, mbox",
-    "Soportados: eml, csv, txt, html, mbox"
+    cli_exported_maildir,
+    "Exported to Maildir",
+    "Exportado al Maildir"
 );
 msg!(
     cli_merge_complete,

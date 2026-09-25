@@ -19,11 +19,10 @@ struct Cli {
     #[arg(value_name = "FILE")]
     file: Option<PathBuf>,
 
+    // Not `global = true`: `export` uses `-f` for `--format`, and a global
+    // short would claim `-f` in every subcommand. Each subcommand that
+    // indexes carries its own copy via `ForceArg` instead.
     /// Force rebuild index even if one already exists
-    ///
-    /// Not `global = true`: `export` uses `-f` for `--format`, and a global
-    /// short would claim `-f` in every subcommand. Each subcommand that
-    /// indexes carries its own copy via [`ForceArg`] instead.
     #[arg(short, long)]
     force: bool,
 
@@ -34,6 +33,39 @@ struct Cli {
     /// Language (en, es). Defaults to system locale.
     #[arg(long, value_name = "LANG")]
     lang: Option<String>,
+}
+
+/// Export formats. Parsed by clap, so a typo fails at once — before a large
+/// mailbox is indexed — and `--help` lists the valid values.
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+enum ExportFormat {
+    /// One .eml file per message
+    Eml,
+    /// One CSV row per message (metadata only)
+    Csv,
+    /// One plain-text file per message
+    #[value(alias = "text")]
+    Txt,
+    /// One sanitized HTML file per message
+    Html,
+    /// A single new mbox holding the selection
+    Mbox,
+    /// A Maildir (cur/new/tmp), one file per message
+    Maildir,
+}
+
+impl ExportFormat {
+    /// The name as typed on the command line.
+    fn name(self) -> &'static str {
+        match self {
+            Self::Eml => "eml",
+            Self::Csv => "csv",
+            Self::Txt => "txt",
+            Self::Html => "html",
+            Self::Mbox => "mbox",
+            Self::Maildir => "maildir",
+        }
+    }
 }
 
 /// Shared `-f/--force` flag for the subcommands that build an index.
@@ -78,13 +110,12 @@ enum Commands {
     /// Export messages
     Export {
         path: PathBuf,
-        /// Output format: eml, csv, txt, html or mbox. `mbox` writes the
-        /// selection (see --query) to a single new mailbox file — the way to
-        /// hand over only part of an archive.
-        #[arg(short, long, default_value = "eml")]
-        format: String,
-        /// Destination. A folder for eml/txt/html; a file for csv and mbox
-        /// (a folder gets `export.csv` / `export.mbox` written inside it).
+        /// Output format. `mbox` writes the selection (see --query) to a
+        /// single new mailbox file; `maildir` writes it into a Maildir.
+        #[arg(short, long, value_enum, default_value_t = ExportFormat::Eml)]
+        format: ExportFormat,
+        /// Destination. A folder for eml/txt/html/maildir; a file for csv
+        /// and mbox (a folder gets `export.csv` / `export.mbox` inside it).
         #[arg(short, long)]
         output: PathBuf,
         #[arg(long)]
@@ -274,7 +305,7 @@ fn main() -> anyhow::Result<()> {
             force,
         }) => cmd_export(
             &path,
-            &format,
+            format,
             &output,
             query.as_deref(),
             root_force || force,
@@ -503,7 +534,7 @@ fn cmd_search(path: &Path, query: &str, json: bool, force: bool) -> anyhow::Resu
 /// Export messages from an MBOX file.
 fn cmd_export(
     path: &Path,
-    format: &str,
+    format: ExportFormat,
     output: &Path,
     query: Option<&str>,
     force: bool,
@@ -529,10 +560,11 @@ fn cmd_export(
         indices.iter().map(|&i| &entries[i]).collect();
 
     println!(
-        "  {} {} message(s) as {} to {}",
+        "  {} {} {} ({}) \u{2192} {}",
         i18n::cli_export_count(),
         selected.len(),
-        format,
+        i18n::cli_mbox_messages(),
+        format.name(),
         output.display()
     );
 
@@ -548,7 +580,7 @@ fn cmd_export(
     );
 
     match format {
-        "eml" => {
+        ExportFormat::Eml => {
             std::fs::create_dir_all(output)?;
             let paths = mboxshell::export::eml::export_multiple_eml_opts(
                 &mut store,
@@ -567,7 +599,7 @@ fn cmd_export(
                 i18n::cli_eml_files()
             );
         }
-        "csv" => {
+        ExportFormat::Csv => {
             let csv_path = if output.extension().is_some() {
                 output.to_path_buf()
             } else {
@@ -583,7 +615,7 @@ fn cmd_export(
             pb.finish_and_clear();
             println!("  {} {}", i18n::cli_exported_csv(), csv_path.display());
         }
-        "txt" | "text" => {
+        ExportFormat::Txt => {
             std::fs::create_dir_all(output)?;
             let mut count = 0usize;
             for (i, entry) in selected.iter().enumerate() {
@@ -600,7 +632,7 @@ fn cmd_export(
                 i18n::cli_txt_files()
             );
         }
-        "html" => {
+        ExportFormat::Html => {
             std::fs::create_dir_all(output)?;
             let mut count = 0usize;
             let sanitize = !raw_html;
@@ -618,7 +650,7 @@ fn cmd_export(
                 i18n::cli_html_files()
             );
         }
-        "mbox" => {
+        ExportFormat::Mbox => {
             // One new mailbox holding just the selection — the handover flow.
             // Like CSV this writes a file, not a folder of files.
             let mbox_path = if output.extension().is_some() {
@@ -646,12 +678,22 @@ fn cmd_export(
                 i18n::cli_mbox_messages()
             );
         }
-        _ => {
-            anyhow::bail!(
-                "{} '{}'. {}",
-                i18n::cli_unknown_format(),
-                format,
-                i18n::cli_supported_formats()
+        ExportFormat::Maildir => {
+            let count = mboxshell::export::maildir::export_maildir(
+                &mut store,
+                &selected,
+                output,
+                &|current, _total| {
+                    pb.set_position(current as u64);
+                },
+            )?;
+            pb.finish_and_clear();
+            println!(
+                "  {} {} ({} {})",
+                i18n::cli_exported_maildir(),
+                output.display(),
+                count,
+                i18n::cli_mbox_messages()
             );
         }
     }
