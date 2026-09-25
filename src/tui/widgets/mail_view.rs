@@ -484,9 +484,10 @@ fn build_lines(
                 lines.push(Line::from(""));
                 lines.push(Line::from(Span::styled(
                     format!(
-                        "[{}: {} file(s)]",
+                        "[{}: {} {}]",
                         i18n::tui_attachments_count(),
-                        body.attachments.len()
+                        body.attachments.len(),
+                        i18n::tui_files()
                     ),
                     theme.attachment,
                 )));

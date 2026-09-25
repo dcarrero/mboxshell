@@ -230,6 +230,16 @@ msg!(
     "Remote images were blocked to protect your privacy (they can reveal when and where this message is read). Re-export with --allow-remote-images to load them",
     "Se han bloqueado las imágenes remotas para proteger tu privacidad (pueden revelar cuándo y desde dónde se lee este mensaje). Vuelve a exportar con --allow-remote-images para cargarlas"
 );
+msg!(err_io, "I/O error reading", "Error de E/S leyendo");
+msg!(tui_header_label, "label", "etiqueta");
+msg!(tui_header_search, "search", "búsqueda");
+msg!(tui_files, "file(s)", "fichero(s)");
+msg!(tui_exited_with, "exited with", "terminó con");
+msg!(
+    tui_attachment_not_found,
+    "Attachment not found",
+    "Adjunto no encontrado"
+);
 msg!(
     err_output_is_input,
     "Refusing to overwrite an input mailbox (mboxshell never modifies its sources)",

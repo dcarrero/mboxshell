@@ -797,14 +797,14 @@ fn save_single_attachment(
     let entry = app
         .current_entry()
         .cloned()
-        .ok_or_else(|| anyhow::anyhow!("No message selected"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", i18n::tui_no_message()))?;
 
     let attachment = app
         .current_body
         .as_ref()
         .and_then(|b| b.attachments.get(att_index))
         .cloned()
-        .ok_or_else(|| anyhow::anyhow!("Attachment not found"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", i18n::tui_attachment_not_found()))?;
 
     crate::export::attachment::export_attachment(&mut app.store, &entry, &attachment, output_dir)
 }
@@ -816,7 +816,7 @@ fn save_all_attachments(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<V
     let entry = app
         .current_entry()
         .cloned()
-        .ok_or_else(|| anyhow::anyhow!("No message selected"))?;
+        .ok_or_else(|| anyhow::anyhow!("{}", i18n::tui_no_message()))?;
 
     crate::export::attachment::export_all_attachments(&mut app.store, &entry, output_dir)
 }

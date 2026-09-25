@@ -45,8 +45,8 @@
 |---------|------|-------|
 | MBOX (mboxrd / mboxo) | `fichero.mbox` | Google Takeout, Thunderbird, servidores Unix |
 | Export de Google Groups | `<grupo>@googlegroups.com/temas.mbox` | Dentro de un archivo de Takeout; el nombre del fichero está traducido (`topics.mbox`, …) |
-| EML | `mensaje.eml` | Un único mensaje RFC 5322 |
-| Carpeta de EML | `carpeta/` | Una carpeta con varios ficheros `.eml` |
+
+Solo se pueden abrir ficheros MBOX. Un mensaje `.eml` suelto o una carpeta de ellos todavía no se leen: si se le pasa uno, mboxshell avisa de que no es un buzón MBOX. (Exportar **a** EML, Maildir y otros formatos se explica en [Exportación](#8-exportación-y-extracción).)
 
 ---
 
@@ -149,8 +149,8 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 
 | Comando | Propósito |
 |---------|-----------|
-| `mboxshell <FICHERO>` | Abrir un fichero/carpeta en la TUI (por defecto, sin subcomando) |
-| `open <ruta>` | Abrir un fichero o carpeta en la TUI |
+| `mboxshell <FICHERO>` | Abrir un fichero MBOX en la TUI (por defecto, sin subcomando) |
+| `open <ruta>` | Abrir un fichero MBOX en la TUI |
 | `index <ruta>` | Construir o reconstruir el índice binario (usa `--force` para reconstruir) |
 | `stats <ruta> [--json]` | Mostrar estadísticas (nº de mensajes, rango de fechas, remitentes top, …) |
 | `search <ruta> <consulta> [--json]` | Buscar y mostrar los mensajes coincidentes |

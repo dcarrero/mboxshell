@@ -175,8 +175,9 @@ fn run_external_html_viewer(
     match status {
         Ok(s) if s.success() => {}
         Ok(s) => app.set_status(&format!(
-            "{}: {cmd} exited with {s}",
-            i18n::tui_html_viewer_failed()
+            "{}: {cmd} {} {s}",
+            i18n::tui_html_viewer_failed(),
+            i18n::tui_exited_with()
         )),
         Err(e) => app.set_status(&format!(
             "{}: {cmd}: {e} — {}",

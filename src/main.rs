@@ -39,18 +39,18 @@ struct Cli {
 /// mailbox is indexed — and `--help` lists the valid values.
 #[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 enum ExportFormat {
-    /// One .eml file per message
+    // One .eml file per message
     Eml,
-    /// One CSV row per message (metadata only)
+    // One CSV row per message (metadata only)
     Csv,
-    /// One plain-text file per message
+    // One plain-text file per message
     #[value(alias = "text")]
     Txt,
-    /// One sanitized HTML file per message
+    // One sanitized HTML file per message
     Html,
-    /// A single new mbox holding the selection
+    // A single new mbox holding the selection
     Mbox,
-    /// A Maildir (cur/new/tmp), one file per message
+    // A Maildir (cur/new/tmp), one file per message
     Maildir,
 }
 
@@ -91,19 +91,23 @@ struct ForceArg {
 enum Commands {
     /// Open a file in the TUI
     Open {
+        /// MBOX file
         path: PathBuf,
         #[command(flatten)]
         force: ForceArg,
     },
     /// Index an MBOX file
     Index {
+        /// MBOX file
         path: PathBuf,
         #[command(flatten)]
         force: ForceArg,
     },
     /// Show statistics
     Stats {
+        /// MBOX file
         path: PathBuf,
+        /// Print JSON instead of a table
         #[arg(long)]
         json: bool,
         #[command(flatten)]
@@ -111,8 +115,11 @@ enum Commands {
     },
     /// Search messages
     Search {
+        /// MBOX file
         path: PathBuf,
+        /// Search query, e.g. "from:alice after:2024-01-01"
         query: String,
+        /// Print JSON instead of a table
         #[arg(long)]
         json: bool,
         #[command(flatten)]
@@ -120,6 +127,7 @@ enum Commands {
     },
     /// Export messages
     Export {
+        /// MBOX file
         path: PathBuf,
         /// Output format. `mbox` writes the selection (see --query) to a
         /// single new mailbox file; `maildir` writes it into a Maildir.
@@ -129,6 +137,7 @@ enum Commands {
         /// and mbox (a folder gets `export.csv` / `export.mbox` inside it).
         #[arg(short, long)]
         output: PathBuf,
+        /// Only export the messages matching this search query
         #[arg(long)]
         query: Option<String>,
         /// Re-encode 8-bit text bodies as quoted-printable so the EML is
@@ -153,7 +162,10 @@ enum Commands {
     },
     /// Merge multiple MBOX files
     Merge {
+        /// MBOX files to merge (two or more)
+        #[arg(required = true, num_args = 2..)]
         inputs: Vec<PathBuf>,
+        /// Merged mailbox to write
         #[arg(short, long)]
         output: PathBuf,
         /// Skip duplicate detection (same Message-ID and same content) and
@@ -170,7 +182,9 @@ enum Commands {
     },
     /// Extract all attachments
     Attachments {
+        /// MBOX file
         path: PathBuf,
+        /// Folder to extract the attachments into
         #[arg(short, long)]
         output: PathBuf,
         #[command(flatten)]
@@ -178,6 +192,7 @@ enum Commands {
     },
     /// Generate shell completions
     Completions {
+        /// Shell to generate completions for
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
@@ -258,6 +273,121 @@ fn build_localized_command() -> clap::Command {
         cmd = cmd.mut_subcommand(sub.get_name(), |_| sub.clone());
     }
 
+    if i18n::lang() == i18n::Lang::Es {
+        cmd = spanish_help(cmd);
+    }
+    cmd
+}
+
+/// Spanish help text for each argument, keyed by (subcommand, argument id);
+/// `""` is the top-level command. The English text lives in the doc comments.
+const ARG_HELP_ES: &[(&str, &str, &str)] = &[
+    ("", "file", "Fichero MBOX que abrir"),
+    ("", "force", "Reconstruir el índice aunque ya exista"),
+    ("", "verbose", "Registro detallado (-v info, -vv debug, -vvv trace)"),
+    ("", "lang", "Idioma (en, es). Por defecto, el del sistema"),
+    ("*", "path", "Fichero MBOX"),
+    ("*", "force", "Reconstruir el índice aunque ya exista"),
+    ("*", "json", "Mostrar JSON en vez de una tabla"),
+    ("search", "query", "Consulta, p. ej. \"from:ana after:2024-01-01\""),
+    ("export", "query", "Exportar solo los mensajes que cumplan esta consulta"),
+    (
+        "export",
+        "format",
+        "Formato de salida. `mbox` escribe la selección (ver --query) en un buzón nuevo; `maildir`, en un Maildir",
+    ),
+    (
+        "export",
+        "output",
+        "Destino. Una carpeta para eml/txt/html/maildir; un fichero para csv y mbox (en una carpeta se escribe `export.csv` / `export.mbox` dentro)",
+    ),
+    (
+        "export",
+        "qp",
+        "Recodificar los cuerpos de 8 bits como quoted-printable para que el EML sea ASCII de 7 bits. Solo afecta a --format=eml",
+    ),
+    (
+        "export",
+        "raw_html",
+        "Mantener el HTML original sin sanear (scripts, on*, iframes). Solo para archivado local: NO sirvas estos ficheros. Solo afecta a --format=html",
+    ),
+    (
+        "export",
+        "allow_remote_images",
+        "Conservar las imágenes remotas en los exports HTML. Por defecto se bloquean: abrir el fichero las descargaría y los píxeles de rastreo delatan cuándo y desde dónde se leyó el mensaje. Solo afecta a --format=html",
+    ),
+    ("merge", "inputs", "Ficheros MBOX que combinar (dos o más)"),
+    ("merge", "output", "Buzón combinado que escribir"),
+    (
+        "merge",
+        "no_dedup",
+        "No buscar Message-ID duplicados y concatenar las entradas byte a byte",
+    ),
+    (
+        "merge",
+        "source_header",
+        "Añadir a cada mensaje una cabecera `X-Mbox-Source: <buzón>` para saber de qué buzón viene",
+    ),
+    ("attachments", "output", "Carpeta donde extraer los adjuntos"),
+    ("completions", "shell", "Shell para la que generar el autocompletado"),
+];
+
+/// Translate the generated help to Spanish: argument help, the built-in
+/// `-h`/`-V` flags and the section headings clap would print in English.
+fn spanish_help(cmd: clap::Command) -> clap::Command {
+    fn localize(cmd: clap::Command, name: &str) -> clap::Command {
+        let cmd = cmd
+            .help_template(
+                "{before-help}{about-with-newline}\nUso: {usage}\n\n{all-args}{after-help}",
+            )
+            .subcommand_help_heading("Comandos")
+            .disable_help_flag(true)
+            .arg(
+                clap::Arg::new("help")
+                    .short('h')
+                    .long("help")
+                    .action(clap::ArgAction::Help)
+                    .help("Mostrar la ayuda"),
+            );
+        cmd.mut_args(|arg| {
+            let id = arg.get_id().as_str().to_string();
+            let text = ARG_HELP_ES
+                .iter()
+                .find(|(sub, a, _)| *a == id && *sub == name)
+                .or_else(|| {
+                    ARG_HELP_ES
+                        .iter()
+                        .find(|(sub, a, _)| *a == id && *sub == "*" && !name.is_empty())
+                })
+                .map(|(_, _, t)| *t);
+            let arg = match text {
+                Some(t) => arg.help(t).long_help(None),
+                None => arg,
+            };
+            let heading = if arg.is_positional() {
+                "Argumentos"
+            } else {
+                "Opciones"
+            };
+            arg.help_heading(heading)
+        })
+    }
+
+    let mut cmd = localize(cmd, "").disable_version_flag(true).arg(
+        clap::Arg::new("version")
+            .short('V')
+            .long("version")
+            .action(clap::ArgAction::Version)
+            .help("Mostrar la versión")
+            .help_heading("Opciones"),
+    );
+    let names: Vec<String> = cmd
+        .get_subcommands()
+        .map(|s| s.get_name().to_string())
+        .collect();
+    for name in names {
+        cmd = cmd.mut_subcommand(&name, |s| localize(s, &name));
+    }
     cmd
 }
 
@@ -507,7 +637,8 @@ fn cmd_open(path: &Path, force: bool) -> anyhow::Result<()> {
 
 fn cmd_open_interactive() -> anyhow::Result<()> {
     eprintln!("{}", i18n::err_no_file_given());
-    Ok(())
+    // A usage error, like clap's own: scripts must not read it as success.
+    std::process::exit(2);
 }
 
 /// Search messages in an MBOX file and print results.

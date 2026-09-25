@@ -7,14 +7,14 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum MboxError {
     /// I/O error with the associated file path.
-    #[error("I/O error reading '{path}': {source}")]
-    Io {
-        path: PathBuf,
-        source: std::io::Error,
-    },
+    ///
+    /// The OS error is part of the message rather than a `#[source]`: as a
+    /// source, `anyhow` printed it a second time under "Caused by:".
+    #[error("{}: '{}': {err}", crate::i18n::err_io(), .path.display())]
+    Io { path: PathBuf, err: std::io::Error },
 
     /// The specified file does not exist.
-    #[error("MBOX file not found: {0}")]
+    #[error("{}: {}", crate::i18n::err_file_not_found(), .0.display())]
     FileNotFound(PathBuf),
 
     /// The file does not appear to be a valid MBOX.
@@ -68,7 +68,7 @@ impl MboxError {
     pub fn io(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
         Self::Io {
             path: path.into(),
-            source,
+            err: source,
         }
     }
 }
@@ -79,7 +79,7 @@ impl From<std::io::Error> for MboxError {
     fn from(source: std::io::Error) -> Self {
         Self::Io {
             path: PathBuf::from("<unknown>"),
-            source,
+            err: source,
         }
     }
 }

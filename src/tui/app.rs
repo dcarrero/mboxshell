@@ -653,7 +653,8 @@ impl App {
             Some(lbl) => {
                 let count = self.visible_indices.len();
                 self.set_status(&format!(
-                    "Label \"{lbl}\": {count} {}",
+                    "{} \"{lbl}\": {count} {}",
+                    i18n::tui_header_label(),
                     i18n::tui_messages_count()
                 ));
             }

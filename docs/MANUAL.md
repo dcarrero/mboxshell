@@ -45,8 +45,8 @@
 |--------|------|-------|
 | MBOX (mboxrd / mboxo) | `file.mbox` | Google Takeout, Thunderbird, Unix servers |
 | Google Groups export | `<group>@googlegroups.com/topics.mbox` | Inside a Takeout archive; file name is localised (`temas.mbox`, …) |
-| EML | `message.eml` | A single RFC 5322 message |
-| EML directory | `folder/` | A folder containing several `.eml` files |
+
+Only MBOX files can be opened. A single `.eml` message or a folder of them is not read yet: pointing mboxshell at one reports that it is not an MBOX mailbox. (Exporting **to** EML, Maildir and other formats is covered in [Export](#8-export--extraction).)
 
 ---
 
@@ -149,8 +149,8 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 
 | Command | Purpose |
 |---------|---------|
-| `mboxshell <FILE>` | Open a file/directory in the TUI (default when no subcommand is given) |
-| `open <path>` | Open a file or directory in the TUI |
+| `mboxshell <FILE>` | Open an MBOX file in the TUI (default when no subcommand is given) |
+| `open <path>` | Open an MBOX file in the TUI |
 | `index <path>` | Build or rebuild the binary index (use `--force` to rebuild) |
 | `stats <path> [--json]` | Print statistics (message count, date range, top senders, …) |
 | `search <path> <query> [--json]` | Search and print matching messages |
