@@ -53,8 +53,10 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
     for (idx, entry) in entries.iter().enumerate() {
         let mid = normalize_id(&entry.message_id);
         if mid.is_empty() {
-            // Synthesize an ID for messages without one
-            let synth = format!("__synth_{}__", idx);
+            // Synthesize an ID for messages without one. It starts with NUL,
+            // which `normalize_id` strips from every real id, so no
+            // Message-ID a sender writes can ever claim this container.
+            let synth = format!("\u{0}synth\u{0}{idx}");
             containers.insert(
                 synth.clone(),
                 Container {
@@ -75,7 +77,8 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
             .get(&mid)
             .is_some_and(|c: &Container| c.entry_index.is_some())
         {
-            format!("__dup_{idx}__")
+            // NUL-prefixed for the same reason as the synthetic ids above.
+            format!("\u{0}dup\u{0}{idx}")
         } else {
             mid
         };
@@ -367,12 +370,16 @@ fn root_thread_id(
 }
 
 /// Normalize a Message-ID by stripping angle brackets and whitespace.
+///
+/// NUL characters are removed: the keys the algorithm invents for messages
+/// without an id, or with a repeated one, start with NUL, and a real id must
+/// never be able to spell one of them.
 fn normalize_id(id: &str) -> String {
     id.trim()
         .trim_start_matches('<')
         .trim_end_matches('>')
         .trim()
-        .to_string()
+        .replace('\u{0}', "")
 }
 
 /// Normalize a subject for grouping: strip Re:/Fwd: prefixes, lowercase.
@@ -450,6 +457,47 @@ mod tests {
         assert!(shown.contains(&0) && shown.contains(&1));
     }
 
+    /// Every entry index must appear exactly once in the threaded view.
+    fn assert_all_shown(entries: &[MailEntry]) {
+        let mut shown: Vec<usize> = flatten_threads_to_indices(&build_threads(entries))
+            .iter()
+            .map(|(i, _)| *i)
+            .collect();
+        shown.sort_unstable();
+        assert_eq!(shown, (0..entries.len()).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_synthcollide_forged_id_cannot_hide_message() {
+        // A message without a Message-ID gets an invented key. A sender who
+        // writes that key as their Message-ID (or references it) must not
+        // take over the container and hide either message.
+        let now = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        for forged in ["<__synth_1__>", "<\u{0}synth\u{0}1>"] {
+            let entries = vec![
+                make_entry(0, forged, None, vec![], "Forged", now),
+                make_entry(1, "", None, vec![], "No id", now),
+                make_entry(2, "<r@x>", Some(forged), vec![forged], "Re: Forged", now),
+            ];
+            assert_all_shown(&entries);
+        }
+    }
+
+    #[test]
+    fn test_dupcollide_forged_id_cannot_hide_message() {
+        // The key given to the second copy of a repeated Message-ID must not
+        // be one an earlier message could have claimed.
+        let now = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        for forged in ["<__dup_2__>", "<\u{0}dup\u{0}2>"] {
+            let entries = vec![
+                make_entry(0, forged, None, vec![], "Forged", now),
+                make_entry(1, "<same@x>", None, vec![], "Hello", now),
+                make_entry(2, "<same@x>", None, vec![], "Hello", now),
+            ];
+            assert_all_shown(&entries);
+        }
+    }
+
     #[test]
     fn test_thread_id_separates_same_subject_conversations() {
         let now = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
@@ -481,6 +529,7 @@ mod tests {
         assert_eq!(normalize_id("<msg001@example.com>"), "msg001@example.com");
         assert_eq!(normalize_id("msg001@example.com"), "msg001@example.com");
         assert_eq!(normalize_id("  <msg@ex.com>  "), "msg@ex.com");
+        assert_eq!(normalize_id("<\u{0}synth\u{0}1>"), "synth1");
     }
 
     #[test]

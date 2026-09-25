@@ -440,7 +440,7 @@ mboxshell merge inbox.mbox archive.mbox -o all.mbox
 mboxshell merge Inbox.mbox Sent.mbox -o all.mbox --source-header
 ```
 
-`merge` concatenates several MBOX files into one. Duplicate messages (by Message-ID) are removed by default, so merging overlapping Takeout exports is safe; pass `--no-dedup` to concatenate the inputs byte-for-byte instead.
+`merge` concatenates several MBOX files into one. Duplicate messages are removed by default, so merging overlapping Takeout exports is safe. A message counts as a duplicate only when both its Message-ID and its content (everything but the `From ` envelope line) match an earlier one, so a message that merely reuses another's Message-ID cannot make it disappear; messages without a Message-ID are always kept. Pass `--no-dedup` to concatenate the inputs byte-for-byte instead (a newline is added after an input that does not end in one, so its last message does not swallow the next). The output cannot be one of the inputs.
 
 `--source-header` injects an `X-Mbox-Source: <mailbox name>` header into every message, so the merged archive stays traceable to the mailbox each email came from. The label is the mailbox name you see: for an Apple Mail export — a directory `Inbox.mbox` holding a file literally called `mbox` — it reads `Inbox.mbox`, not `mbox`. Mailboxes that would share a label are disambiguated against each other (`Work/Inbox.mbox` vs `Personal/Inbox.mbox`).
 

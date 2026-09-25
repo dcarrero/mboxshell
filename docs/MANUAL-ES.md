@@ -440,7 +440,7 @@ mboxshell merge recibidos.mbox archivo.mbox -o todo.mbox
 mboxshell merge Inbox.mbox Sent.mbox -o todo.mbox --source-header
 ```
 
-`merge` concatena varios ficheros MBOX en uno. Los mensajes duplicados (por Message-ID) se eliminan por defecto, así que fusionar exportaciones de Takeout solapadas es seguro; pasa `--no-dedup` para concatenar las entradas byte a byte.
+`merge` concatena varios ficheros MBOX en uno. Los mensajes duplicados se eliminan por defecto, así que fusionar exportaciones de Takeout solapadas es seguro. Un mensaje solo cuenta como duplicado cuando su Message-ID y su contenido (todo salvo la línea sobre `From `) coinciden con los de uno anterior, de modo que un mensaje que se limite a reutilizar el Message-ID de otro no puede hacerlo desaparecer; los mensajes sin Message-ID se conservan siempre. Pasa `--no-dedup` para concatenar las entradas byte a byte (se añade un salto de línea tras una entrada que no termine en uno, para que su último mensaje no se trague el siguiente). La salida no puede ser una de las entradas.
 
 `--source-header` inyecta una cabecera `X-Mbox-Source: <nombre de buzón>` en cada mensaje, para que el archivo combinado siga siendo trazable hasta el buzón del que vino cada correo. La etiqueta es el nombre de buzón que tú ves: en una exportación de Apple Mail —una carpeta `Inbox.mbox` que contiene un fichero llamado literalmente `mbox`— pone `Inbox.mbox`, no `mbox`. Los buzones que compartirían etiqueta se desambiguan entre sí (`Trabajo/Inbox.mbox` frente a `Personal/Inbox.mbox`).
 

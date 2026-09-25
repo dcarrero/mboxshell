@@ -4,6 +4,19 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.7.4
+
+Endurecimiento de seguridad y correctitud en la fusión, la exportación, el CSV y los hilos. 20 tests nuevos (261 en total).
+
+- Corrección: **la deduplicación de la fusión se podía envenenar para hacer desaparecer un mensaje legítimo.** Dos mensajes eran duplicados en cuanto compartían Message-ID, así que un mensaje colocado en una entrada anterior con el Message-ID de uno legítimo eliminaba en silencio el legítimo del buzón combinado. Ahora un mensaje solo es duplicado cuando coinciden el Message-ID **y** un SHA-256 de su contenido con los de uno anterior; el hash deja fuera la línea sobre `From ` (registra la entrega en *ese* buzón, así que el mismo correo exportado dos veces difiere ahí legítimamente) y los saltos de línea finales. Los mensajes sin Message-ID siguen sin deduplicarse nunca. Consecuencia: dos copias de un mismo correo cuyas cabeceras difieran (por ejemplo, distintas `X-Gmail-Labels` en dos exportaciones de Takeout) se conservan ahora las dos.
+- Corrección: **`merge --no-dedup` perdía el primer mensaje de una entrada cuando la anterior no terminaba en salto de línea.** Su última línea se tragaba la línea `From ` siguiente, así que la fusión informaba de N mensajes y la salida se reindexaba con menos. Ahora se inserta un salto de línea entre las entradas en ese caso (y la vía con deduplicación/cabecera de origen separa las entradas igual).
+- Corrección: **`merge --no-dedup` leía cada entrada entera en memoria**, lo que con los buzones de varios GB a los que apunta esta herramienta suponía varios GB de RAM. Ahora las entradas se procesan en bloques de 1 MiB, contando las líneas `From ` a principio de línea con el estado arrastrado entre bloques. `memchr`, que ya estaba en el árbol de dependencias a través de `serde_json`, pasa a ser dependencia directa.
+- Corrección: **`export --format mbox` y `merge` se niegan a escribir encima de uno de sus propios buzones de origen** (que el destino, o su `.mbox.tmp`, sea el mismo fichero que una entrada: mismo dispositivo e inodo en Unix, con lo que se detectan enlaces simbólicos y duros; misma ruta canónica en el resto). Antes, el renombrado final sustituía el buzón de origen por la exportación. Nuevo `MboxStore::path()`.
+- Corrección: **una exportación o fusión fallida ya no deja atrás su `.mbox.tmp`.**
+- Corrección: **exportación CSV: las celdas que contienen `;` se entrecomillan**, porque las hojas de cálculo de los idiomas que usan la coma como separador decimal (Excel en es-ES, de-DE, fr-FR…) separan los campos por `;`. Las columnas To, CC y Labels protegen contra fórmulas cada elemento antes de unirlos con `; `, así que ningún fragmento tras un `;` puede empezar por `=`, `+`, `-` o `@`; la protección mira además más allá de los espacios iniciales.
+- Corrección: **hilos: un Message-ID fabricado podía ocultar un mensaje de la vista de conversaciones.** Las claves que se inventan para los mensajes sin Message-ID (`__synth_N__`) y para la segunda copia de uno repetido (`__dup_N__`) eran Message-IDs válidos que un mensaje podía llevar. Ahora empiezan por NUL, que se elimina de todo id real.
+- Corrección: **los adjuntos nunca llevaban su `Content-ID`** (`AttachmentMeta.content_id` era siempre `None`), así que nada construido sobre la lista de adjuntos podía resolver las imágenes inline `cid:`. Ahora se lee de la cabecera `Content-ID` de la parte, sin los `< >`.
+
 ## v0.7.3
 
 La app de Mac ha cambiado de dominio.

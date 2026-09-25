@@ -108,8 +108,9 @@ enum Commands {
         inputs: Vec<PathBuf>,
         #[arg(short, long)]
         output: PathBuf,
-        /// Skip duplicate-Message-ID detection and concatenate the inputs
-        /// byte-for-byte (preserves original bytes and line endings).
+        /// Skip duplicate detection (same Message-ID and same content) and
+        /// concatenate the inputs byte-for-byte (preserves original bytes and
+        /// line endings; only a missing final newline is added between inputs).
         #[arg(long)]
         no_dedup: bool,
         /// Inject an `X-Mbox-Source: <mailbox name>` header into every message

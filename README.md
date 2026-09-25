@@ -176,7 +176,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 
 | Flag | Description |
 |------|-------------|
-| `--no-dedup` | Skip duplicate-Message-ID detection and concatenate the inputs byte-for-byte (dedup is on by default) |
+| `--no-dedup` | Skip duplicate detection and concatenate the inputs byte-for-byte, adding only a newline after an input that does not end in one (dedup is on by default: a message is a duplicate when both its Message-ID and its content match an earlier one) |
 | `--source-header` | Inject an `X-Mbox-Source: <mailbox name>` header into every message, so a merged archive stays traceable to the mailbox each email came from |
 
 The source label is the mailbox name you see: for an Apple Mail export — a directory `Inbox.mbox` containing a file literally called `mbox` — it reads `Inbox.mbox`, not `mbox`. Mailboxes that would end up sharing a label are disambiguated against each other (`Work/Inbox.mbox` vs `Personal/Inbox.mbox`).

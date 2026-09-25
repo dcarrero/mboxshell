@@ -46,6 +46,11 @@ impl MboxStore {
         })
     }
 
+    /// Path of the mailbox this store reads from.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     /// Read and decode a message, returning a shared handle to the cached body.
     ///
     /// The returned [`Rc`] is a cheap refcount bump, not a deep copy; it keeps
