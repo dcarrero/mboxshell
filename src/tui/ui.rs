@@ -10,6 +10,12 @@ use super::widgets;
 pub fn render(frame: &mut Frame, app: &mut App) {
     let size = frame.area();
 
+    // The theme's base style first, under everything: widgets that only set
+    // a foreground keep this background.
+    frame
+        .buffer_mut()
+        .set_style(size, super::theme::current_theme().base);
+
     // Vertical layout: header (1) + content (flex) + status (1)
     let vertical = Layout::default()
         .direction(Direction::Vertical)

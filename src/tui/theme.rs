@@ -3,8 +3,9 @@
 //! Three themes, picked with `theme` in `config.toml` or `MBOXSHELL_THEME`:
 //!
 //! - `dark` (default): fixed RGB colors for a dark terminal background.
-//! - `light`: fixed RGB colors for a light background, every text pair at
-//!   WCAG AA (4.5:1) or better on white and on Solarized Light.
+//! - `light`: fixed RGB colors on its own light background (painted over
+//!   the whole screen, so the terminal's background does not matter), every
+//!   text pair at WCAG AA (4.5:1) or better.
 //! - `terminal`: no colors at all. Text keeps the terminal's own foreground
 //!   and background and state is shown with bold, underline and reverse
 //!   video, so it follows whatever palette (and contrast) the user already
@@ -16,6 +17,10 @@ use ratatui::style::{Color, Modifier, Style};
 
 /// A complete color theme for the TUI.
 pub struct Theme {
+    /// Painted over the whole screen before anything else. Only the light
+    /// theme sets it: it brings its own background instead of assuming the
+    /// terminal's is light, so it reads the same on a dark terminal.
+    pub base: Style,
     pub header_bar: Style,
     pub status_bar: Style,
     pub list_selected: Style,
@@ -43,6 +48,7 @@ impl Theme {
     /// Dark theme (default).
     pub fn dark() -> Self {
         Self {
+            base: Style::default(),
             header_bar: Style::default()
                 .fg(Color::Rgb(200, 200, 220))
                 .bg(Color::Rgb(30, 30, 46)),
@@ -106,6 +112,9 @@ impl Theme {
         let accent = Color::Rgb(0, 85, 160);
         let label = Color::Rgb(0, 65, 165);
         Self {
+            base: Style::default()
+                .fg(Color::Rgb(20, 20, 30))
+                .bg(Color::Rgb(250, 250, 252)),
             header_bar: Style::default().fg(Color::Rgb(25, 25, 40)).bg(bar),
             status_bar: Style::default().fg(Color::Rgb(55, 55, 75)).bg(bar),
             list_selected: Style::default()
@@ -150,6 +159,7 @@ impl Theme {
         let bold = plain.add_modifier(Modifier::BOLD);
         let reversed = plain.add_modifier(Modifier::REVERSED);
         Self {
+            base: plain,
             header_bar: reversed,
             status_bar: reversed,
             list_selected: reversed.add_modifier(Modifier::BOLD),
@@ -263,6 +273,13 @@ mod tests {
             ThemeKind::resolve_with(true, Some("light"), "light"),
             Terminal
         );
+    }
+
+    #[test]
+    fn test_light_theme_brings_its_own_background() {
+        // On a dark terminal the light theme drew dark text on black.
+        assert!(Theme::light().base.bg.is_some());
+        assert_eq!(Theme::dark().base, Style::default());
     }
 
     #[test]
