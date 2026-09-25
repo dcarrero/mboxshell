@@ -4,6 +4,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::i18n;
 use crate::tui::app::App;
@@ -309,13 +310,9 @@ fn add_shortcuts_columns(
                 let s = &shortcuts[idx];
                 let padded_key = format!("{:>width$}", s.key, width = key_w);
                 let desc_avail = col_width.saturating_sub(key_w + 3);
-                let desc_truncated = if s.desc.len() > desc_avail {
-                    format!("{}.", &s.desc[..desc_avail.saturating_sub(1)])
-                } else {
-                    s.desc.to_string()
-                };
+                let desc_truncated = fit_to_width(s.desc, desc_avail);
                 let padding = col_width
-                    .saturating_sub(key_w + 1 + desc_truncated.len())
+                    .saturating_sub(key_w + 1 + desc_truncated.width())
                     .max(1);
 
                 spans.push(Span::styled(padded_key, theme.search_prompt));
@@ -328,6 +325,32 @@ fn add_shortcuts_columns(
     }
 }
 
+/// Fit `s` into `max_width` terminal columns, ending in `.` when cut.
+///
+/// Measured in columns, never bytes: slicing by byte length split the
+/// Spanish descriptions ("página", "último") mid-character and panicked on
+/// narrow terminals.
+fn fit_to_width(s: &str, max_width: usize) -> String {
+    if s.width() <= max_width {
+        return s.to_string();
+    }
+    let budget = max_width.saturating_sub(1);
+    let mut out = String::new();
+    let mut used = 0;
+    for ch in s.chars() {
+        let w = ch.width().unwrap_or(0);
+        if used + w > budget {
+            break;
+        }
+        out.push(ch);
+        used += w;
+    }
+    if max_width > 0 {
+        out.push('.');
+    }
+    out
+}
+
 /// Calculate a centered rectangle with exact pixel dimensions, clamped to screen.
 fn centered_rect_exact(width: u16, height: u16, area: Rect) -> Rect {
     let w = width.min(area.width);
@@ -335,4 +358,20 @@ fn centered_rect_exact(width: u16, height: u16, area: Rect) -> Rect {
     let x = area.x + (area.width.saturating_sub(w)) / 2;
     let y = area.y + (area.height.saturating_sub(h)) / 2;
     Rect::new(x, y, w, h)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fit_to_width_never_splits_a_character() {
+        // Every cut point through a multi-byte description must be safe.
+        for width in 0..20 {
+            let out = fit_to_width("Avance de página", width);
+            assert!(out.width() <= width.max(1), "width {width}: {out:?}");
+        }
+        assert_eq!(fit_to_width("Primero / último", 12), "Primero / ú.");
+        assert_eq!(fit_to_width("Salir", 10), "Salir");
+    }
 }

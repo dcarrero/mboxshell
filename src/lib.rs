@@ -6,6 +6,7 @@
 pub mod config;
 pub mod error;
 pub mod export;
+pub mod fsutil;
 pub mod i18n;
 pub mod index;
 pub mod mailbox_naming;

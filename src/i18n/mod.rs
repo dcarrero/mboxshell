@@ -206,6 +206,11 @@ msg!(
     "Fichero no encontrado"
 );
 msg!(
+    err_output_is_input,
+    "Refusing to overwrite an input mailbox (mboxshell never modifies its sources)",
+    "No se sobrescribe un buzón de entrada (mboxshell nunca modifica los originales)"
+);
+msg!(
     err_tui_not_implemented,
     "TUI not yet implemented. Use 'mboxshell index' to verify parsing.",
     "TUI a\u{fa}n no implementada. Usa 'mboxshell index' para verificar el parsing."

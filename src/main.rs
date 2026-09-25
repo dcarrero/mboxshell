@@ -547,6 +547,9 @@ fn cmd_export(
             } else {
                 output.join("export.csv")
             };
+            if mboxshell::fsutil::same_file(&csv_path, path) {
+                anyhow::bail!("{}: {}", i18n::err_output_is_input(), csv_path.display());
+            }
             if let Some(parent) = csv_path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
@@ -911,6 +914,10 @@ fn print_stats_table(
         println!();
         println!("  {}:", i18n::msg_top_senders());
         for (sender, count) in &top {
+            // The sender comes straight from the mailbox (RFC 2047 can encode
+            // any byte), so strip control characters before it reaches the
+            // terminal — an ESC here could retitle it or write the clipboard.
+            let sender = mboxshell::tui::text::sanitize_line(sender);
             println!("    {count:>6}  {sender}");
         }
     }

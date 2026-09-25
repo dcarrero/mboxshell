@@ -9,6 +9,7 @@ use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
 
 use crate::error::MboxError;
+use crate::fsutil;
 use crate::index::format::{IndexHeader, HASH_PREFIX_LEN, HEADER_SIZE, MAGIC, VERSION};
 use crate::model::mail::MailEntry;
 use crate::parser::header;
@@ -239,13 +240,34 @@ fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
 }
 
 /// Write header + entries to a file.
+///
+/// Written to a fresh temp file and renamed into place. Opening `path`
+/// directly followed whatever sat there: a mailbox shipped with a planted
+/// `.name.mboxshell.idx -> ~/.zshrc` symlink got that file truncated and
+/// overwritten. `rename` replaces the link itself, never its target, and a
+/// crash mid-write no longer leaves a truncated index behind.
 fn write_index_to_file(path: &Path, header: &[u8], entries: &[u8]) -> anyhow::Result<()> {
-    let mut file = File::create(path).map_err(|e| MboxError::io(path, e))?;
-    file.write_all(header).map_err(|e| MboxError::io(path, e))?;
-    file.write_all(entries)
-        .map_err(|e| MboxError::io(path, e))?;
-    file.flush().map_err(|e| MboxError::io(path, e))?;
+    let (tmp, file) = fsutil::create_temp_beside(path).map_err(|e| MboxError::io(path, e))?;
+    if let Err(e) = write_and_commit(file, &tmp, path, header, entries) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(MboxError::io(path, e).into());
+    }
     Ok(())
+}
+
+/// Fill the temp file and rename it over `path`.
+fn write_and_commit(
+    mut file: File,
+    tmp: &Path,
+    path: &Path,
+    header: &[u8],
+    entries: &[u8],
+) -> std::io::Result<()> {
+    file.write_all(header)?;
+    file.write_all(entries)?;
+    file.flush()?;
+    drop(file);
+    std::fs::rename(tmp, path)
 }
 
 /// Compute SHA-256 of the first `n` bytes of a file.
@@ -315,6 +337,30 @@ pub fn index_file_size(mbox_path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn test_index_write_replaces_a_planted_symlink_not_its_target() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox = dir.path().join("inbox.mbox");
+        std::fs::write(
+            &mbox,
+            b"From a@b Thu Jan 01 00:00:00 2024\nSubject: x\n\nbody\n",
+        )
+        .expect("write mbox");
+        let victim = dir.path().join("victim");
+        std::fs::write(&victim, b"keep me").expect("write victim");
+        let idx = index_path_for(&mbox);
+        std::os::unix::fs::symlink(&victim, &idx).expect("plant symlink");
+
+        build_index(&mbox, true, None).expect("index");
+
+        assert_eq!(std::fs::read(&victim).expect("read victim"), b"keep me");
+        assert!(!std::fs::symlink_metadata(&idx)
+            .expect("idx")
+            .file_type()
+            .is_symlink());
+    }
 
     #[test]
     fn test_index_size_acceptable() {

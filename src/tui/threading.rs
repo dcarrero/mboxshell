@@ -5,7 +5,7 @@
 //!
 //! Reference: <https://www.jwz.org/doc/threading.html>
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 
@@ -201,7 +201,6 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
         for rid in group_root_ids {
             flatten(
                 rid,
-                0,
                 &containers,
                 entries,
                 &mut nodes,
@@ -266,61 +265,62 @@ fn would_create_cycle(
     false
 }
 
-/// Recursively flatten a container and its children into `(entry_index, depth)`.
+/// Flatten a container and its descendants into `(entry_index, depth)`,
+/// in pre-order with siblings sorted by date.
+///
+/// Iterative with an explicit stack: `References` chains come from the
+/// mailbox, so a crafted (or just very long) thread can nest thousands of
+/// levels deep, and recursing once per level overflowed the stack — an abort
+/// the panic hook never sees, leaving the terminal in raw mode.
 fn flatten(
-    id: &str,
-    depth: usize,
+    root_id: &str,
     containers: &HashMap<String, Container>,
     entries: &[MailEntry],
     out: &mut Vec<(usize, usize)>,
     oldest: &mut DateTime<Utc>,
     newest: &mut DateTime<Utc>,
 ) {
-    let Some(container) = containers.get(id) else {
-        return;
+    let date_of = |id: &str| {
+        containers
+            .get(id)
+            .and_then(|c| c.entry_index)
+            .map(|i| entries[i].date)
     };
 
-    if let Some(idx) = container.entry_index {
-        out.push((idx, depth));
-        let d = entries[idx].date;
-        if d < *oldest {
-            *oldest = d;
+    // Cycles are rejected while linking, but a revisit would now loop forever
+    // instead of overflowing, so guard it here too.
+    let mut visited: HashSet<&str> = HashSet::new();
+    let mut stack: Vec<(&str, usize)> = vec![(root_id, 0)];
+    while let Some((id, depth)) = stack.pop() {
+        if !visited.insert(id) {
+            continue;
         }
-        if d > *newest {
-            *newest = d;
+        let Some(container) = containers.get(id) else {
+            continue;
+        };
+
+        if let Some(idx) = container.entry_index {
+            out.push((idx, depth));
+            let d = entries[idx].date;
+            if d < *oldest {
+                *oldest = d;
+            }
+            if d > *newest {
+                *newest = d;
+            }
         }
-    }
 
-    // Sort children by date before recursing
-    let mut children = container.children.clone();
-    children.sort_by(|a, b| {
-        let da = containers
-            .get(a.as_str())
-            .and_then(|c| c.entry_index)
-            .map(|i| entries[i].date);
-        let db = containers
-            .get(b.as_str())
-            .and_then(|c| c.entry_index)
-            .map(|i| entries[i].date);
-        da.cmp(&db)
-    });
+        let child_depth = if container.entry_index.is_some() {
+            depth + 1
+        } else {
+            depth
+        };
 
-    let child_depth = if container.entry_index.is_some() {
-        depth + 1
-    } else {
-        depth
-    };
-
-    for child_id in &children {
-        flatten(
-            child_id,
-            child_depth,
-            containers,
-            entries,
-            out,
-            oldest,
-            newest,
-        );
+        // Sort children by date, then push them newest-first so the oldest
+        // pops next and pre-order is preserved.
+        let mut children: Vec<&str> = container.children.iter().map(String::as_str).collect();
+        children.sort_by_key(|c| date_of(c));
+        stack.extend(children.into_iter().rev().map(|c| (c, child_depth)));
     }
 }
 
@@ -508,6 +508,31 @@ mod tests {
         a.thread_id = Some("111".to_string());
         b.thread_id = Some("222".to_string());
         assert_eq!(build_threads(&[a, b]).len(), 2);
+    }
+
+    #[test]
+    fn test_deep_reply_chain_does_not_overflow_stack() {
+        // Each message replies to the one before, listed newest-first. The
+        // recursive flatten used one stack frame per level and aborted the
+        // whole process on a chain like this.
+        let base = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        let n: u64 = 20_000;
+        let ids: Vec<String> = (0..n).map(|i| format!("<m{i}@example.invalid>")).collect();
+        let entries: Vec<MailEntry> = (0..n)
+            .rev()
+            .map(|i| {
+                let parent = i.checked_sub(1).map(|p| ids[p as usize].as_str());
+                let date = base + chrono::Duration::seconds(i as i64);
+                make_entry(i, &ids[i as usize], parent, vec![], "Chain", date)
+            })
+            .collect();
+        let nodes = flatten_threads_to_indices(&build_threads(&entries));
+        assert_eq!(nodes.len(), n as usize);
+        let max_depth = nodes.iter().map(|(_, d)| *d).max().unwrap_or(0);
+        assert!(
+            max_depth > 1_000,
+            "chain should nest deeply, got {max_depth}"
+        );
     }
 
     #[test]

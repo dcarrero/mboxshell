@@ -241,30 +241,21 @@ impl MboxParser {
         loop {
             // Read a line into the reusable buffer (zero-alloc in the common case)
             line_buf.clear();
-            let line_len = {
-                // Read a full physical line, accumulating across buffer
-                // boundaries. Using `fill_buf` + manual consume here would
-                // split long lines (e.g. folded `Received:` headers) when they
-                // straddle the read buffer, leaving a stray `\r\n` tail that
-                // `is_blank_line` misreads as the end of the headers.
-                let consumed = reader
-                    .read_until(b'\n', &mut line_buf)
+            // Cap what we RETAIN, never what we consume: `line_len` is the
+            // true byte count read from the file, so offsets stay exact while
+            // a pathological newline-free run can't blow up memory.
+            let (line_len, truncated) =
+                read_line_capped(&mut reader, &mut line_buf, MAX_LINE_RETAIN)
                     .map_err(|e| MboxError::io(&self.path, e))?;
-                if consumed == 0 {
-                    break; // EOF
-                }
-                consumed as u64
-            };
-            // Cap what we RETAIN, never what we consumed: `line_len` above is
-            // the true byte count read from the file, so offsets stay exact
-            // while a pathological newline-free run can't blow up memory.
-            if line_buf.len() > MAX_LINE_RETAIN {
+            if line_len == 0 {
+                break; // EOF
+            }
+            if truncated {
                 warn!(
                     offset = current_offset,
                     retained = MAX_LINE_RETAIN,
                     "Oversized line while indexing; truncating retained bytes"
                 );
-                line_buf.truncate(MAX_LINE_RETAIN);
             }
 
             let kind = classify_from_line(&line_buf);
@@ -393,6 +384,47 @@ enum FromLineKind {
     GitPatchMarker,
 }
 
+/// Read one physical line (through `\n`, or to EOF) from `reader`, appending
+/// at most `cap` bytes of it to `buf` and discarding the rest.
+///
+/// Returns `(consumed, truncated)`: `consumed` is the full line length taken
+/// from the reader — what offset accounting needs — even when the retained
+/// copy was cut short. `read_until` + `truncate` looked equivalent but grew
+/// `buf` to the whole line first, so an 800 MB run with no newline used
+/// 800 MB of RAM. The line is still accumulated across reader-buffer
+/// boundaries, so a folded header straddling one is never split.
+fn read_line_capped<R: BufRead>(
+    reader: &mut R,
+    buf: &mut Vec<u8>,
+    cap: usize,
+) -> std::io::Result<(u64, bool)> {
+    let mut consumed: u64 = 0;
+    let mut truncated = false;
+    loop {
+        let available = match reader.fill_buf() {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        };
+        if available.is_empty() {
+            break; // EOF
+        }
+        let (take, done) = match available.iter().position(|&b| b == b'\n') {
+            Some(i) => (i + 1, true),
+            None => (available.len(), false),
+        };
+        let keep = take.min(cap.saturating_sub(buf.len()));
+        buf.extend_from_slice(&available[..keep]);
+        truncated |= keep < take;
+        reader.consume(take);
+        consumed += take as u64;
+        if done {
+            break;
+        }
+    }
+    Ok((consumed, truncated))
+}
+
 /// Classify a line as MBOX separator, git-patch marker, or plain content.
 ///
 /// A separator must look like `From <sender> <asctime date>` and end right
@@ -508,6 +540,35 @@ fn is_blank_line(line: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_read_line_capped_retains_at_most_cap() {
+        // A tiny reader buffer forces every line across several refills.
+        let data = b"short\n0123456789abcdef\nno newline at end";
+        let mut reader = BufReader::with_capacity(4, &data[..]);
+        let mut buf = Vec::new();
+
+        let (n, cut) = read_line_capped(&mut reader, &mut buf, 8).unwrap();
+        assert_eq!((n, cut, buf.as_slice()), (6, false, &b"short\n"[..]));
+
+        buf.clear();
+        let (n, cut) = read_line_capped(&mut reader, &mut buf, 8).unwrap();
+        assert_eq!((n, cut, buf.as_slice()), (17, true, &b"01234567"[..]));
+        assert!(buf.capacity() < 17, "must never hold the whole line");
+
+        buf.clear();
+        let (n, cut) = read_line_capped(&mut reader, &mut buf, 64).unwrap();
+        assert_eq!(
+            (n, cut, buf.as_slice()),
+            (17, false, &b"no newline at end"[..])
+        );
+
+        buf.clear();
+        assert_eq!(
+            read_line_capped(&mut reader, &mut buf, 8).unwrap(),
+            (0, false)
+        );
+    }
 
     #[test]
     fn test_classify_from_line_separators() {

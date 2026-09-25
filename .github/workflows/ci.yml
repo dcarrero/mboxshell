@@ -36,6 +36,14 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
+      # Known-vulnerable dependencies fail the build (ammonia is the only
+      # thing standing between a hostile email and the browser). Prebuilt
+      # binary, so this adds seconds, not a compile.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Audit dependencies
+        run: cargo audit
   test:
     strategy:
       matrix:

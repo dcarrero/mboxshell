@@ -18,7 +18,11 @@ pub fn export_csv(
     output_path: &Path,
     snippets: Option<&[String]>,
 ) -> anyhow::Result<()> {
-    let mut file = std::fs::File::create(output_path)?;
+    // Buffered (one syscall per row made 100k rows spend most of their time
+    // in the kernel) and written to a fresh temp file renamed into place, so
+    // a symlink at `output_path` is replaced rather than written through.
+    let (tmp_path, tmp_file) = crate::fsutil::create_temp_beside(output_path)?;
+    let mut file = std::io::BufWriter::new(tmp_file);
 
     // UTF-8 BOM for Excel
     file.write_all(&[0xEF, 0xBB, 0xBF])?;
@@ -60,6 +64,9 @@ pub fn export_csv(
         writeln!(file, "{row}")?;
     }
 
+    file.flush()?;
+    drop(file);
+    std::fs::rename(&tmp_path, output_path)?;
     Ok(())
 }
 
