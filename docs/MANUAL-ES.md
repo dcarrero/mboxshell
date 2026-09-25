@@ -291,9 +291,9 @@ Pulsa `a` para abrir el popup de adjuntos del mensaje actual:
 | `H` | Abrir el cuerpo HTML en un visor externo |
 | `r` | Alternar fuente en bruto del mensaje |
 | `1` / `2` / `3` | Diseño: solo lista / división horizontal / división vertical |
-| `?` | Ayuda |
+| `?` | Ayuda (se desplaza con `j`/`k`, `RePág`/`AvPág`, `g`/`G` cuando no cabe) |
 | `Esc` | Volver a la lista / cerrar popup |
-| `q` o `Ctrl-C` | Salir |
+| `q` o `Ctrl-C` | Salir (`Ctrl-C` funciona en cualquier sitio, también dentro de los prompts y popups) |
 
 ### Vista de mensaje — búsqueda en el cuerpo (pulsa `/` con la vista de mensaje enfocada)
 
@@ -303,6 +303,7 @@ El prompt de búsqueda se abre en la **parte superior del panel del mensaje**, j
 |-------|--------|
 | `/` | Abrir el prompt de búsqueda en el cuerpo |
 | *(escribir)* | Refinar la consulta; las coincidencias se resaltan en vivo y la vista salta a la primera |
+| `Ctrl-U` | Borrar la consulta |
 | `Enter` | Confirmar — cierra el prompt, mantiene resaltados y navegación con `n`/`N` |
 | `n` / `N` | Ir a la coincidencia siguiente / anterior (con auto-scroll) |
 | `Esc` | Limpiar las coincidencias; púlsalo de nuevo para volver a la lista |
@@ -312,7 +313,8 @@ El prompt de búsqueda se abre en la **parte superior del panel del mensaje**, j
 | Tecla | Acción |
 |-------|--------|
 | *(escribir)* | Editar la consulta; la lista se filtra en vivo para consultas de metadatos |
-| `Enter` | Ejecutar la búsqueda (las de cuerpo/texto completo corren en un hilo en segundo plano) |
+| `Ctrl-U` | Borrar la consulta |
+| `Enter` | Ejecutar la búsqueda (las de cuerpo/texto completo corren en un hilo en segundo plano). Un filtro que no se entiende (`after:2024-13-45`, `size:big`) se avisa en vez de ignorarse |
 | `↑` / `↓` | Navegar por el historial de búsquedas |
 | `Esc` | Cancelar y restaurar la vista anterior |
 
@@ -472,7 +474,7 @@ date_format  = "%Y-%m-%d %H:%M"
 log_level    = "warn"          # error | warn | info | debug | trace
 
 [display]
-theme               = "dark"        # dark | light
+theme               = "dark"        # dark | light | terminal
 layout              = "horizontal"  # horizontal | vertical | list-only
 show_sidebar        = false         # mostrar la barra de etiquetas al arrancar
 max_cached_messages = 50
@@ -500,6 +502,20 @@ Rutas relacionadas:
 - **Carpeta de caché**: `cache_dir`, o el dir. de caché del SO + `/mboxshell`.
 - **Fichero de log**: `<carpeta de caché>/mboxshell.log`.
 
+### Temas y accesibilidad
+
+`theme` es el ajuste de `[display]` que la TUI aplica hoy:
+
+| Tema | Para |
+|------|------|
+| `dark` (por defecto) | Terminales con fondo oscuro |
+| `light` | Fondos claros; todos los colores de texto cumplen WCAG AA (4,5:1) sobre blanco y sobre Solarized Light |
+| `terminal` | Sin colores: el primer plano, el fondo y la paleta de tu propio terminal, con negrita, subrayado y vídeo inverso para marcar estados. Lo mejor para paletas propias, configuraciones de alto contraste y terminales monocromo |
+
+`MBOXSHELL_THEME` tiene prioridad sobre el fichero, y [`NO_COLOR`](https://no-color.org) (con cualquier valor) elige siempre `terminal`.
+
+Más allá del color: el mensaje seleccionado lleva `>` (los marcados, `*`), y el cursor real del terminal sigue a la fila seleccionada, al texto que se escribe y a la opción activa de cada popup, para que lectores de pantalla, líneas braille y lupas puedan seguirlo.
+
 ---
 
 ## 10. Variables de entorno
@@ -509,6 +525,8 @@ Rutas relacionadas:
 | `MBOXSHELL_CONFIG` | Ruta absoluta a un fichero de configuración, anulando la ubicación estándar |
 | `MBOXSHELL_HTML_VIEWER` | Comando externo usado por `H` para renderizar cuerpos HTML. Por defecto `w3m`. Funciona con `chawan`, `lynx -dump`, `pandoc`, etc. La TUI se suspende mientras el visor corre y se restaura limpiamente al salir. |
 | `MBOXSHELL_LANG` | Forzar el idioma de la interfaz (`en` / `es`). Tiene prioridad sobre `LC_MESSAGES` y `LANG`. |
+| `MBOXSHELL_THEME` | Tema de la TUI (`dark` / `light` / `terminal`), con prioridad sobre `theme` del fichero de configuración. |
+| `NO_COLOR` | Con cualquier valor no vacío, la TUI usa el tema sin colores `terminal`. |
 
 ```bash
 MBOXSHELL_HTML_VIEWER="lynx -dump" mboxshell correo.mbox

@@ -4,6 +4,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
+use unicode_width::UnicodeWidthStr;
 
 use crate::i18n;
 use crate::tui::app::{App, SearchFilterField, SIZE_OPTIONS};
@@ -39,6 +40,49 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     let paragraph = Paragraph::new(lines);
     frame.render_widget(paragraph, inner);
+
+    // Real terminal cursor on the focused field, for screen readers and
+    // magnifiers (the fields used to show a drawn `_` instead).
+    let (row, col) = focus_cursor(app, has_labels, inner.width);
+    if row < inner.height && col < inner.width {
+        frame.set_cursor_position((inner.x + col, inner.y + row));
+    }
+}
+
+/// Width of the label column shared by every row.
+const LABEL_W: usize = 15;
+
+/// Placeholder shown in an empty, unfocused date field.
+const DATE_PLACEHOLDER: &str = "___________";
+
+/// `(row, column)` inside the popup where the focused field takes input.
+fn focus_cursor(app: &App, has_labels: bool, inner_width: u16) -> (u16, u16) {
+    let value_w = (inner_width as usize).saturating_sub(LABEL_W + 2);
+    let value_col = 2 + LABEL_W;
+    let typed = |v: &str| truncate_str(v, value_w.saturating_sub(1)).width();
+    let date_from_shown = if app.filter_date_from.is_empty() {
+        DATE_PLACEHOLDER.width()
+    } else {
+        app.filter_date_from.width()
+    };
+    let (row, offset) = match app.search_filter_focus {
+        SearchFilterField::Text => (0, typed(&app.filter_text)),
+        SearchFilterField::From => (1, typed(&app.filter_from)),
+        SearchFilterField::To => (2, typed(&app.filter_to)),
+        SearchFilterField::Subject => (3, typed(&app.filter_subject)),
+        SearchFilterField::DateFrom => (4, app.filter_date_from.width()),
+        SearchFilterField::DateTo => (
+            4,
+            date_from_shown
+                + format!("   {} ", i18n::tui_filter_date_to()).width()
+                + app.filter_date_to.width(),
+        ),
+        SearchFilterField::Size => (5, 0),
+        SearchFilterField::HasAttachment => (6, 1),
+        SearchFilterField::Label => (7, 0),
+        SearchFilterField::WithinResults => (if has_labels { 8 } else { 7 }, 1),
+    };
+    (row, (value_col + offset) as u16)
 }
 
 /// Build all content lines for the search filter popup.
@@ -48,7 +92,7 @@ fn build_lines(
     has_labels: bool,
     inner_width: u16,
 ) -> Vec<Line<'static>> {
-    let label_w: usize = 15;
+    let label_w = LABEL_W;
     let value_w = (inner_width as usize).saturating_sub(label_w + 2);
     let focus = app.search_filter_focus;
 
@@ -173,8 +217,8 @@ fn build_text_row<'a>(
 ) -> Line<'a> {
     let padded_label = format!("  {label:<width$}", width = label_w);
     let display_value = if focused {
-        let truncated = truncate_str(value, value_w.saturating_sub(1));
-        format!("{truncated}_")
+        // One column is kept free for the terminal cursor.
+        truncate_str(value, value_w.saturating_sub(1)).to_string()
     } else if value.is_empty() {
         String::new()
     } else {
@@ -212,17 +256,17 @@ fn build_date_row<'a>(
     let to_focused = focus == SearchFilterField::DateTo;
 
     let from_display = if from_focused {
-        format!("{date_from}_")
+        date_from.to_string()
     } else if date_from.is_empty() {
-        "___________".to_string()
+        DATE_PLACEHOLDER.to_string()
     } else {
         date_from.to_string()
     };
 
     let to_display = if to_focused {
-        format!("{date_to}_")
+        date_to.to_string()
     } else if date_to.is_empty() {
-        "___________".to_string()
+        DATE_PLACEHOLDER.to_string()
     } else {
         date_to.to_string()
     };

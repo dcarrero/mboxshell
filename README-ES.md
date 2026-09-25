@@ -272,7 +272,7 @@ date_format = "%Y-%m-%d %H:%M"
 log_level = "warn"
 
 [display]
-theme = "dark"
+theme = "dark"        # dark | light | terminal (NO_COLOR fuerza terminal)
 layout = "horizontal"
 show_sidebar = false
 max_cached_messages = 50

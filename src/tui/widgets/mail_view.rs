@@ -141,6 +141,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(paragraph.scroll((scroll as u16, 0)), body_area);
+
+    // With focus here, the terminal cursor marks the first visible line so
+    // screen readers and magnifiers follow the scrolling body. (An open
+    // in-body search prompt has already placed it at the insertion point.)
+    if is_focused && prompt_area.is_none() && body_area.height > 0 && body_area.width > 0 {
+        frame.set_cursor_position((body_area.x, body_area.y));
+    }
 }
 
 /// Build the body scroll indicator shown in the bottom border.

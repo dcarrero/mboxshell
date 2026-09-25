@@ -87,10 +87,11 @@ pub fn render(frame: &mut Frame, app: &App) {
             Constraint::Min(20),
         ],
     )
-    .block(block)
     .column_spacing(1);
 
-    frame.render_widget(table, area);
+    let inner = block.inner(area);
+    frame.render_widget(table.block(block), area);
+    super::park_cursor(frame, inner, app.export_selected);
 }
 
 /// Calculate a centered rectangle.

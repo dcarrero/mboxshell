@@ -17,6 +17,15 @@ use super::app::{App, LayoutMode, PanelFocus, SearchFilterField, SortColumn, SIZ
 
 /// Process a key event and update the application state.
 pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
+    // ── Ctrl+C quits from anywhere ────────────────────────
+    // Checked before any mode that captures keys: raw mode swallows SIGINT,
+    // so this is the only emergency exit, and a search prompt used to type a
+    // literal "c" instead (a keyboard trap).
+    if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
+        app.should_quit = true;
+        return Ok(());
+    }
+
     // ── Search bar input mode (captures all keys) ─────────
     if app.search_active {
         return handle_search_input(app, key);
@@ -29,10 +38,21 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
 
     // ── Popup handling (captures all keys) ────────────────
     if app.show_help {
+        let page = 10;
         match key.code {
-            KeyCode::Esc | KeyCode::Char('?') => app.show_help = false,
+            KeyCode::Esc | KeyCode::Char('?') | KeyCode::Char('q') => app.show_help = false,
+            KeyCode::Down | KeyCode::Char('j') => app.help_scroll += 1,
+            KeyCode::Up | KeyCode::Char('k') => {
+                app.help_scroll = app.help_scroll.saturating_sub(1);
+            }
+            KeyCode::PageDown | KeyCode::Char(' ') => app.help_scroll += page,
+            KeyCode::PageUp => app.help_scroll = app.help_scroll.saturating_sub(page),
+            KeyCode::Home | KeyCode::Char('g') => app.help_scroll = 0,
+            KeyCode::End | KeyCode::Char('G') => app.help_scroll = app.help_max_scroll,
             _ => {}
         }
+        // The render clamps to the real maximum; keep it bounded meanwhile.
+        app.help_scroll = app.help_scroll.min(app.help_max_scroll.max(1));
         return Ok(());
     }
 
@@ -56,14 +76,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
 
     // ── Always-available shortcuts ────────────────────────
     match (key.modifiers, key.code) {
-        // Ctrl+C always quits, from any panel
-        (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
-            app.should_quit = true;
-            return Ok(());
-        }
         // Help toggle from any panel
         (_, KeyCode::Char('?')) => {
             app.show_help = true;
+            app.help_scroll = 0;
             return Ok(());
         }
         // Tab: cycle focus forward
@@ -406,9 +422,15 @@ fn handle_body_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> 
             app.body_search_query.pop();
             app.recompute_body_matches();
         }
-        KeyCode::Char(c) => {
-            app.body_search_query.push(c);
+        _ if is_clear_line(&key) => {
+            app.body_search_query.clear();
             app.recompute_body_matches();
+        }
+        KeyCode::Char(_) => {
+            if let Some(c) = typed_char(&key) {
+                app.body_search_query.push(c);
+                app.recompute_body_matches();
+            }
         }
         _ => {}
     }
@@ -870,10 +892,17 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             app.search_history_index = None;
             app.mark_search_dirty();
         }
-        KeyCode::Char(c) => {
-            app.search_query.push(c);
+        _ if is_clear_line(&key) => {
+            app.search_query.clear();
             app.search_history_index = None;
             app.mark_search_dirty();
+        }
+        KeyCode::Char(_) => {
+            if let Some(c) = typed_char(&key) {
+                app.search_query.push(c);
+                app.search_history_index = None;
+                app.mark_search_dirty();
+            }
         }
         _ => {}
     }
@@ -977,18 +1006,52 @@ fn handle_search_filter_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()
             }
             _ => {}
         },
-        KeyCode::Char(c) if focus.is_text_input() => match focus {
-            SearchFilterField::Text => app.filter_text.push(c),
-            SearchFilterField::From => app.filter_from.push(c),
-            SearchFilterField::To => app.filter_to.push(c),
-            SearchFilterField::Subject => app.filter_subject.push(c),
-            SearchFilterField::DateFrom => app.filter_date_from.push(c),
-            SearchFilterField::DateTo => app.filter_date_to.push(c),
-            _ => {}
-        },
+        _ if focus.is_text_input() && is_clear_line(&key) => {
+            if let Some(field) = filter_field_mut(app, focus) {
+                field.clear();
+            }
+        }
+        KeyCode::Char(_) if focus.is_text_input() => {
+            if let (Some(c), Some(field)) = (typed_char(&key), filter_field_mut(app, focus)) {
+                field.push(c);
+            }
+        }
         _ => {}
     }
     Ok(())
+}
+
+/// The text buffer behind a text-input field of the filter popup.
+fn filter_field_mut(app: &mut App, field: SearchFilterField) -> Option<&mut String> {
+    match field {
+        SearchFilterField::Text => Some(&mut app.filter_text),
+        SearchFilterField::From => Some(&mut app.filter_from),
+        SearchFilterField::To => Some(&mut app.filter_to),
+        SearchFilterField::Subject => Some(&mut app.filter_subject),
+        SearchFilterField::DateFrom => Some(&mut app.filter_date_from),
+        SearchFilterField::DateTo => Some(&mut app.filter_date_to),
+        _ => None,
+    }
+}
+
+/// The character a key types into a text field, if it types one at all.
+///
+/// Ctrl or Alt chords are commands, not text: they used to be inserted as
+/// their bare letter (Ctrl+W typed "w"). Shift is part of typing, and
+/// Ctrl+Alt together is how Windows reports AltGr, which types real
+/// characters (`@`, `#`, `€` on many layouts).
+fn typed_char(key: &KeyEvent) -> Option<char> {
+    let KeyCode::Char(c) = key.code else {
+        return None;
+    };
+    let chord = key.modifiers.difference(KeyModifiers::SHIFT);
+    let altgr = KeyModifiers::CONTROL | KeyModifiers::ALT;
+    (chord.is_empty() || chord.contains(altgr)).then_some(c)
+}
+
+/// Ctrl+U: clear the whole input, as in a shell prompt.
+fn is_clear_line(key: &KeyEvent) -> bool {
+    key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('u')
 }
 
 #[cfg(test)]
@@ -1001,6 +1064,49 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures")
             .join(name)
+    }
+
+    fn key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    #[test]
+    fn ctrl_c_quits_even_from_a_text_prompt_or_popup() {
+        for setup in [
+            (|a: &mut App| a.search_active = true) as fn(&mut App),
+            |a| a.body_search_active = true,
+            |a| a.show_help = true,
+            |a| a.show_search_filter = true,
+        ] {
+            let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+            setup(&mut app);
+            handle_key_event(&mut app, key(KeyCode::Char('c'), KeyModifiers::CONTROL)).unwrap();
+            assert!(app.should_quit);
+            assert!(app.search_query.is_empty(), "no stray 'c' typed");
+        }
+    }
+
+    #[test]
+    fn text_prompts_ignore_chords_but_accept_altgr_and_ctrl_u() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_active = true;
+        for (code, mods) in [
+            (KeyCode::Char('a'), KeyModifiers::NONE),
+            (KeyCode::Char('B'), KeyModifiers::SHIFT),
+            (KeyCode::Char('w'), KeyModifiers::CONTROL),
+            (KeyCode::Char('x'), KeyModifiers::ALT),
+            // AltGr as Windows reports it.
+            (
+                KeyCode::Char('@'),
+                KeyModifiers::CONTROL | KeyModifiers::ALT,
+            ),
+        ] {
+            handle_key_event(&mut app, key(code, mods)).unwrap();
+        }
+        assert_eq!(app.search_query, "aB@");
+
+        handle_key_event(&mut app, key(KeyCode::Char('u'), KeyModifiers::CONTROL)).unwrap();
+        assert!(app.search_query.is_empty());
     }
 
     /// Regression for #20: exporting with several messages marked must write

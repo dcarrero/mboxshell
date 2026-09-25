@@ -32,8 +32,10 @@ pub fn render(frame: &mut Frame, app: &App) {
         let rows = vec![Row::new(vec![
             Cell::from(i18n::tui_no_attachments()).style(theme.popup)
         ])];
+        let inner = block.inner(area);
         let table = Table::new(rows, [Constraint::Min(30)]).block(block);
         frame.render_widget(table, area);
+        super::park_cursor(frame, inner, 0);
         return;
     }
 
@@ -102,10 +104,12 @@ pub fn render(frame: &mut Frame, app: &App) {
         ],
     )
     .header(header)
-    .block(block)
     .column_spacing(1);
 
-    frame.render_widget(table, area);
+    let inner = block.inner(area);
+    frame.render_widget(table.block(block), area);
+    // Row 0 is the column header.
+    super::park_cursor(frame, inner, 1 + app.attachment_selected);
 }
 
 /// Calculate a centered rectangle.

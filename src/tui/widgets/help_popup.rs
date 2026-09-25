@@ -19,7 +19,7 @@ struct Shortcut {
 }
 
 /// Render the help popup centered on screen with multi-column shortcuts.
-pub fn render(frame: &mut Frame, _app: &App) {
+pub fn render(frame: &mut Frame, app: &mut App) {
     let theme = current_theme();
     let screen = frame.area();
 
@@ -48,17 +48,30 @@ pub fn render(frame: &mut Frame, _app: &App) {
 
     frame.render_widget(Clear, area);
 
-    let block = Block::default()
+    let mut block = Block::default()
         .borders(Borders::ALL)
         .border_style(theme.popup_title)
         .title(i18n::tui_help_title())
         .style(theme.popup);
 
+    // Scroll when the shortcuts do not fit, with a "first-last/total" marker
+    // in the bottom border so it is obvious there is more below.
+    let visible = area.height.saturating_sub(2) as usize;
+    let total = lines.len();
+    app.help_max_scroll = total.saturating_sub(visible);
+    app.help_scroll = app.help_scroll.min(app.help_max_scroll);
+    if app.help_max_scroll > 0 {
+        let first = app.help_scroll + 1;
+        let last = (app.help_scroll + visible).min(total);
+        block = block.title_bottom(Line::from(format!(" {first}-{last}/{total} ")).right_aligned());
+    }
+
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let paragraph = Paragraph::new(lines);
+    let paragraph = Paragraph::new(lines).scroll((app.help_scroll as u16, 0));
     frame.render_widget(paragraph, inner);
+    super::park_cursor(frame, inner, 0);
 }
 
 /// Build all the help content lines.

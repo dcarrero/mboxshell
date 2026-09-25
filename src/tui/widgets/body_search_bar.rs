@@ -8,6 +8,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
+use unicode_width::UnicodeWidthStr;
 
 use crate::i18n;
 use crate::tui::app::App;
@@ -17,12 +18,12 @@ use crate::tui::theme::current_theme;
 pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let theme = current_theme();
 
-    let mut spans: Vec<Span<'static>> = vec![Span::styled(" /", theme.search_prompt)];
+    const PROMPT: &str = " /";
+    let mut spans: Vec<Span<'static>> = vec![Span::styled(PROMPT, theme.search_prompt)];
     spans.push(Span::styled(
         app.body_search_query.clone(),
         theme.message_body,
     ));
-    spans.push(Span::styled("_", theme.search_prompt)); // cursor indicator
 
     if app.body_search_query.is_empty() {
         spans.push(Span::styled(
@@ -46,4 +47,12 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     let bar = Paragraph::new(Line::from(spans)).style(theme.status_bar);
     frame.render_widget(bar, area);
+
+    // Real terminal cursor at the insertion point (see `search_bar`).
+    let col = PROMPT.width() + app.body_search_query.width();
+    let x = area
+        .x
+        .saturating_add(col as u16)
+        .min(area.right().saturating_sub(1));
+    frame.set_cursor_position((x, area.y));
 }

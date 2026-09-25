@@ -235,6 +235,12 @@ fn main() -> anyhow::Result<()> {
     };
     setup_logging(log_level, &config);
 
+    // The one display setting the TUI reads today; `NO_COLOR` and
+    // `MBOXSHELL_THEME` can override it (see `tui::theme`).
+    mboxshell::tui::theme::set_theme(mboxshell::tui::theme::ThemeKind::resolve(
+        &config.display.theme,
+    ));
+
     // `-f` before the subcommand (`mboxshell -f index x.mbox`) and after it
     // (`mboxshell index x.mbox -f`) both mean the same thing.
     let root_force = cli.force;
@@ -433,6 +439,14 @@ fn cmd_stats(path: &Path, json: bool, force: bool) -> anyhow::Result<()> {
 }
 
 fn cmd_open(path: &Path, force: bool) -> anyhow::Result<()> {
+    // The TUI draws with cursor movement and an alternate screen: into a pipe,
+    // a file or a `TERM=dumb` console that is only garbage. Say so, and point
+    // at the commands that do work there.
+    use std::io::IsTerminal;
+    let dumb = std::env::var("TERM").is_ok_and(|t| t == "dumb");
+    if !std::io::stdout().is_terminal() || !std::io::stdin().is_terminal() || dumb {
+        anyhow::bail!("{}", i18n::err_tui_needs_terminal());
+    }
     if !path.exists() {
         anyhow::bail!("{}: {}", i18n::err_file_not_found(), path.display());
     }

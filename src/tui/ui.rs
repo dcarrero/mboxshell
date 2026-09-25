@@ -87,3 +87,37 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         widgets::search_popup::render(frame, app);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use std::path::PathBuf;
+
+    #[test]
+    fn renders_every_screen_at_small_and_large_sizes() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/simple.mbox");
+        let screens: [fn(&mut App); 5] = [
+            |_| {},
+            |a| a.show_help = true,
+            |a| a.search_active = true,
+            |a| a.show_search_filter = true,
+            |a| a.show_export = true,
+        ];
+        for (w, h) in [(20, 8), (34, 12), (40, 12), (80, 24), (120, 40)] {
+            for open in screens {
+                let mut app = App::new(path.clone(), true).expect("open fixture");
+                open(&mut app);
+                let mut term = Terminal::new(TestBackend::new(w, h)).expect("terminal");
+                term.draw(|f| render(f, &mut app)).expect("draw");
+                // Scroll the help to the end: the marker and clamping must hold.
+                app.help_scroll = usize::MAX / 2;
+                term.draw(|f| render(f, &mut app)).expect("draw");
+                if app.show_help {
+                    assert!(app.help_scroll <= app.help_max_scroll);
+                }
+            }
+        }
+    }
+}

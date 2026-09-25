@@ -221,6 +221,11 @@ msg!(
     "mboxshell: mensaje demasiado grande; solo se muestran sus primeros"
 );
 msg!(
+    err_tui_needs_terminal,
+    "The interactive viewer needs a terminal. Without one, use `mboxshell stats` or `mboxshell search <file> <query> --json`",
+    "El visor interactivo necesita un terminal. Sin él, usa `mboxshell stats` o `mboxshell search <fichero> <consulta> --json`"
+);
+msg!(
     err_output_is_input,
     "Refusing to overwrite an input mailbox (mboxshell never modifies its sources)",
     "No se sobrescribe un buzón de entrada (mboxshell nunca modifica los originales)"

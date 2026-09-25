@@ -291,9 +291,9 @@ Press `a` to open the attachment popup for the current message:
 | `H` | Open the HTML body in an external viewer |
 | `r` | Toggle raw message source |
 | `1` / `2` / `3` | Layout: list only / horizontal split / vertical split |
-| `?` | Help |
+| `?` | Help (scrolls with `j`/`k`, `PgUp`/`PgDn`, `g`/`G` when it does not fit) |
 | `Esc` | Back to list / close popup |
-| `q` or `Ctrl-C` | Quit |
+| `q` or `Ctrl-C` | Quit (`Ctrl-C` works everywhere, including inside prompts and popups) |
 
 ### Message view — in-body search (press `/` with the message view focused)
 
@@ -303,6 +303,7 @@ The search prompt opens at the **top of the message panel**, next to the body.
 |-----|--------|
 | `/` | Open the in-body search prompt |
 | *(type)* | Refine the query; matches highlight live and the view jumps to the first |
+| `Ctrl-U` | Clear the query |
 | `Enter` | Confirm — close the prompt, keep highlights and `n`/`N` navigation |
 | `n` / `N` | Jump to the next / previous match (auto-scrolls to it) |
 | `Esc` | Clear the matches; press again to return to the list |
@@ -312,7 +313,8 @@ The search prompt opens at the **top of the message panel**, next to the body.
 | Key | Action |
 |-----|--------|
 | *(type)* | Edit the query; the list filters live for metadata queries |
-| `Enter` | Run the search (body/full-text searches run on a background thread) |
+| `Ctrl-U` | Clear the query |
+| `Enter` | Run the search (body/full-text searches run on a background thread). A filter it cannot read (`after:2024-13-45`, `size:big`) is reported instead of being ignored |
 | `↑` / `↓` | Browse search history |
 | `Esc` | Cancel and restore the previous view |
 
@@ -472,7 +474,7 @@ date_format  = "%Y-%m-%d %H:%M"
 log_level    = "warn"          # error | warn | info | debug | trace
 
 [display]
-theme               = "dark"        # dark | light
+theme               = "dark"        # dark | light | terminal
 layout              = "horizontal"  # horizontal | vertical | list-only
 show_sidebar        = false         # show the labels sidebar on start
 max_cached_messages = 50
@@ -500,6 +502,20 @@ Related paths:
 - **Cache directory**: `cache_dir`, or the OS cache dir + `/mboxshell`.
 - **Log file**: `<cache directory>/mboxshell.log`.
 
+### Themes and accessibility
+
+`theme` is the `[display]` setting the TUI applies today:
+
+| Theme | For |
+|-------|-----|
+| `dark` (default) | Dark terminal backgrounds |
+| `light` | Light backgrounds; every text colour meets WCAG AA (4.5:1) on white and on Solarized Light |
+| `terminal` | No colours at all: your terminal's own foreground, background and palette, with bold, underline and reverse video for state. Best for custom palettes, high-contrast setups and monochrome terminals |
+
+`MBOXSHELL_THEME` overrides the file, and [`NO_COLOR`](https://no-color.org) (set to anything) always selects `terminal`.
+
+Beyond colour: the selected message is marked with `>` (marked ones with `*`), and the terminal's real cursor follows the selected row, the text being typed and the focused popup option, so screen readers, braille displays and magnifiers can track it.
+
 ---
 
 ## 10. Environment variables
@@ -509,6 +525,8 @@ Related paths:
 | `MBOXSHELL_CONFIG` | Absolute path to a config file, overriding the standard location |
 | `MBOXSHELL_HTML_VIEWER` | External command used by `H` to render HTML bodies. Defaults to `w3m`. Works with `chawan`, `lynx -dump`, `pandoc`, etc. The TUI suspends itself while the viewer runs and restores cleanly on exit. |
 | `MBOXSHELL_LANG` | Force the interface language (`en` / `es`). Takes precedence over `LC_MESSAGES` and `LANG`. |
+| `MBOXSHELL_THEME` | TUI theme (`dark` / `light` / `terminal`), overriding `theme` in the config file. |
+| `NO_COLOR` | When set to a non-empty value, the TUI uses the colourless `terminal` theme. |
 
 ```bash
 MBOXSHELL_HTML_VIEWER="lynx -dump" mboxshell mail.mbox

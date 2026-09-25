@@ -4,6 +4,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
+use unicode_width::UnicodeWidthStr;
 
 use crate::i18n;
 use crate::tui::app::App;
@@ -16,18 +17,17 @@ use crate::tui::theme::current_theme;
 pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let theme = current_theme();
 
-    let mut spans: Vec<Span<'static>> = vec![Span::styled(" /: ", theme.search_prompt)];
+    const PROMPT: &str = " /: ";
+    let mut spans: Vec<Span<'static>> = vec![Span::styled(PROMPT, theme.search_prompt)];
 
     if app.search_query.is_empty() && app.search_history_index.is_none() {
-        // Cursor + dimmed cheatsheet
-        spans.push(Span::styled("_", theme.search_prompt));
+        // Dimmed cheatsheet after the (real) cursor
         spans.push(Span::styled(
             format!("  {}", i18n::tui_search_hint()),
             theme.help_dim,
         ));
     } else {
         spans.push(Span::styled(app.search_query.clone(), theme.message_body));
-        spans.push(Span::styled("_", theme.search_prompt)); // cursor indicator
 
         // Result counter: (visible / total)
         let visible = app.visible_indices.len();
@@ -46,4 +46,13 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let line = Line::from(spans);
     let bar = Paragraph::new(line).style(theme.status_bar);
     frame.render_widget(bar, area);
+
+    // The terminal's own cursor at the insertion point (it used to be a drawn
+    // `_`, invisible to screen readers and braille displays).
+    let col = PROMPT.width() + app.search_query.width();
+    let x = area
+        .x
+        .saturating_add(col as u16)
+        .min(area.right().saturating_sub(1));
+    frame.set_cursor_position((x, area.y));
 }

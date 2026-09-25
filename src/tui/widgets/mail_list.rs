@@ -99,7 +99,13 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             let is_selected = vis_idx == app.selected;
             let is_marked = app.marked.contains(&entry.offset);
 
-            let mark = if is_marked { "*" } else { " " };
+            // `>` marks the selected row in text, not just by its colors, so
+            // it survives NO_COLOR, monochrome terminals and color blindness.
+            let mark = format!(
+                "{}{}",
+                if is_selected { ">" } else { " " },
+                if is_marked { "*" } else { " " }
+            );
             let date = entry.date.format("%Y-%m-%d %H:%M").to_string();
 
             let from_display = if entry.from.display_name.is_empty() {
@@ -124,7 +130,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 String::new()
             };
-            let avail_subj = (subject_w as usize).saturating_sub(indent.len());
+            // Columns, not bytes: each box-drawing char is 3 bytes but 1 column.
+            let avail_subj = (subject_w as usize).saturating_sub(indent.width());
             let subject_truncated = format!(
                 "{indent}{}",
                 truncate_str(&sanitize_line(&entry.subject), avail_subj)
@@ -142,7 +149,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             };
 
             Row::new(vec![
-                mark.to_string(),
+                mark,
                 date,
                 from_truncated,
                 subject_truncated,
@@ -158,6 +165,14 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .column_spacing(1);
 
     frame.render_widget(table, inner);
+
+    // Park the terminal's real cursor on the selected row. Screen readers,
+    // braille displays and screen magnifiers follow the cursor, not colors;
+    // an input field or popup drawn later moves it to where typing happens.
+    if is_focused && app.selected >= start && app.selected < end {
+        let row = (app.selected - start) as u16;
+        frame.set_cursor_position((inner.x, inner.y + 1 + row));
+    }
 }
 
 /// Truncate a string to fit within `max_width` columns, adding "..." if needed.

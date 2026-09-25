@@ -4,6 +4,7 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
+use unicode_width::UnicodeWidthStr;
 
 use crate::i18n;
 use crate::tui::app::{App, PanelFocus};
@@ -29,7 +30,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let content = if let Some((msg, _)) = &app.status_message {
         Line::from(Span::styled(format!(" {msg}"), theme.status_bar))
     } else {
-        let hints = build_hints(app);
+        let (hints, cut) = fit_hints(build_hints(app), chunks[0].width as usize);
         let mut spans = Vec::new();
         for (i, (key, desc)) in hints.iter().enumerate() {
             if i > 0 {
@@ -38,6 +39,9 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
             spans.push(Span::styled(format!(" {key}"), theme.search_prompt));
             spans.push(Span::styled(format!(":{desc}"), theme.status_bar));
         }
+        if cut {
+            spans.push(Span::styled(" \u{2026}", theme.status_bar));
+        }
         Line::from(spans)
     };
 
@@ -45,10 +49,47 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(bar, chunks[0]);
 
     // Right side: version
-    let version = Paragraph::new(Line::from(Span::styled(version_text, theme.border)))
+    let version = Paragraph::new(Line::from(Span::styled(version_text, theme.status_bar)))
         .alignment(Alignment::Right)
         .style(theme.status_bar);
     frame.render_widget(version, chunks[1]);
+}
+
+/// Keep the hints that fit in `width` columns, in order, always keeping the
+/// trailing `?` (help) and `q` (quit) pairs. A plain cut used to drop exactly
+/// those two first on a narrow terminal. Returns whether any were dropped.
+fn fit_hints(
+    hints: Vec<(&'static str, &'static str)>,
+    width: usize,
+) -> (Vec<(&'static str, &'static str)>, bool) {
+    // " key:desc" plus the one-space separator before every pair but the first.
+    let cost = |&(key, desc): &(&str, &str)| 1 + key.width() + 1 + desc.width() + 1;
+    let keep_tail = hints
+        .iter()
+        .rev()
+        .take_while(|(key, _)| matches!(*key, "?" | "q"))
+        .count();
+    let (head, tail) = hints.split_at(hints.len() - keep_tail);
+    let ellipsis = 2;
+    let mut budget = width.saturating_sub(tail.iter().map(cost).sum::<usize>());
+    let fits_whole = head.iter().map(cost).sum::<usize>() <= budget;
+    if !fits_whole {
+        budget = budget.saturating_sub(ellipsis);
+    }
+
+    let mut kept = Vec::with_capacity(hints.len());
+    // A long hint that does not fit is skipped, not a stop: shorter ones
+    // after it may still fit, and they keep their order.
+    for hint in head {
+        if cost(hint) > budget {
+            continue;
+        }
+        budget -= cost(hint);
+        kept.push(*hint);
+    }
+    let cut = kept.len() < head.len();
+    kept.extend_from_slice(tail);
+    (kept, cut)
 }
 
 /// Return context-sensitive hint pairs (key, description) for the active panel.
@@ -104,4 +145,29 @@ fn build_hints(app: &App) -> Vec<(&'static str, &'static str)> {
     }
 
     hints
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fit_hints_keeps_help_and_quit_on_narrow_bars() {
+        let hints = vec![
+            ("j/k", "Navigate"),
+            ("/", "Search"),
+            ("f", "Filters"),
+            ("?", "Help"),
+            ("q", "Quit"),
+        ];
+        let (all, cut) = fit_hints(hints.clone(), 200);
+        assert_eq!((all.len(), cut), (5, false));
+
+        let (few, cut) = fit_hints(hints, 34);
+        assert!(cut);
+        let keys: Vec<&str> = few.iter().map(|(k, _)| *k).collect();
+        assert_eq!(keys.last(), Some(&"q"));
+        assert!(keys.contains(&"?"));
+        assert!(keys.len() < 5);
+    }
 }

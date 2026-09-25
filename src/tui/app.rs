@@ -211,6 +211,11 @@ pub struct App {
     pub layout: LayoutMode,
     /// Help popup visible?
     pub show_help: bool,
+    /// First visible line of the help popup, which scrolls when it does not
+    /// fit (at 80x24 it never did).
+    pub help_scroll: usize,
+    /// Largest useful `help_scroll`, recorded by the help popup's render.
+    pub help_max_scroll: usize,
     /// Attachment popup visible?
     pub show_attachments: bool,
     /// Show all headers in message view?
@@ -392,6 +397,8 @@ impl App {
             focus: PanelFocus::MailList,
             layout: LayoutMode::HorizontalSplit,
             show_help: false,
+            help_scroll: 0,
+            help_max_scroll: 0,
             show_attachments: false,
             show_full_headers: false,
             show_raw: false,
