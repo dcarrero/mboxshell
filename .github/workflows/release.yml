@@ -12,8 +12,11 @@ env:
   # forced to Node 24 from 2026-06-02. This opts in early.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Least privilege: building runs third-party build scripts and tools, so it
+# only reads; just the job that publishes the release can write. Actions are
+# pinned to a commit SHA (tag in the comment).
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -62,10 +65,11 @@ jobs:
             cross: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch
         with:
+          toolchain: stable
           targets: ${{ matrix.target }}
 
       # Cross-compilation toolchains
@@ -93,7 +97,9 @@ jobs:
       # the action — avoids compiling cross from git HEAD on every release)
       - name: Install cross for FreeBSD
         if: matrix.target == 'x86_64-unknown-freebsd'
-        uses: taiki-e/install-action@cross
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
+        with:
+          tool: cross
 
       - name: Build release (cross)
         if: matrix.target == 'x86_64-unknown-freebsd'
@@ -116,7 +122,7 @@ jobs:
           cp target/${{ matrix.target }}/release/mboxshell.exe ${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
@@ -124,11 +130,13 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           path: artifacts
 
@@ -188,7 +196,7 @@ jobs:
           - Gmail labels support (X-Gmail-Labels)
           - Advanced search (from:, subject:, date:, body:, has:attachment, etc.)
           - Conversation threading (JWZ algorithm)
-          - Export to EML, TXT, CSV with attachment extraction
+          - Export to EML, TXT, CSV, HTML, a new MBOX or a Maildir, with attachment extraction
           - Full terminal UI with vi-style navigation
           - Bilingual interface (English/Spanish)
           " \
