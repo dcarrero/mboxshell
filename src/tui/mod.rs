@@ -174,12 +174,12 @@ fn run_external_html_viewer(
 
     match status {
         Ok(s) if s.success() => {}
-        Ok(s) => app.set_status(&format!(
+        Ok(s) => app.set_sticky_status(&format!(
             "{}: {cmd} {} {s}",
             i18n::tui_html_viewer_failed(),
             i18n::tui_exited_with()
         )),
-        Err(e) => app.set_status(&format!(
+        Err(e) => app.set_sticky_status(&format!(
             "{}: {cmd}: {e} — {}",
             i18n::tui_html_viewer_failed(),
             i18n::tui_html_viewer_hint()

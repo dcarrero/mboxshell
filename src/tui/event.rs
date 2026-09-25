@@ -26,6 +26,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // A sticky status message (an error, where an export went) has now
+    // been seen; this key dismisses it and still does its usual job.
+    app.acknowledge_status();
+
     // ── Search bar input mode (captures all keys) ─────────
     if app.search_active {
         return handle_search_input(app, key);
@@ -505,7 +509,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                 match save_single_attachment(app, app.attachment_selected, &output_dir) {
                     Ok(path) => {
                         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
-                        app.set_status(&format!(
+                        app.set_sticky_status(&format!(
                             "{}: {name} -> {}",
                             i18n::tui_saved(),
                             output_dir.display()
@@ -513,7 +517,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                         app.show_attachments = false;
                     }
                     Err(e) => {
-                        app.set_status(&format!("{}: {e}", i18n::tui_error_saving()));
+                        app.set_sticky_status(&format!("{}: {e}", i18n::tui_error_saving()));
                     }
                 }
             }
@@ -524,7 +528,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                 let output_dir = default_download_dir();
                 match save_all_attachments(app, &output_dir) {
                     Ok(paths) => {
-                        app.set_status(&format!(
+                        app.set_sticky_status(&format!(
                             "{} {} {} -> {}",
                             i18n::tui_saved(),
                             paths.len(),
@@ -534,7 +538,7 @@ fn handle_attachment_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                         app.show_attachments = false;
                     }
                     Err(e) => {
-                        app.set_status(&format!("{}: {e}", i18n::tui_error_saving_all()));
+                        app.set_sticky_status(&format!("{}: {e}", i18n::tui_error_saving_all()));
                     }
                 }
             }
@@ -566,40 +570,48 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                     // EML export
                     match export_current_eml(app, &output_dir) {
                         Ok(msg) => {
-                            app.set_status(&msg);
+                            app.set_sticky_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
+                        Err(e) => {
+                            app.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()))
+                        }
                     }
                 }
                 1 => {
                     // HTML export
                     match export_current_html(app, &output_dir) {
                         Ok(msg) => {
-                            app.set_status(&msg);
+                            app.set_sticky_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
+                        Err(e) => {
+                            app.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()))
+                        }
                     }
                 }
                 2 => {
                     // TXT export
                     match export_current_txt(app, &output_dir) {
                         Ok(msg) => {
-                            app.set_status(&msg);
+                            app.set_sticky_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
+                        Err(e) => {
+                            app.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()))
+                        }
                     }
                 }
                 3 => {
                     // CSV export
                     match export_current_csv(app, &output_dir) {
                         Ok(msg) => {
-                            app.set_status(&msg);
+                            app.set_sticky_status(&msg);
                             app.show_export = false;
                         }
-                        Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_export_error())),
+                        Err(e) => {
+                            app.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()))
+                        }
                     }
                 }
                 4 => {
@@ -610,11 +622,11 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                         .map(|b| b.attachments.len())
                         .unwrap_or(0);
                     if att_count == 0 {
-                        app.set_status(i18n::tui_no_attachments_msg());
+                        app.set_sticky_status(i18n::tui_no_attachments_msg());
                     } else {
                         match save_all_attachments(app, &output_dir) {
                             Ok(paths) => {
-                                app.set_status(&format!(
+                                app.set_sticky_status(&format!(
                                     "{} {} {} -> {}",
                                     i18n::tui_saved(),
                                     paths.len(),
@@ -623,7 +635,7 @@ fn handle_export_popup(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
                                 ));
                                 app.show_export = false;
                             }
-                            Err(e) => app.set_status(&format!("{}: {e}", i18n::tui_error())),
+                            Err(e) => app.set_sticky_status(&format!("{}: {e}", i18n::tui_error())),
                         }
                     }
                 }
@@ -1107,6 +1119,23 @@ mod tests {
 
         handle_key_event(&mut app, key(KeyCode::Char('u'), KeyModifiers::CONTROL)).unwrap();
         assert!(app.search_query.is_empty());
+    }
+
+    #[test]
+    fn sticky_status_outlives_the_timeout_until_a_key_is_pressed() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.set_sticky_status("boom");
+        if let Some((_, when)) = app.status_message.as_mut() {
+            *when -= std::time::Duration::from_secs(60);
+        }
+        app.tick();
+        assert!(
+            app.status_message.is_some(),
+            "a sticky message must not time out"
+        );
+
+        handle_key_event(&mut app, key(KeyCode::Char('j'), KeyModifiers::NONE)).unwrap();
+        assert!(app.status_message.is_none(), "any key dismisses it");
     }
 
     /// Regression for #20: exporting with several messages marked must write

@@ -345,6 +345,9 @@ pub struct App {
     pub should_quit: bool,
     /// Transient status message and the instant it was set.
     pub status_message: Option<(String, std::time::Instant)>,
+    /// The status message stays until the next key press instead of timing
+    /// out (errors, and where an export went).
+    pub status_sticky: bool,
 
     /// Cached viewport height for the list (set during render).
     pub list_viewport_height: usize,
@@ -447,6 +450,7 @@ impl App {
             body_line_start: 0,
             should_quit: false,
             status_message: None,
+            status_sticky: false,
             list_viewport_height: 20,
             message_view_height: 20,
             pending_html_view: None,
@@ -664,6 +668,25 @@ impl App {
     /// Set a transient status message that auto-clears after a few seconds.
     pub fn set_status(&mut self, msg: &str) {
         self.status_message = Some((msg.to_string(), std::time::Instant::now()));
+        self.status_sticky = false;
+    }
+
+    /// Set a status message that stays until the next key press.
+    ///
+    /// For errors and export results (which say where the files went): five
+    /// seconds is too short for someone reading slowly, using a screen reader
+    /// or looking away, and there was no way to see the message again.
+    pub fn set_sticky_status(&mut self, msg: &str) {
+        self.status_message = Some((msg.to_string(), std::time::Instant::now()));
+        self.status_sticky = true;
+    }
+
+    /// Clear a sticky status message; called on every key press.
+    pub fn acknowledge_status(&mut self) {
+        if self.status_sticky {
+            self.status_message = None;
+            self.status_sticky = false;
+        }
     }
 
     /// Request the main loop to open the current message's HTML body in
@@ -702,7 +725,7 @@ impl App {
             .open(&path)
             .and_then(|mut f| std::io::Write::write_all(&mut f, html.as_bytes()));
         if let Err(e) = write_result {
-            self.set_status(&format!("{}: {e}", i18n::tui_export_error()));
+            self.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()));
             return;
         }
         self.pending_html_view = Some(path);
@@ -711,7 +734,7 @@ impl App {
     /// Called every tick: clears expired status messages.
     pub fn tick(&mut self) {
         if let Some((_, when)) = &self.status_message {
-            if when.elapsed().as_secs() >= 5 {
+            if !self.status_sticky && when.elapsed().as_secs() >= 5 {
                 self.status_message = None;
             }
         }
@@ -794,7 +817,7 @@ impl App {
             Ok((_query, results)) => self.apply_search_results(results, restrict),
             Err(e) => {
                 tracing::warn!(error = %e, "Search failed");
-                self.set_status(&format!("{}: {e}", i18n::tui_search_error()));
+                self.set_sticky_status(&format!("{}: {e}", i18n::tui_search_error()));
             }
         }
     }
@@ -858,7 +881,7 @@ impl App {
                         Ok(results) => self.apply_search_results(results, job.restrict),
                         Err(e) => {
                             tracing::warn!(error = %e, "Search failed");
-                            self.set_status(&format!("{}: {e}", i18n::tui_search_error()));
+                            self.set_sticky_status(&format!("{}: {e}", i18n::tui_search_error()));
                         }
                     }
                 }

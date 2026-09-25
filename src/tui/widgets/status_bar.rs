@@ -113,7 +113,7 @@ fn build_hints(app: &App) -> Vec<(&'static str, &'static str)> {
             hints.push(("/", i18n::tui_hint_search()));
             hints.push(("f", i18n::tui_hint_filters()));
             hints.push(("Enter", i18n::tui_hint_open()));
-            hints.push(("\u{21e7}\u{2191}\u{2193}", i18n::tui_hint_scroll_body()));
+            hints.push(("Shift+\u{2191}\u{2193}", i18n::tui_hint_scroll_body()));
             hints.push(("s", i18n::tui_hint_sort()));
             hints.push(("Space", i18n::tui_hint_mark()));
             hints.push(("e", i18n::tui_hint_export()));
