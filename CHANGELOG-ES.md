@@ -4,7 +4,48 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.8.0
+
+Versión de seguridad, accesibilidad y usabilidad fruto de una revisión completa, con exportación a Maildir y tema claro. Incluye además el endurecimiento de v0.7.4 (más abajo), que nunca llegó a publicarse por separado. 29 tests nuevos (290 en total). Sin cambios en el formato del índice.
+
+**Seguridad y protección de datos**
+
+- Corrección: **el saneado HTML tenía dos XSS conocidos.** ammonia 4.1.2 → 4.2.0 (RUSTSEC-2026-0193, mXSS vía MathML; RUSTSEC-2026-0213, `animate`/`set` de SVG). Es lo único que separa un correo hostil del navegador en los exports HTML y en la vista `H`. También se actualizan anyhow, lru y crossbeam-epoch por sus avisos, y la CI ejecuta ahora `cargo audit`.
+- Corrección: **el tope de memoria por línea del indexador no limitaba nada.** `read_until` cargaba la línea física entera antes de truncarla, así que un buzón de 800 MB sin saltos de línea usaba 816 MB de RAM para indexarse; ahora usa unos 20 MB, sea cual sea el fichero.
+- Corrección: **una cadena de respuestas muy profunda tumbaba la vista de hilos.** Aplanar un hilo recursaba una vez por nivel, y un buzón cuyos `References` encadenan miles de mensajes desbordaba la pila: un abort que dejaba el terminal en modo raw. Ahora es iterativo.
+- Corrección: **el índice `.mboxshell.idx`, el export CSV y los temporales de merge/export se abrían a través de lo que hubiera en su ruta.** Un buzón que viniera con un enlace `.nombre.mboxshell.idx -> ~/.zshrc` plantado hacía que ese fichero se sobrescribiera al abrirlo. Ahora se escriben en un temporal nuevo con nombre único (`create_new`) y se renombran, lo que sustituye el enlace en vez de escribir a través de él.
+- Corrección: **`stats` imprimía los remitentes tal cual**, así que un `From:` codificado podía mandar secuencias de escape al terminal (cambiar el título, escribir el portapapeles vía OSC 52). Se sanean como el resto de la salida.
+- Cambio: **las imágenes remotas se bloquean en los exports HTML y en la vista `H`.** Abrir la página las descargaría, y un píxel de rastreo le dice al remitente cuándo y desde dónde se leyó el archivo. Una nota al principio de la página dice cuántas se bloquearon; `export --allow-remote-images` las conserva.
+- Corrección: los nombres de fichero exportados o extraídos que son dispositivos reservados en Windows (`CON`, `NUL`, `COM1`…) llevan un prefijo `_`; un mensaje con más de 999 adjuntos del mismo nombre ya no los sobrescribe en un único fichero `_dup`; el temporal del visor HTML se crea con permisos `0600`.
+- Cambio: **`merge` une las entradas con la línea en blanco que necesita un mbox, y solo donde falta.** v0.7.4 añadía un único salto de línea, que seguía dejando la línea `From ` siguiente justo después de una línea no vacía. Las entradas bien formadas se siguen concatenando byte a byte.
+- CI: todas las Actions de GitHub van ancladas a un SHA de commit, y el job `build` del release, que ejecuta build scripts de terceros, es de solo lectura; solo el job que publica puede escribir.
+
+**Robustez de entrada**
+
+- Corrección: **un filtro de búsqueda que no se podía leer se descartaba sin avisar.** `after:2099-13-45`, `date:foo`, `size:big` o `has:xyz` devolvían *todo*, y `export --query` exportaba entonces el buzón entero. La búsqueda falla ahora con un mensaje claro (código de salida 1 en la CLI, barra de estado en la TUI).
+- Corrección: **un fichero que no es un buzón se aceptaba como «0 mensajes» con éxito** y dejaba un índice oculto. Un fichero no vacío sin ningún separador `From ` se rechaza ahora como «no es un buzón MBOX».
+- Corrección: **seleccionar un mensaje enorme lo reservaba entero en memoria.** Mostrar o buscar en un mensaje lee como mucho 256 MB, con un aviso al principio; las exportaciones siguen copiando todos los bytes.
+- Corrección: los avisos del log salían en color por stderr aunque estuviera redirigido, y encima de la pantalla de la TUI; ahora solo llevan color en un terminal y, con la TUI abierta, solo van al fichero de log.
+
+**Accesibilidad**
+
+- Novedad: **el ajuste `theme` funciona** (#30). `light` es nuevo, con su propio fondo claro para verse igual en un terminal oscuro, y todos los colores de texto a WCAG AA (4,5:1) o más; `terminal` no usa ningún color y sigue la paleta del propio terminal. `NO_COLOR` fuerza `terminal`, y `MBOXSHELL_THEME` tiene prioridad sobre el fichero de configuración. `dark` sigue por defecto, con sus textos atenuados subidos a 4,5:1.
+- Novedad: **el mensaje seleccionado lleva `>`** y el filtro activo de la barra lateral `•`, así que ninguno depende del color.
+- Novedad: **el cursor real del terminal sigue al foco** —la fila seleccionada, el texto que se escribe, la opción activa de cada popup— para que lectores de pantalla, líneas braille y lupas puedan seguirlo.
+- Corrección: **Ctrl-C sale desde cualquier sitio**; dentro de una búsqueda escribía una `c`. Los campos de texto ignoran los atajos Ctrl/Alt (AltGr sigue escribiendo) y Ctrl-U los borra.
+- Corrección: la ayuda se desplaza (en 80x24 salía cortada), la barra de estado nunca pierde `?` ni `q`, y los errores y resultados de exportación se quedan hasta la siguiente tecla en vez de desaparecer a los 5 segundos.
+- Corrección: abrir la TUI sin terminal (una tubería, `TERM=dumb`) ahora lo dice y sugiere `stats` / `search --json`.
+- Corrección: la ayuda hacía pánico en español en terminales de 21 a 38 columnas (cortaba «página» a mitad de carácter).
+
+**Novedades y pulido**
+
+- Novedad: **`export --format maildir`** (#29) escribe un Maildir estándar (`cur/`, `new/`, `tmp/`), funciona con `--query` y convierte `Status:`/`X-Status:` —y las etiquetas `Opened`/`Starred` de Gmail— en flags de Maildir.
+- Cambio: `--format` se valida antes de indexar y `--help` lista sus valores; `--help` está entero en español; ejecutar sin argumentos sale con código 2, y `merge` necesita al menos dos entradas.
+- Corrección: los errores de E/S están traducidos y ya no imprimen su causa dos veces; se traduce el inglés que quedaba escrito a mano en la TUI; los manuales ya no dicen que se puedan abrir ficheros `.eml` o carpetas.
+
 ## v0.7.4
+
+Nunca se publicó por separado: estos cambios salieron en v0.8.0, que afina dos de ellos (la fusión une ahora las entradas con una línea en blanco, y los temporales tienen nombre único en vez de `.mbox.tmp`).
 
 Endurecimiento de seguridad y correctitud en la fusión, la exportación, el CSV y los hilos. 20 tests nuevos (261 en total).
 

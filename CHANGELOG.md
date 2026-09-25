@@ -4,7 +4,48 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.8.0
+
+A security, accessibility and usability release from a full review of the tool, plus Maildir export and a light theme. It also carries the v0.7.4 hardening below, which was never published on its own. 29 new tests (290 total). No index format change.
+
+**Security and data safety**
+
+- Fix: **the HTML sanitizer had two known XSS holes.** ammonia 4.1.2 → 4.2.0 (RUSTSEC-2026-0193, mXSS through MathML; RUSTSEC-2026-0213, SVG `animate`/`set`). It is the only thing between a hostile email and the browser in HTML exports and the `H` view. anyhow, lru and crossbeam-epoch were updated for their advisories too, and CI now runs `cargo audit`.
+- Fix: **the per-line memory cap of the indexer did not cap anything.** `read_until` loaded the whole physical line before truncating it, so an 800 MB mailbox without line breaks used 816 MB of RAM to index; it now uses about 20 MB, whatever the file.
+- Fix: **a deep reply chain crashed the threaded view.** Flattening a thread recursed once per level, and a mailbox whose `References` chain thousands of messages overflowed the stack — an abort that left the terminal in raw mode. It is now iterative.
+- Fix: **the `.mboxshell.idx` index, the CSV export and the merge/export temp files were opened through whatever sat at their path.** A mailbox shipped with a planted `.name.mboxshell.idx -> ~/.zshrc` symlink got that file overwritten on first open. They are now written to a fresh, uniquely named temp file (`create_new`) and renamed into place, which replaces a link instead of writing through it.
+- Fix: **`stats` printed sender names raw**, so an encoded `From:` could send escape sequences to the terminal (retitle it, write the clipboard through OSC 52). They are sanitized like the rest of the output.
+- Change: **remote images are blocked in HTML exports and the `H` view.** Opening the page would fetch them, and a tracking pixel tells the sender when and from where the archive was read. A note at the top of the page says how many were blocked; `export --allow-remote-images` keeps them.
+- Fix: exported and extracted file names that are reserved devices on Windows (`CON`, `NUL`, `COM1`…) get a `_` prefix; a message with more than 999 same-named attachments no longer overwrites them into one `_dup` file; the HTML-viewer temp file is created `0600`.
+- Change: **`merge` joins inputs with the blank line an mbox needs, and only where it is missing.** v0.7.4 added a single newline, which still left the next `From ` line right after a non-blank one. Well-formed inputs are still concatenated byte for byte.
+- CI: every GitHub Action is pinned to a commit SHA, and the release `build` job, which runs third-party build scripts, is read-only; only the job that publishes can write.
+
+**Input robustness**
+
+- Fix: **a search filter that could not be read was silently dropped.** `after:2099-13-45`, `date:foo`, `size:big` or `has:xyz` returned *everything*, and `export --query` then exported the whole mailbox. The search now fails with a clear message (exit code 1 on the CLI, the status bar in the TUI).
+- Fix: **a file that is not a mailbox was accepted as "0 messages" with success** and left a hidden index behind. A non-empty file with no `From ` separator is now rejected as not an MBOX mailbox.
+- Fix: **selecting a huge message allocated all of it.** Displaying or searching a message reads at most 256 MB of it, with a notice at the top; exports still copy every byte.
+- Fix: log warnings were written to stderr in colour even when redirected, and on top of the TUI screen; they now carry colour only on a terminal and go to the log file only while the TUI is open.
+
+**Accessibility**
+
+- Feature: **the `theme` setting works** (#30). `light` is new, on its own light background so it reads the same on a dark terminal, with every text colour at WCAG AA (4.5:1) or better; `terminal` uses no colours at all and follows the terminal's own palette. `NO_COLOR` forces `terminal`, and `MBOXSHELL_THEME` overrides the config file. `dark` stays the default, with its dimmer texts raised to 4.5:1.
+- Feature: **the selected message is marked with `>`**, the active sidebar filter with `•`, so neither depends on colour.
+- Feature: **the terminal's real cursor follows the focus** — the selected row, the text being typed, the active popup option — so screen readers, braille displays and magnifiers can track it.
+- Fix: **Ctrl-C quits from anywhere**; inside a search prompt it typed a `c`. Text fields ignore Ctrl/Alt chords (AltGr still types), and Ctrl-U clears them.
+- Fix: the help popup scrolls (it was cut off at 80x24), the status bar never drops `?` and `q`, and errors and export results stay until the next key press instead of vanishing after 5 seconds.
+- Fix: opening the TUI without a terminal (a pipe, `TERM=dumb`) now says so and points at `stats` / `search --json`.
+- Fix: the help popup panicked in Spanish on terminals 21–38 columns wide (it cut "página" in the middle of a character).
+
+**Features and polish**
+
+- Feature: **`export --format maildir`** (#29) writes a standard Maildir (`cur/`, `new/`, `tmp/`), works with `--query`, and turns `Status:`/`X-Status:` — and Gmail's `Opened`/`Starred` labels — into Maildir flags.
+- Change: `--format` is validated before indexing and `--help` lists its values; `--help` is fully translated to Spanish; running without arguments exits with 2, and `merge` needs at least two inputs.
+- Fix: I/O errors are translated and no longer print their cause twice; the remaining hard-coded English in the TUI is translated; the manuals no longer claim that `.eml` files and folders can be opened.
+
 ## v0.7.4
+
+Never published on its own: these changes shipped in v0.8.0, which refines two of them (the merge now joins inputs with a blank line, and temp files are uniquely named rather than `.mbox.tmp`).
 
 Security and correctness hardening of merge, export, CSV and threading. 20 new tests (261 total).
 
