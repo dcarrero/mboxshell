@@ -18,8 +18,13 @@ pub enum MboxError {
     FileNotFound(PathBuf),
 
     /// The file does not appear to be a valid MBOX.
-    #[error("File does not appear to be a valid MBOX: {0}")]
+    #[error("{}: {}", crate::i18n::err_not_mbox(), .0.display())]
     InvalidMbox(PathBuf),
+
+    /// A search query holds filters that could not be understood (e.g. a
+    /// malformed date). Running it anyway would silently widen the results.
+    #[error("{}: {}", crate::i18n::err_invalid_query(), .0.join(" "))]
+    InvalidQuery(Vec<String>),
 
     /// The index file is corrupt or was built with an incompatible version.
     #[error("Corrupt or incompatible index for '{path}': {reason}")]

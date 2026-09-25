@@ -10,6 +10,7 @@ pub mod widgets;
 
 use std::io;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crossterm::event::{poll as ct_poll, read as ct_read, Event, KeyEventKind};
@@ -23,6 +24,13 @@ use ratatui::Terminal;
 
 use self::app::App;
 use crate::i18n;
+
+/// True while the TUI owns the terminal (alternate screen).
+///
+/// Anything written to stderr in that window lands on top of the drawn
+/// screen and stays there until the next full redraw, so the CLI's stderr
+/// log layer checks this and stays quiet; the log file still gets everything.
+pub static TUI_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Run the TUI application. Blocks until the user quits.
 pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
@@ -57,6 +65,7 @@ pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
     }));
 
     // Setup terminal (alternate screen)
+    TUI_ACTIVE.store(true, Ordering::Relaxed);
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
@@ -65,6 +74,7 @@ pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
 
     // Run the event loop
     let result = run_event_loop(&mut terminal, app);
+    TUI_ACTIVE.store(false, Ordering::Relaxed);
 
     // Restore the pre-TUI panic hook now that the alternate screen is going away.
     let _ = std::panic::take_hook();

@@ -32,6 +32,10 @@ pub fn execute(
 ) -> crate::error::Result<(SearchQuery, Vec<usize>)> {
     let query = parse_query(query_str);
 
+    if !query.invalid.is_empty() {
+        return Err(crate::error::MboxError::InvalidQuery(query.invalid.clone()));
+    }
+
     if query.is_empty() {
         // Empty query — return all
         let all: Vec<usize> = (0..entries.len()).collect();
@@ -191,6 +195,20 @@ mod tests {
         // though "perspective" alone would match.
         let subjects = search_subjects("perspective zzzznotfoundanywhere");
         assert!(subjects.is_empty());
+    }
+
+    #[test]
+    fn test_execute_refuses_a_query_with_an_invalid_filter() {
+        let result = super::execute(
+            std::path::Path::new("/nonexistent"),
+            &[],
+            "after:2024-13-45",
+            None,
+        );
+        assert!(matches!(
+            result,
+            Err(crate::error::MboxError::InvalidQuery(ref t)) if t == &["after:2024-13-45"]
+        ));
     }
 
     #[test]

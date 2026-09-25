@@ -38,7 +38,12 @@ pub fn build_index_cancelable(
     should_cancel: &dyn Fn() -> bool,
 ) -> anyhow::Result<Vec<MailEntry>> {
     if !force_rebuild {
-        if let Some(entries) = load_index(mbox_path)? {
+        // An empty index for a non-empty file predates the non-mailbox check
+        // below; rebuild it so that check gets to run.
+        let stale_empty = |entries: &Vec<MailEntry>| {
+            entries.is_empty() && std::fs::metadata(mbox_path).is_ok_and(|m| m.len() > 0)
+        };
+        if let Some(entries) = load_index(mbox_path)?.filter(|e| !stale_empty(e)) {
             debug!(
                 path = %mbox_path.display(),
                 count = entries.len(),
@@ -75,6 +80,13 @@ pub fn build_index_cancelable(
 
     if should_cancel() {
         anyhow::bail!("indexing cancelled");
+    }
+
+    // A non-empty file without a single `From ` separator is not a mailbox
+    // (an .eml, a text file, a zip). Reporting "0 messages" with success and
+    // leaving a hidden index behind made that look like an empty mailbox.
+    if entries.is_empty() && parser.file_size() > 0 {
+        return Err(MboxError::InvalidMbox(mbox_path.to_path_buf()).into());
     }
 
     // Write the index file
@@ -337,6 +349,30 @@ pub fn index_file_size(mbox_path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_non_mbox_file_is_rejected_without_writing_an_index() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("notes.txt");
+        std::fs::write(&path, b"Subject: not a mailbox\n\njust text\n").expect("write");
+
+        let err = build_index(&path, true, None).expect_err("must be rejected");
+        assert!(matches!(
+            err.downcast_ref::<MboxError>(),
+            Some(MboxError::InvalidMbox(_))
+        ));
+        assert!(
+            !index_path_for(&path).exists(),
+            "no index for a non-mailbox"
+        );
+
+        // An empty file is still just an empty mailbox.
+        let empty = dir.path().join("empty.mbox");
+        std::fs::write(&empty, b"").expect("write");
+        assert!(build_index(&empty, true, None)
+            .expect("empty is fine")
+            .is_empty());
+    }
 
     #[cfg(unix)]
     #[test]

@@ -141,6 +141,11 @@ pub struct SearchQuery {
     /// Whether any term targets the Body or Filename field (requires
     /// full-text search).
     pub needs_fulltext: bool,
+    /// Filter tokens whose value could not be parsed (`after:2024-13-45`,
+    /// `size:big`, `has:xyz`), exactly as typed. Dropping them would widen
+    /// the results without telling anyone, so callers refuse to run a query
+    /// that has any — see [`crate::search::execute`].
+    pub invalid: Vec<String>,
 }
 
 impl SearchQuery {
@@ -160,7 +165,9 @@ impl SearchQuery {
 
 /// Parse a query string into a structured [`SearchQuery`].
 ///
-/// Never fails — unrecognized syntax is treated as a plain text search.
+/// Never fails — unrecognized syntax is treated as a plain text search, and a
+/// filter with a value it cannot read is recorded in
+/// [`SearchQuery::invalid`] for the caller to report.
 pub fn parse_query(input: &str) -> SearchQuery {
     let input = input.trim();
 
@@ -169,6 +176,7 @@ pub fn parse_query(input: &str) -> SearchQuery {
     let mut size_filters = Vec::new();
     let mut has_attachment = None;
     let mut needs_fulltext = false;
+    let mut invalid = Vec::new();
     // Set by an `OR` token: the next term joins the group before it instead of
     // opening one of its own.
     let mut join_previous = false;
@@ -256,20 +264,32 @@ pub fn parse_query(input: &str) -> SearchQuery {
             match value {
                 "attachment" | "attachments" => has_attachment = Some(!negated),
                 "no-attachment" | "no-attachments" => has_attachment = Some(negated),
-                _ => {}
+                _ => invalid.push(token.to_string()),
             }
         } else if let Some(value) = token.strip_prefix("date:") {
             // Filters accumulate instead of replacing each other, so
             // `after:X before:Y` is a range rather than just whichever came
             // last, and a nonsensical combination returns nothing rather than
             // silently dropping half of what was typed.
-            date_filters.extend(parse_date_filter(value));
+            match parse_date_filter(value) {
+                Some(f) => date_filters.push(f),
+                None => invalid.push(token.to_string()),
+            }
         } else if let Some(value) = token.strip_prefix("before:") {
-            date_filters.extend(parse_naive_date(value).map(DateFilter::Before));
+            match parse_naive_date(value) {
+                Some(d) => date_filters.push(DateFilter::Before(d)),
+                None => invalid.push(token.to_string()),
+            }
         } else if let Some(value) = token.strip_prefix("after:") {
-            date_filters.extend(parse_naive_date(value).map(DateFilter::After));
+            match parse_naive_date(value) {
+                Some(d) => date_filters.push(DateFilter::After(d)),
+                None => invalid.push(token.to_string()),
+            }
         } else if let Some(value) = token.strip_prefix("size:") {
-            size_filters.extend(parse_size_filter(value));
+            match parse_size_filter(value) {
+                Some(f) => size_filters.push(f),
+                None => invalid.push(token.to_string()),
+            }
         } else {
             // Plain text — search All fields
             push_term!(SearchTerm {
@@ -288,6 +308,7 @@ pub fn parse_query(input: &str) -> SearchQuery {
         size_filters,
         has_attachment,
         needs_fulltext,
+        invalid,
     }
 }
 
@@ -615,6 +636,28 @@ mod tests {
         // size filter instead of panicking (debug) or wrapping (release).
         let q = parse_query("size:>99999999999gb");
         assert!(q.size_filters.is_empty());
+        assert_eq!(q.invalid, vec!["size:>99999999999gb"]);
+    }
+
+    #[test]
+    fn test_unreadable_filters_are_reported_not_dropped() {
+        // Silently dropping these widened the search to everything, and an
+        // `export --query` then exported the whole mailbox.
+        let q = parse_query("after:2099-13-45 date:foo before:x size:big has:xyz alice");
+        assert_eq!(
+            q.invalid,
+            vec![
+                "after:2099-13-45",
+                "date:foo",
+                "before:x",
+                "size:big",
+                "has:xyz"
+            ]
+        );
+        assert!(q.date_filters.is_empty() && q.size_filters.is_empty());
+
+        let ok = parse_query("after:2024-01-01 date:2024 size:>1mb has:attachment");
+        assert!(ok.invalid.is_empty(), "{:?}", ok.invalid);
     }
 
     #[test]

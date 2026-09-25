@@ -299,7 +299,19 @@ fn setup_logging(level: &str, config: &mboxshell::config::Config) {
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(level));
 
-    let stderr_layer = tracing_subscriber::fmt::layer().with_writer(std::io::stderr);
+    // Colour only when a person is reading stderr: redirected to a file or a
+    // pipe, the escape codes are just noise. While the TUI owns the screen,
+    // stderr output would be drawn over it, so it goes to the log file only.
+    use std::io::IsTerminal;
+    let stderr_layer = tracing_subscriber::fmt::layer()
+        .with_ansi(std::io::stderr().is_terminal())
+        .with_writer(|| -> Box<dyn std::io::Write> {
+            if mboxshell::tui::TUI_ACTIVE.load(std::sync::atomic::Ordering::Relaxed) {
+                Box::new(std::io::sink())
+            } else {
+                Box::new(std::io::stderr())
+            }
+        });
 
     // Try to set up file logging
     let log_dir = mboxshell::config::cache_dir(config);

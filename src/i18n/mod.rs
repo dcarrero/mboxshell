@@ -206,6 +206,21 @@ msg!(
     "Fichero no encontrado"
 );
 msg!(
+    err_not_mbox,
+    "Not an MBOX mailbox (no message starts with a 'From ' line)",
+    "No es un buzón MBOX (ningún mensaje empieza por una línea 'From ')"
+);
+msg!(
+    err_invalid_query,
+    "Filter not understood (check the date, size or has: value)",
+    "Filtro no válido (revisa el valor de la fecha, el tamaño o has:)"
+);
+msg!(
+    msg_message_truncated,
+    "mboxshell: message too large; showing only its first",
+    "mboxshell: mensaje demasiado grande; solo se muestran sus primeros"
+);
+msg!(
     err_output_is_input,
     "Refusing to overwrite an input mailbox (mboxshell never modifies its sources)",
     "No se sobrescribe un buzón de entrada (mboxshell nunca modifica los originales)"

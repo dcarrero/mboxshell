@@ -982,8 +982,9 @@ impl App {
 
         let query = crate::search::query::parse_query(&self.search_query);
 
-        // Skip incremental filtering if full-text is needed (too slow)
-        if query.needs_fulltext {
+        // Skip incremental filtering if full-text is needed (too slow), or
+        // while a filter is half-typed (`after:2024-0`): Enter reports it.
+        if query.needs_fulltext || !query.invalid.is_empty() {
             return;
         }
 
