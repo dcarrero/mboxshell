@@ -14,7 +14,6 @@ pub fn export_text(
 ) -> anyhow::Result<PathBuf> {
     let filename = text_filename(entry);
     let path = output_dir.join(&filename);
-    let path = super::attachment::unique_path(&path);
 
     let mut content = String::new();
 
@@ -70,8 +69,7 @@ pub fn export_text(
         }
     }
 
-    std::fs::write(&path, content)?;
-    Ok(path)
+    Ok(super::attachment::write_unique(&path, content.as_bytes())?)
 }
 
 /// Generate a filename for text export.

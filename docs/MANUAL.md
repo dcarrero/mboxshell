@@ -169,6 +169,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `--query <q>` | Only export messages matching this [search query](#7-search) |
 | `--qp` | Re-encode 8-bit text as quoted-printable so the `.eml` is pure 7-bit ASCII (helps strict tools like `eml-extractor`). **EML only.** |
 | `--raw-html` | Keep the original HTML body **unsanitized** (scripts, `on*`, iframes preserved). For local archival only — never serve these files. **HTML only.** |
+| `--allow-remote-images` | Keep remote images (`http(s)://`) in sanitized HTML exports. They are **blocked by default**: opening the file would fetch them, and tracking pixels tell the sender when and from where the message was read. A note at the top of each page says how many were blocked. **HTML only.** |
 | `--force` | Rebuild the index first. Spelled out in full here: `-f` is `--format`. |
 
 #### `stats` output
@@ -415,7 +416,7 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 | EML | `eml` (default) | one `.eml` per message in the output directory | Add `--qp` for pure 7-bit ASCII bodies |
 | CSV | `csv` | a single `.csv` summary file | UTF-8 with BOM (Excel-friendly); separator configurable |
 | Plain text | `txt` / `text` | one `.txt` per message | Decoded text body |
-| HTML | `html` | one standalone `.html` per message | Body sanitized by default; `--raw-html` keeps it untouched (local archival only) |
+| HTML | `html` | one standalone `.html` per message | Body sanitized and remote images blocked by default (`--allow-remote-images` keeps them); `--raw-html` keeps it untouched (local archival only) |
 | MBOX | `mbox` | a single new `.mbox` mailbox | The selection written back out as a mailbox. Messages read from an MBOX are copied byte for byte; ones without an envelope line get a `From ` line and `From `-quoting synthesized. The source file is never modified. |
 | Maildir | `maildir` | a Maildir directory (`cur/`, `new/`, `tmp/`) | One file per message in `cur/`, without the mbox `From ` line and with `>From ` quoting undone. `Status:`/`X-Status:` (and Gmail's `Opened`/`Starred` labels) become Maildir flags (`S`, `R`, `F`, `T`, `D`); file times are set to the message date. Exporting into an existing Maildir adds to it and never overwrites. On Windows the flag separator is `;` instead of `:`. |
 

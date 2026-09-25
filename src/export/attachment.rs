@@ -19,10 +19,8 @@ pub fn export_attachment(
     let filename = sanitize_filename_part(&attachment.filename, 150);
     let path = output_dir.join(&filename);
 
-    // Avoid overwriting — append a counter if needed
-    let path = unique_path(&path);
-    std::fs::write(&path, &data)?;
-    Ok(path)
+    // Never overwrite: a counter is appended while the name is taken.
+    Ok(write_unique(&path, &data)?)
 }
 
 /// Extract all attachments from a single message.
@@ -92,27 +90,59 @@ fn message_folder_name(entry: &MailEntry) -> String {
     format!("{date}_{subject}")
 }
 
-/// If `path` already exists, append a counter to make it unique.
-pub(crate) fn unique_path(path: &Path) -> PathBuf {
-    if !path.exists() {
-        return path.to_path_buf();
-    }
+/// Write `data` to `path`, or to `stem_1.ext`, `stem_2.ext`… when that name
+/// is taken, and return where it went.
+///
+/// Each candidate is opened with `create_new`, so an existing file is never
+/// overwritten — not even one created between the check and the write — and
+/// a planted symlink is never followed. There is no cap: the old fixed limit
+/// of 999 then fell back to one shared `_dup` name that every further copy
+/// silently overwrote.
+pub(crate) fn write_unique(path: &Path, data: &[u8]) -> std::io::Result<PathBuf> {
+    use std::io::Write;
 
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let parent = path.parent().unwrap_or(Path::new("."));
 
-    for i in 1..1000 {
-        let candidate = if ext.is_empty() {
-            parent.join(format!("{stem}_{i}"))
-        } else {
-            parent.join(format!("{stem}_{i}.{ext}"))
+    let mut i: u64 = 0;
+    loop {
+        let candidate = match (i, ext.is_empty()) {
+            (0, _) => path.to_path_buf(),
+            (_, true) => parent.join(format!("{stem}_{i}")),
+            (_, false) => parent.join(format!("{stem}_{i}.{ext}")),
         };
-        if !candidate.exists() {
-            return candidate;
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(mut file) => {
+                file.write_all(data)?;
+                return Ok(candidate);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => i += 1,
+            Err(e) => return Err(e),
         }
     }
+}
 
-    // Fallback — very unlikely
-    parent.join(format!("{stem}_dup.{ext}"))
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_write_unique_never_overwrites_past_a_thousand_collisions() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("a.png");
+        for i in 0..1005u32 {
+            write_unique(&target, &i.to_le_bytes()).unwrap();
+        }
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1005);
+        assert_eq!(std::fs::read(&target).unwrap(), 0u32.to_le_bytes());
+        assert_eq!(
+            std::fs::read(dir.path().join("a_1004.png")).unwrap(),
+            1004u32.to_le_bytes()
+        );
+    }
 }

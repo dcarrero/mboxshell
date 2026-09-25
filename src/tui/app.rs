@@ -688,9 +688,16 @@ impl App {
         path.push(format!("mboxshell-{}-{}.html", std::process::id(), stamp));
         // `create_new` refuses to follow a pre-planted symlink or clobber an
         // existing file — defends the predictable temp path on a shared /tmp.
-        let write_result = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        // Owner-only: on a shared /tmp, the default 0644 let other local
+        // users read the message for as long as the viewer had it open.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let write_result = options
             .open(&path)
             .and_then(|mut f| std::io::Write::write_all(&mut f, html.as_bytes()));
         if let Err(e) = write_result {

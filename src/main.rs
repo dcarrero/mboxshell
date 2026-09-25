@@ -68,6 +68,17 @@ impl ExportFormat {
     }
 }
 
+/// Format-specific `export` switches, passed through as one value.
+#[derive(Clone, Copy)]
+struct ExportFlags {
+    /// `--qp` (EML only).
+    qp: bool,
+    /// `--raw-html` (HTML only).
+    raw_html: bool,
+    /// `--allow-remote-images` (HTML only).
+    allow_remote_images: bool,
+}
+
 /// Shared `-f/--force` flag for the subcommands that build an index.
 #[derive(clap::Args, Clone, Copy)]
 struct ForceArg {
@@ -130,6 +141,12 @@ enum Commands {
         /// these files. Only affects --format=html.
         #[arg(long)]
         raw_html: bool,
+        /// Keep remote images in HTML exports. They are blocked by default:
+        /// opening the file would fetch them, and tracking pixels report
+        /// when and from where the message was read. Only affects
+        /// --format=html.
+        #[arg(long)]
+        allow_remote_images: bool,
         /// Force rebuild index even if one already exists
         #[arg(long)]
         force: bool,
@@ -302,6 +319,7 @@ fn main() -> anyhow::Result<()> {
             query,
             qp,
             raw_html,
+            allow_remote_images,
             force,
         }) => cmd_export(
             &path,
@@ -309,8 +327,11 @@ fn main() -> anyhow::Result<()> {
             &output,
             query.as_deref(),
             root_force || force,
-            qp,
-            raw_html,
+            ExportFlags {
+                qp,
+                raw_html,
+                allow_remote_images,
+            },
         ),
         Some(Commands::Merge {
             inputs,
@@ -538,9 +559,13 @@ fn cmd_export(
     output: &Path,
     query: Option<&str>,
     force: bool,
-    qp: bool,
-    raw_html: bool,
+    flags: ExportFlags,
 ) -> anyhow::Result<()> {
+    let ExportFlags {
+        qp,
+        raw_html,
+        allow_remote_images,
+    } = flags;
     if !path.exists() {
         anyhow::bail!("{}: {}", i18n::err_file_not_found(), path.display());
     }
@@ -639,7 +664,13 @@ fn cmd_export(
             for (i, entry) in selected.iter().enumerate() {
                 pb.set_position(i as u64);
                 let body = store.get_message(entry)?;
-                mboxshell::export::html::export_html_opts(entry, &body, output, sanitize)?;
+                mboxshell::export::html::export_html_opts(
+                    entry,
+                    &body,
+                    output,
+                    sanitize,
+                    allow_remote_images,
+                )?;
                 count += 1;
             }
             pb.finish_and_clear();

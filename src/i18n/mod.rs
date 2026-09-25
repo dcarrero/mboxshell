@@ -226,6 +226,11 @@ msg!(
     "El visor interactivo necesita un terminal. Sin él, usa `mboxshell stats` o `mboxshell search <fichero> <consulta> --json`"
 );
 msg!(
+    html_remote_images_blocked,
+    "Remote images were blocked to protect your privacy (they can reveal when and where this message is read). Re-export with --allow-remote-images to load them",
+    "Se han bloqueado las imágenes remotas para proteger tu privacidad (pueden revelar cuándo y desde dónde se lee este mensaje). Vuelve a exportar con --allow-remote-images para cargarlas"
+);
+msg!(
     err_output_is_input,
     "Refusing to overwrite an input mailbox (mboxshell never modifies its sources)",
     "No se sobrescribe un buzón de entrada (mboxshell nunca modifica los originales)"

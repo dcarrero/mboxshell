@@ -41,10 +41,7 @@ pub fn export_eml_opts(
 
     let filename = eml_filename(entry);
     let path = output_dir.join(&filename);
-    let path = super::attachment::unique_path(&path);
-
-    std::fs::write(&path, &bytes)?;
-    Ok(path)
+    Ok(super::attachment::write_unique(&path, &bytes)?)
 }
 
 /// Export multiple messages as `.eml` files.
@@ -484,8 +481,28 @@ pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
 
     if sanitized.is_empty() {
         "unknown".to_string()
+    } else if is_windows_reserved(&sanitized) {
+        // `CON.txt`, `nul`, `COM1.pdf`… name devices on Windows: writing to
+        // one fails or goes to the device instead of a file. Every platform
+        // gets the prefix, so an export copied to Windows later stays usable.
+        format!("_{sanitized}")
     } else {
         sanitized
+    }
+}
+
+/// Whether `name` is a reserved Windows device name (`CON`, `PRN`, `AUX`,
+/// `NUL`, `COM0`-`COM9`, `LPT0`-`LPT9`), with or without an extension.
+fn is_windows_reserved(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
+    match stem.as_str() {
+        "CON" | "PRN" | "AUX" | "NUL" => true,
+        _ => {
+            let (prefix, digit) = stem.split_at(stem.len().min(3));
+            matches!(prefix, "COM" | "LPT")
+                && digit.len() == 1
+                && digit.chars().all(|c| c.is_ascii_digit())
+        }
     }
 }
 
@@ -515,6 +532,13 @@ mod tests {
         );
         assert_eq!(sanitize_filename_part("a/b\\c:d*e", 20), "a_b_c_d_e");
         assert_eq!(sanitize_filename_part("", 20), "unknown");
+        // Windows device names are neutralized, with or without extension.
+        assert_eq!(sanitize_filename_part("CON", 20), "_CON");
+        assert_eq!(sanitize_filename_part("nul.txt", 20), "_nul.txt");
+        assert_eq!(sanitize_filename_part("com1.pdf", 20), "_com1.pdf");
+        assert_eq!(sanitize_filename_part("Lpt9", 20), "_Lpt9");
+        assert_eq!(sanitize_filename_part("console.log", 20), "console.log");
+        assert_eq!(sanitize_filename_part("COM10.txt", 20), "COM10.txt");
     }
 
     #[test]

@@ -15,26 +15,32 @@ use super::eml::{sanitize_filename_part, truncate_at_char_boundary};
 ///
 /// The HTML body is sanitized by default: `<script>`, `<style>`,
 /// `<iframe>`, `<object>`, `on*` event handlers and `javascript:` URLs
-/// are stripped. Use `export_html_opts` with `sanitize=false` to keep
-/// the original markup (e.g. for archival of the exact source).
+/// are stripped, and remote images are blocked (see [`export_html_opts`]).
+/// Use `export_html_opts` with `sanitize=false` to keep the original markup
+/// (e.g. for archival of the exact source).
 pub fn export_html(
     entry: &MailEntry,
     body: &MailBody,
     output_dir: &Path,
 ) -> anyhow::Result<PathBuf> {
-    export_html_opts(entry, body, output_dir, true)
+    export_html_opts(entry, body, output_dir, true, false)
 }
 
 /// Export a single message as a standalone HTML file with options.
+///
+/// With `sanitize`, remote images are blocked unless `allow_remote_images`:
+/// opening the page would otherwise fetch them, and a tracking pixel tells
+/// the sender when and from where the archive was read. A note at the top
+/// of the page says how many were blocked.
 pub fn export_html_opts(
     entry: &MailEntry,
     body: &MailBody,
     output_dir: &Path,
     sanitize: bool,
+    allow_remote_images: bool,
 ) -> anyhow::Result<PathBuf> {
     let filename = html_filename(entry);
     let path = output_dir.join(&filename);
-    let path = super::attachment::unique_path(&path);
 
     let mut out = String::new();
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
@@ -49,7 +55,8 @@ pub fn export_html_opts(
          .body{border-top:1px solid #ddd;padding-top:1em}\n\
          pre{white-space:pre-wrap;word-wrap:break-word;font-family:ui-monospace,Menlo,Consolas,monospace}\n\
          .attachments{margin-top:2em;padding-top:1em;border-top:1px solid #ddd;color:#555}\n\
-         .attachments li{margin:.25em 0}\n",
+         .attachments li{margin:.25em 0}\n\
+         .note{background:#fff8dc;border:1px solid #e0c96a;padding:.5em .75em;color:#5a4a00}\n",
     );
     out.push_str("</style>\n</head>\n<body>\n");
 
@@ -74,7 +81,14 @@ pub fn export_html_opts(
     out.push_str("<div class=\"body\">\n");
     if let Some(html) = &body.html {
         if sanitize {
-            out.push_str(&sanitize_html(html));
+            let (clean, blocked) = sanitize_html_with(html, allow_remote_images);
+            if blocked > 0 {
+                out.push_str(&format!(
+                    "<p class=\"note\">{} ({blocked})</p>\n",
+                    escape_html(crate::i18n::html_remote_images_blocked())
+                ));
+            }
+            out.push_str(&clean);
         } else {
             // Raw mode: insert the original markup as-is. Only safe for
             // local archival — DO NOT serve unsanitized export to a browser.
@@ -108,8 +122,7 @@ pub fn export_html_opts(
 
     out.push_str("</body>\n</html>\n");
 
-    std::fs::write(&path, out)?;
-    Ok(path)
+    Ok(super::attachment::write_unique(&path, out.as_bytes())?)
 }
 
 fn push_header(out: &mut String, label: &str, value: &str) {
@@ -138,9 +151,48 @@ fn escape_html(s: &str) -> String {
 
 /// Sanitize an HTML fragment using `ammonia` with defaults that strip
 /// scripts, styles, iframes, objects, embeds, `on*` event handlers and
-/// `javascript:` URLs while keeping safe formatting and links.
+/// `javascript:` URLs while keeping safe formatting and links. Remote images
+/// are blocked.
 pub(crate) fn sanitize_html(html: &str) -> String {
-    ammonia::clean(html)
+    sanitize_html_with(html, false).0
+}
+
+/// [`sanitize_html`], optionally letting remote images through. Returns the
+/// clean HTML and how many image sources were removed.
+///
+/// With ammonia's defaults the only thing that loads on its own is an
+/// `<img src>` (inline `style` and `<link>` are already dropped); links in
+/// `<a href>` stay, since they are only followed on a click.
+pub(crate) fn sanitize_html_with(html: &str, allow_remote_images: bool) -> (String, usize) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    if allow_remote_images {
+        return (ammonia::clean(html), 0);
+    }
+    let blocked = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&blocked);
+    let clean = ammonia::Builder::default()
+        .attribute_filter(move |element, attribute, value| {
+            // http(s) and protocol-relative `//host` hit the network; a
+            // relative path stays on disk, and other schemes (`data:`,
+            // `cid:`) are removed by ammonia's scheme filter anyway.
+            let v = value.to_ascii_lowercase();
+            let remote = element == "img"
+                && matches!(attribute, "src" | "srcset")
+                && (v.contains("http:")
+                    || v.contains("https:")
+                    || v.trim_start().starts_with("//"));
+            if remote {
+                counter.fetch_add(1, Ordering::Relaxed);
+                None
+            } else {
+                Some(value.into())
+            }
+        })
+        .clean(html)
+        .to_string();
+    (clean, blocked.load(Ordering::Relaxed))
 }
 
 fn html_filename(entry: &MailEntry) -> String {
@@ -222,6 +274,30 @@ mod tests {
     }
 
     #[test]
+    fn test_remote_images_are_blocked_by_default() {
+        let html = r#"<p>Hi</p><img src="https://track.example/p.gif" alt="logo"><img src="//cdn.example/x.png"><img src="local.png"><a href="https://example.com">link</a>"#;
+        let (clean, blocked) = sanitize_html_with(html, false);
+        assert_eq!(blocked, 2);
+        assert!(
+            !clean.contains("track.example") && !clean.contains("cdn.example"),
+            "{clean}"
+        );
+        assert!(clean.contains(r#"alt="logo""#), "alt text stays: {clean}");
+        assert!(
+            clean.contains("local.png"),
+            "relative images stay local: {clean}"
+        );
+        assert!(
+            clean.contains("https://example.com"),
+            "links are kept: {clean}"
+        );
+
+        let (kept, none) = sanitize_html_with(html, true);
+        assert_eq!(none, 0);
+        assert!(kept.contains("https://track.example/p.gif"));
+    }
+
+    #[test]
     fn test_export_html_sanitizes_scripts() {
         let entry = sample_entry();
         let body = MailBody {
@@ -251,7 +327,7 @@ mod tests {
             attachments: vec![],
         };
         let tmp = tempfile::tempdir().unwrap();
-        let path = export_html_opts(&entry, &body, tmp.path(), false).unwrap();
+        let path = export_html_opts(&entry, &body, tmp.path(), false, false).unwrap();
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("<script>x</script>"));
     }

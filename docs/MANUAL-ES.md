@@ -169,6 +169,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `--query <q>` | Exportar solo los mensajes que coincidan con esta [consulta](#7-búsqueda) |
 | `--qp` | Recodificar el texto de 8 bits como quoted-printable para que el `.eml` sea ASCII de 7 bits puro (ayuda a herramientas estrictas como `eml-extractor`). **Solo EML.** |
 | `--raw-html` | Mantener el cuerpo HTML original **sin sanear** (se conservan scripts, `on*`, iframes). Solo para archivado local — nunca sirvas estos ficheros. **Solo HTML.** |
+| `--allow-remote-images` | Conservar las imágenes remotas (`http(s)://`) en los exports HTML saneados. Están **bloqueadas por defecto**: abrir el fichero las descargaría, y los píxeles de rastreo le dicen al remitente cuándo y desde dónde se leyó el mensaje. Una nota al principio de cada página dice cuántas se bloquearon. **Solo HTML.** |
 | `--force` | Reconstruye el índice antes de exportar. Aquí se escribe entero: `-f` es `--format`. |
 
 #### Salida de `stats`
@@ -415,7 +416,7 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 | EML | `eml` (por defecto) | un `.eml` por mensaje en la carpeta de salida | Añade `--qp` para cuerpos ASCII de 7 bits puro |
 | CSV | `csv` | un único fichero `.csv` resumen | UTF-8 con BOM (compatible con Excel); separador configurable |
 | Texto plano | `txt` / `text` | un `.txt` por mensaje | Cuerpo de texto decodificado |
-| HTML | `html` | un `.html` independiente por mensaje | Cuerpo saneado por defecto; `--raw-html` lo deja intacto (solo archivado local) |
+| HTML | `html` | un `.html` independiente por mensaje | Cuerpo saneado e imágenes remotas bloqueadas por defecto (`--allow-remote-images` las conserva); `--raw-html` lo deja intacto (solo archivado local) |
 | MBOX | `mbox` | un único buzón `.mbox` nuevo | La selección escrita de vuelta como buzón. Los mensajes leídos de un MBOX se copian byte a byte; a los que no tienen línea sobre se les sintetiza la línea `From ` y el escapado de `From `. El fichero de origen nunca se modifica. |
 | Maildir | `maildir` | un directorio Maildir (`cur/`, `new/`, `tmp/`) | Un fichero por mensaje en `cur/`, sin la línea `From ` del mbox y deshaciendo el escapado `>From `. `Status:`/`X-Status:` (y las etiquetas `Opened`/`Starred` de Gmail) pasan a flags de Maildir (`S`, `R`, `F`, `T`, `D`); la fecha de cada fichero es la del mensaje. Exportar a un Maildir existente añade y nunca sobrescribe. En Windows el separador de flags es `;` en vez de `:`. |
 
