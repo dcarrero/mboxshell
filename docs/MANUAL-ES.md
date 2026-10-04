@@ -425,6 +425,8 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 | MBOX | `mbox` | un único buzón `.mbox` nuevo | La selección escrita de vuelta como buzón. Los mensajes leídos de un MBOX se copian byte a byte; a los que no tienen línea sobre se les sintetiza la línea `From ` y el escapado de `From `. El fichero de origen nunca se modifica. |
 | Maildir | `maildir` | un directorio Maildir (`cur/`, `new/`, `tmp/`) | Un fichero por mensaje en `cur/`, sin la línea `From ` del mbox y deshaciendo el escapado `>From `. `Status:`/`X-Status:` (y las etiquetas `Opened`/`Starred` de Gmail) pasan a flags de Maildir (`S`, `R`, `F`, `T`, `D`); la fecha de cada fichero es la del mensaje. Exportar a un Maildir existente añade y nunca sobrescribe. En Windows el separador de flags es `;` en vez de `:`. |
 
+Cada página HTML empieza con un encabezado oculto a la vista, `Email 0023 — 2024-03-05 09:08 — Asunto`, y un marcador invisible `__EMAIL_START_0023__`; el número es la posición del mensaje en el buzón, contando desde 1 (igual que `attachments --dirname seq-no`). Si conviertes las páginas a PDF con una herramienta como wkhtmltopdf y las unes, el encabezado se convierte en un marcador del PDF por mensaje y el marcador invisible indica dónde volver a partirlo. Los lectores de pantalla lo reciben como encabezado principal de la página.
+
 Combínalo con `--query` para exportar solo los mensajes coincidentes:
 
 ```bash

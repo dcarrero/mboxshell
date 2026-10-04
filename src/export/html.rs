@@ -4,6 +4,13 @@
 //! table and the original HTML body when present (falling back to
 //! `<pre>`-wrapped plain text). Suitable for archival and for sharing
 //! a message with anyone who has a browser.
+//!
+//! Every page opens with a visually hidden `<h1>` (`Email 0023 — date —
+//! subject`) and an invisible `__EMAIL_START_0023__` marker, numbered by the
+//! message's position in the mailbox from 1. Converted with wkhtmltopdf and
+//! joined into one PDF, the heading becomes a bookmark and the marker shows
+//! where to split it again (issue #36); the heading also gives screen
+//! readers a title for the page.
 
 use std::path::{Path, PathBuf};
 
@@ -56,9 +63,22 @@ pub fn export_html_opts(
          pre{white-space:pre-wrap;word-wrap:break-word;font-family:ui-monospace,Menlo,Consolas,monospace}\n\
          .attachments{margin-top:2em;padding-top:1em;border-top:1px solid #ddd;color:#555}\n\
          .attachments li{margin:.25em 0}\n\
-         .note{background:#fff8dc;border:1px solid #e0c96a;padding:.5em .75em;color:#5a4a00}\n",
+         .note{background:#fff8dc;border:1px solid #e0c96a;padding:.5em .75em;color:#5a4a00}\n\
+         .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}\n\
+         .marker{font-size:1px;line-height:1px;color:transparent}\n",
     );
     out.push_str("</style>\n</head>\n<body>\n");
+
+    // Bookmark heading and split marker (issue #36)
+    let number = entry.sequence + 1;
+    out.push_str(&format!(
+        "<h1 class=\"sr-only\">Email {number:04} \u{2014} {} \u{2014} {}</h1>\n",
+        entry.date.format("%Y-%m-%d %H:%M"),
+        escape_html(&entry.subject)
+    ));
+    out.push_str(&format!(
+        "<div class=\"marker\" aria-hidden=\"true\">__EMAIL_START_{number:04}__</div>\n"
+    ));
 
     // Headers
     out.push_str("<table class=\"hdr\">\n");
@@ -254,6 +274,27 @@ mod tests {
         assert!(content.contains("Test &lt;subject&gt; &amp; more"));
         assert!(content.contains("alice@example.com"));
         assert!(content.contains("<pre>Hello</pre>"));
+    }
+
+    #[test]
+    fn test_export_html_bookmark_heading_and_split_marker() {
+        let mut entry = sample_entry();
+        entry.sequence = 22; // the 23rd message of the mailbox
+        let body = MailBody {
+            text: Some("Hello".to_string()),
+            html: None,
+            raw_headers: String::new(),
+            attachments: vec![],
+        };
+        let tmp = tempfile::tempdir().unwrap();
+        let path = export_html(&entry, &body, tmp.path()).unwrap();
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains(
+            "<h1 class=\"sr-only\">Email 0023 \u{2014} 2024-01-04 10:00 \u{2014} Test &lt;subject&gt; &amp; more</h1>"
+        ));
+        assert!(content.contains("__EMAIL_START_0023__"));
+        // Both come before the message itself
+        assert!(content.find("__EMAIL_START_0023__") < content.find("<table class=\"hdr\">"));
     }
 
     #[test]

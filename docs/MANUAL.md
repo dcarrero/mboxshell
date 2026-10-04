@@ -425,6 +425,8 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 | MBOX | `mbox` | a single new `.mbox` mailbox | The selection written back out as a mailbox. Messages read from an MBOX are copied byte for byte; ones without an envelope line get a `From ` line and `From `-quoting synthesized. The source file is never modified. |
 | Maildir | `maildir` | a Maildir directory (`cur/`, `new/`, `tmp/`) | One file per message in `cur/`, without the mbox `From ` line and with `>From ` quoting undone. `Status:`/`X-Status:` (and Gmail's `Opened`/`Starred` labels) become Maildir flags (`S`, `R`, `F`, `T`, `D`); file times are set to the message date. Exporting into an existing Maildir adds to it and never overwrites. On Windows the flag separator is `;` instead of `:`. |
 
+Each HTML page starts with a visually hidden heading, `Email 0023 — 2024-03-05 09:08 — Subject`, and an invisible `__EMAIL_START_0023__` marker; the number is the message's position in the mailbox, counting from 1 (the same as `attachments --dirname seq-no`). If you convert the pages to PDF with a tool such as wkhtmltopdf and join them, the heading becomes a PDF bookmark per message and the marker shows where to split the document again. Screen readers get it as the page's main heading.
+
 Combine with `--query` to export only matching messages:
 
 ```bash
