@@ -497,12 +497,16 @@ fn is_windows_reserved(name: &str) -> bool {
     let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
     match stem.as_str() {
         "CON" | "PRN" | "AUX" | "NUL" => true,
-        _ => {
-            let (prefix, digit) = stem.split_at(stem.len().min(3));
-            matches!(prefix, "COM" | "LPT")
-                && digit.len() == 1
-                && digit.chars().all(|c| c.is_ascii_digit())
-        }
+        // `split_at_checked`, not `split_at`: byte 3 can fall inside a
+        // multi-byte character (`Coé…`), which is never a device name (#37).
+        _ => match stem.split_at_checked(3) {
+            Some((prefix, digit)) => {
+                matches!(prefix, "COM" | "LPT")
+                    && digit.len() == 1
+                    && digit.chars().all(|c| c.is_ascii_digit())
+            }
+            None => false,
+        },
     }
 }
 
@@ -539,6 +543,9 @@ mod tests {
         assert_eq!(sanitize_filename_part("Lpt9", 20), "_Lpt9");
         assert_eq!(sanitize_filename_part("console.log", 20), "console.log");
         assert_eq!(sanitize_filename_part("COM10.txt", 20), "COM10.txt");
+        // A multi-byte character straddling byte 3 must not panic (#37).
+        assert_eq!(sanitize_filename_part("coé.txt", 20), "coé.txt");
+        assert_eq!(sanitize_filename_part("ab", 20), "ab");
     }
 
     #[test]
