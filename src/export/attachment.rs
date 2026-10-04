@@ -40,13 +40,32 @@ pub fn export_all_attachments(
     Ok(paths)
 }
 
+/// How `export_bulk_attachments` names each message's subfolder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderNaming {
+    /// `{date}_{subject}` (the default).
+    DateSubject,
+    /// The message's position in the mailbox, zero-padded to `width`
+    /// digits: `start` is the number of the first message (1 or 0). Easy to
+    /// match back to a message, unlike a date shifted by time zones or a
+    /// subject cut short (issue #32).
+    Sequence {
+        /// Number given to the first message of the mailbox.
+        start: u64,
+        /// Minimum number of digits.
+        width: usize,
+    },
+}
+
 /// Extract all attachments from multiple messages.
 ///
-/// Creates a subfolder per message: `{output_dir}/{date}_{subject}/`
+/// Creates a subfolder per message, named as `naming` says:
+/// `{output_dir}/{date}_{subject}/` or `{output_dir}/{number}/`.
 pub fn export_bulk_attachments(
     store: &mut MboxStore,
     entries: &[&MailEntry],
     output_dir: &Path,
+    naming: FolderNaming,
     progress: &dyn Fn(usize, usize),
 ) -> anyhow::Result<Vec<PathBuf>> {
     std::fs::create_dir_all(output_dir)?;
@@ -61,7 +80,7 @@ pub fn export_bulk_attachments(
             continue;
         }
 
-        let subfolder_name = message_folder_name(entry);
+        let subfolder_name = message_folder_name(entry, naming);
         let subfolder = output_dir.join(&subfolder_name);
         std::fs::create_dir_all(&subfolder)?;
 
@@ -84,10 +103,17 @@ pub fn export_bulk_attachments(
 }
 
 /// Generate a folder name for a message's attachments.
-fn message_folder_name(entry: &MailEntry) -> String {
-    let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
-    let subject = sanitize_filename_part(&entry.subject, 60);
-    format!("{date}_{subject}")
+fn message_folder_name(entry: &MailEntry, naming: FolderNaming) -> String {
+    match naming {
+        FolderNaming::DateSubject => {
+            let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
+            let subject = sanitize_filename_part(&entry.subject, 60);
+            format!("{date}_{subject}")
+        }
+        FolderNaming::Sequence { start, width } => {
+            format!("{:0width$}", entry.sequence + start)
+        }
+    }
 }
 
 /// Write `data` to `path`, or to `stem_1.ext`, `stem_2.ext`… when that name
@@ -143,6 +169,42 @@ mod tests {
         assert_eq!(
             std::fs::read(dir.path().join("a_1004.png")).unwrap(),
             1004u32.to_le_bytes()
+        );
+    }
+
+    #[test]
+    fn test_message_folder_name_sequence() {
+        use crate::model::address::EmailAddress;
+        use chrono::TimeZone;
+
+        let entry = MailEntry {
+            offset: 0,
+            length: 500,
+            date: chrono::Utc.with_ymd_and_hms(2024, 3, 5, 9, 8, 7).unwrap(),
+            from: EmailAddress {
+                display_name: String::new(),
+                address: "a@example.com".to_string(),
+            },
+            to: Vec::new(),
+            cc: Vec::new(),
+            subject: "Invoice / March".to_string(),
+            message_id: String::new(),
+            in_reply_to: None,
+            references: Vec::new(),
+            has_attachments: true,
+            content_type: "multipart/mixed".to_string(),
+            text_size: 100,
+            labels: Vec::new(),
+            thread_id: None,
+            sequence: 9, // the 10th message of the mailbox
+        };
+        let seq = |start, width| FolderNaming::Sequence { start, width };
+        assert_eq!(message_folder_name(&entry, seq(1, 4)), "0010");
+        assert_eq!(message_folder_name(&entry, seq(0, 4)), "0009");
+        // The width is a minimum, never a cut
+        assert_eq!(message_folder_name(&entry, seq(1, 1)), "10");
+        assert!(
+            message_folder_name(&entry, FolderNaming::DateSubject).starts_with("20240305_090807_")
         );
     }
 }

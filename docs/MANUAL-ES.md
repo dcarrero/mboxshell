@@ -120,6 +120,9 @@ mboxshell export correo.mbox --format mbox --query "subject:factura" -o facturas
 # Extraer todos los adjuntos
 mboxshell attachments correo.mbox --output ./adjuntos/
 
+# ...con una carpeta por mensaje numerada según su posición en el buzón (0001, 0002…)
+mboxshell attachments correo.mbox --output ./adjuntos/ --dirname seq-no
+
 # Fusionar varios buzones en uno, descartando duplicados
 mboxshell merge a.mbox b.mbox -o fusionado.mbox
 ```
@@ -156,7 +159,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `search <ruta> <consulta> [--json]` | Buscar y mostrar los mensajes coincidentes |
 | `export <ruta> -o <salida> [opciones]` | Exportar mensajes (ver abajo) |
 | `merge <entradas...> -o <salida> [--no-dedup] [--source-header]` | Fusionar varios ficheros MBOX en uno |
-| `attachments <ruta> -o <salida>` | Extraer todos los adjuntos a una carpeta |
+| `attachments <ruta> -o <salida> [--dirname dts\|seq-no\|seq-no0] [--seq-width N]` | Extraer todos los adjuntos a una carpeta, con una subcarpeta por mensaje |
 | `completions <shell>` | Imprimir el script de autocompletado (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Imprimir una página de manual por stdout |
 
@@ -173,6 +176,8 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `--force` | Reconstruye el índice antes de exportar. Aquí se escribe entero: `-f` es `--format`. |
 
 #### Salida de `stats`
+
+`attachments` nombra por defecto la carpeta de cada mensaje con su fecha y asunto (`20240305_090807_Factura`). Con `--dirname seq-no` la carpeta es la posición del mensaje en el buzón, contando desde 1 (`seq-no0` cuenta desde 0); los números se rellenan con ceros hasta los dígitos que pida el número de mensajes, o al menos hasta `--seq-width N`. Esa posición es el campo `index` de `search --json` (que cuenta desde 0), así que cada carpeta se empareja con su mensaje sin adivinar zonas horarias ni asuntos recortados. `attachment_dirname` y `attachment_seq_width` en `[export]` fijan los valores por defecto.
 
 `stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, el número de `Message-ID` duplicados (con el recuento de IDs únicos), cuántos mensajes no tienen `Message-ID` (si es 0 y no hay duplicados, el Message-ID sirve como clave única de ese buzón), y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
 
@@ -491,6 +496,8 @@ size_width = 8
 default_format = "eml"          # eml | csv | txt | html
 # default_output_dir = "./salida"
 csv_separator  = ","
+attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (nombres de carpeta de attachments)
+attachment_seq_width = 0        # dígitos mínimos de seq-no; 0 = los necesarios
 
 [performance]
 read_buffer_size = 131072       # búfer de streaming de 128 KB

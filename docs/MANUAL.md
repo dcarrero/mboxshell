@@ -120,6 +120,9 @@ mboxshell export mail.mbox --format mbox --query "subject:invoice" -o invoices.m
 # Extract every attachment
 mboxshell attachments mail.mbox --output ./attachments/
 
+# ...one folder per message, named by its position in the mailbox (0001, 0002…)
+mboxshell attachments mail.mbox --output ./attachments/ --dirname seq-no
+
 # Merge several mailboxes into one, dropping duplicates
 mboxshell merge a.mbox b.mbox -o merged.mbox
 ```
@@ -156,7 +159,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `search <path> <query> [--json]` | Search and print matching messages |
 | `export <path> -o <out> [options]` | Export messages (see below) |
 | `merge <inputs...> -o <out> [--no-dedup] [--source-header]` | Merge several MBOX files into one |
-| `attachments <path> -o <out>` | Extract all attachments into a directory |
+| `attachments <path> -o <out> [--dirname dts\|seq-no\|seq-no0] [--seq-width N]` | Extract all attachments into a directory, one folder per message |
 | `completions <shell>` | Print shell completion script (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Print a man page to stdout |
 
@@ -173,6 +176,8 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `--force` | Rebuild the index first. Spelled out in full here: `-f` is `--format`. |
 
 #### `stats` output
+
+`attachments` names each message's folder after its date and subject (`20240305_090807_Invoice`) by default. With `--dirname seq-no` the folder is the message's position in the mailbox, counting from 1 (`seq-no0` counts from 0); the numbers are zero-padded to as many digits as the message count needs, or to at least `--seq-width N`. That position is the `index` field of `search --json` (which counts from 0), so a folder can be matched back to its message without guessing time zones or truncated subjects. `attachment_dirname` and `attachment_seq_width` in `[export]` set the defaults.
 
 `stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, the number of duplicate `Message-ID`s (with the count of unique IDs), how many messages have no `Message-ID` (when it is 0 and there are no duplicates, the Message-ID works as a unique key for that mailbox), and the top 10 senders. Add `--json` for a machine-readable object.
 
@@ -491,6 +496,8 @@ size_width = 8
 default_format = "eml"          # eml | csv | txt | html
 # default_output_dir = "./out"
 csv_separator  = ","
+attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (attachments folder names)
+attachment_seq_width = 0        # minimum digits for seq-no; 0 = as many as needed
 
 [performance]
 read_buffer_size = 131072       # 128 KB streaming buffer

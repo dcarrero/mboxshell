@@ -79,6 +79,19 @@ struct ExportFlags {
     allow_remote_images: bool,
 }
 
+/// How `attachments` names each message's folder (issue #32).
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+enum AttachmentDirname {
+    // Date and subject: 20240305_090807_Invoice
+    Dts,
+    // Position in the mailbox, the first message being 1
+    #[value(name = "seq-no")]
+    SeqNo,
+    // Position in the mailbox, the first message being 0
+    #[value(name = "seq-no0")]
+    SeqNo0,
+}
+
 /// Shared `-f/--force` flag for the subcommands that build an index.
 #[derive(clap::Args, Clone, Copy)]
 struct ForceArg {
@@ -187,6 +200,15 @@ enum Commands {
         /// Folder to extract the attachments into
         #[arg(short, long)]
         output: PathBuf,
+        /// How to name each message's folder: dts (date and subject, the
+        /// default), seq-no (position in the mailbox from 1) or seq-no0
+        /// (from 0)
+        #[arg(long, value_enum)]
+        dirname: Option<AttachmentDirname>,
+        /// Minimum digits of a seq-no/seq-no0 folder, zero-padded (default:
+        /// enough for the mailbox's message count)
+        #[arg(long, value_name = "N")]
+        seq_width: Option<usize>,
         #[command(flatten)]
         force: ForceArg,
     },
@@ -329,6 +351,16 @@ const ARG_HELP_ES: &[(&str, &str, &str)] = &[
         "Añadir a cada mensaje una cabecera `X-Mbox-Source: <buzón>` para saber de qué buzón viene",
     ),
     ("attachments", "output", "Carpeta donde extraer los adjuntos"),
+    (
+        "attachments",
+        "dirname",
+        "Cómo nombrar la carpeta de cada mensaje: dts (fecha y asunto, por defecto), seq-no (posición en el buzón desde 1) o seq-no0 (desde 0)",
+    ),
+    (
+        "attachments",
+        "seq_width",
+        "Dígitos mínimos de una carpeta seq-no/seq-no0, rellenando con ceros (por defecto: los que pida el número de mensajes del buzón)",
+    ),
     ("completions", "shell", "Shell para la que generar el autocompletado"),
 ];
 
@@ -472,8 +504,17 @@ fn main() -> anyhow::Result<()> {
         Some(Commands::Attachments {
             path,
             output,
+            dirname,
+            seq_width,
             force,
-        }) => cmd_attachments(&path, &output, root_force || force.force),
+        }) => cmd_attachments(
+            &path,
+            &output,
+            dirname,
+            seq_width,
+            &config.export,
+            root_force || force.force,
+        ),
         Some(Commands::Completions { shell }) => cmd_completions(shell),
         Some(Commands::Manpage) => cmd_manpage(),
     }
@@ -934,12 +975,53 @@ fn cmd_merge(
 }
 
 /// Extract all attachments from an MBOX file.
-fn cmd_attachments(path: &Path, output: &Path, force: bool) -> anyhow::Result<()> {
+///
+/// `dirname` and `seq_width` come from the command line and win over the
+/// `[export]` settings of the config file.
+fn cmd_attachments(
+    path: &Path,
+    output: &Path,
+    dirname: Option<AttachmentDirname>,
+    seq_width: Option<usize>,
+    export_config: &mboxshell::config::ExportConfig,
+    force: bool,
+) -> anyhow::Result<()> {
+    use clap::ValueEnum;
+    use mboxshell::export::attachment::FolderNaming;
+
     if !path.exists() {
         anyhow::bail!("{}: {}", i18n::err_file_not_found(), path.display());
     }
 
+    // Resolve the configured name before indexing, so a typo costs nothing.
+    let dirname = match dirname {
+        Some(d) => d,
+        None => {
+            AttachmentDirname::from_str(&export_config.attachment_dirname, true).map_err(|_| {
+                anyhow::anyhow!(
+                    "attachment_dirname = \"{}\": dts | seq-no | seq-no0",
+                    export_config.attachment_dirname
+                )
+            })?
+        }
+    };
+
     let entries = builder::build_index(path, force, None)?;
+
+    let naming = match dirname {
+        AttachmentDirname::Dts => FolderNaming::DateSubject,
+        AttachmentDirname::SeqNo | AttachmentDirname::SeqNo0 => {
+            let start = u64::from(dirname == AttachmentDirname::SeqNo);
+            // Digits of the highest number, so the folders sort in order.
+            let last = (entries.len() as u64).saturating_sub(1) + start;
+            let auto = last.to_string().len();
+            let width = match seq_width.unwrap_or(export_config.attachment_seq_width) {
+                0 => auto,
+                w => w,
+            };
+            FolderNaming::Sequence { start, width }
+        }
+    };
     let mut store = mboxshell::store::reader::MboxStore::open(path)?;
 
     let with_att: Vec<&mboxshell::model::mail::MailEntry> =
@@ -971,6 +1053,7 @@ fn cmd_attachments(path: &Path, output: &Path, force: bool) -> anyhow::Result<()
         &mut store,
         &with_att,
         output,
+        naming,
         &|current, _total| {
             pb.set_position(current as u64);
         },

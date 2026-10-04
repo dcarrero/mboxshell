@@ -80,6 +80,13 @@ pub struct ExportConfig {
     pub default_output_dir: Option<PathBuf>,
     /// CSV field separator character.
     pub csv_separator: char,
+    /// How `attachments` names each message's folder: "dts" (date and
+    /// subject), "seq-no" (position in the mailbox, from 1) or "seq-no0"
+    /// (from 0).
+    pub attachment_dirname: String,
+    /// Minimum digits of a "seq-no"/"seq-no0" folder, zero-padded. 0 picks
+    /// the digits of the mailbox's message count, so folders sort in order.
+    pub attachment_seq_width: usize,
 }
 
 /// Performance tuning.
@@ -136,6 +143,8 @@ impl Default for ExportConfig {
             default_format: "eml".to_string(),
             default_output_dir: None,
             csv_separator: ',',
+            attachment_dirname: "dts".to_string(),
+            attachment_seq_width: 0,
         }
     }
 }
