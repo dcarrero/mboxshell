@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.8.2
+
+A fix for a crash when exporting. No new features and no index format change.
+
+- Fix: **exporting could panic on a message whose subject or sender has an accented letter near the start** (#37), with `end byte index 3 is not a char boundary`. The check for reserved Windows file names (`CON`, `COM1`…) added in v0.8.0 cut the name at byte 3, which can fall inside a multi-byte character such as `é`. It affected HTML, EML and text exports and `attachments` on every platform, not only Windows. The name is now cut only at a character boundary.
+
 ## v0.8.1
 
 A fix for mailboxes exported from Aruba's webmail, plus three small features requested on GitHub. 4 new tests (294 total). No index format change.

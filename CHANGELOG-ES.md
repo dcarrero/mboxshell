@@ -4,6 +4,12 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.8.2
+
+Arreglo de un cierre inesperado al exportar. Sin funciones nuevas y sin cambios en el formato del índice.
+
+- Arreglo: **exportar podía abortar con un mensaje cuyo asunto o remitente lleva una letra acentuada cerca del principio** (#37), con el error `end byte index 3 is not a char boundary`. La comprobación de nombres de fichero reservados en Windows (`CON`, `COM1`…) que se añadió en v0.8.0 cortaba el nombre en el byte 3, que puede caer en mitad de un carácter de varios bytes como `é`. Afectaba a las exportaciones HTML, EML y de texto y a `attachments` en todas las plataformas, no solo en Windows. Ahora el nombre solo se corta en un límite de carácter.
+
 ## v0.8.1
 
 Arreglo para los buzones exportados desde el webmail de Aruba y tres funciones pequeñas pedidas en GitHub. 4 tests nuevos (294 en total). Sin cambios en el formato del índice.
