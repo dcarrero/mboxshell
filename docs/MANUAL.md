@@ -174,7 +174,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 
 #### `stats` output
 
-`stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, the number of duplicate `Message-ID`s (with the count of unique IDs), and the top 10 senders. Add `--json` for a machine-readable object.
+`stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, the number of duplicate `Message-ID`s (with the count of unique IDs), how many messages have no `Message-ID` (when it is 0 and there are no duplicates, the Message-ID works as a unique key for that mailbox), and the top 10 senders. Add `--json` for a machine-readable object.
 
 #### Examples
 

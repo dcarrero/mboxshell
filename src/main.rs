@@ -1138,6 +1138,11 @@ fn print_stats_table(
         unique_ids,
         i18n::msg_unique_ids()
     );
+    println!(
+        "  {:<20} {}",
+        i18n::msg_without_message_id(),
+        index_reader::count_without_message_id(entries)
+    );
 
     let top = index_reader::top_senders(entries, 10);
     if !top.is_empty() {
@@ -1192,6 +1197,7 @@ fn print_stats_json(
         "with_attachments": index_reader::count_with_attachments(entries),
         "duplicates": duplicates,
         "unique_ids": unique_ids,
+        "without_message_id": index_reader::count_without_message_id(entries),
         "top_senders": top_json,
     });
 

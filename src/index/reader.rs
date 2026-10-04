@@ -55,6 +55,17 @@ pub fn count_duplicates(entries: &[MailEntry]) -> (usize, usize) {
     (duplicates, unique)
 }
 
+/// Count messages with no `Message-ID` header (or an empty one).
+///
+/// When this is zero, the Message-ID can serve as a unique key for the
+/// mailbox, provided [`count_duplicates`] also reports none.
+pub fn count_without_message_id(entries: &[MailEntry]) -> usize {
+    entries
+        .iter()
+        .filter(|e| e.message_id.trim().is_empty())
+        .count()
+}
+
 /// Return the top N senders by message count.
 pub fn top_senders(entries: &[MailEntry], n: usize) -> Vec<(String, usize)> {
     let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -115,5 +126,6 @@ mod tests {
         let (duplicates, unique_ids) = count_duplicates(&entries);
         assert_eq!(duplicates, 2);
         assert_eq!(unique_ids, 3);
+        assert_eq!(count_without_message_id(&entries), 1);
     }
 }

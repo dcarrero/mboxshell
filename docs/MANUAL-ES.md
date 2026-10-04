@@ -174,7 +174,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 
 #### Salida de `stats`
 
-`stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, el número de `Message-ID` duplicados (con el recuento de IDs únicos), y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
+`stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, el número de `Message-ID` duplicados (con el recuento de IDs únicos), cuántos mensajes no tienen `Message-ID` (si es 0 y no hay duplicados, el Message-ID sirve como clave única de ese buzón), y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
 
 #### Ejemplos
 
