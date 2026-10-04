@@ -4,6 +4,15 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v0.8.1
+
+Arreglo para los buzones exportados desde el webmail de Aruba y tres funciones pequeñas pedidas en GitHub. 4 tests nuevos (294 en total). Sin cambios en el formato del índice.
+
+- Arreglo: **los buzones exportados desde el webmail de Aruba se abrían como un único mensaje** (#35), con el aviso de «mensaje demasiado grande» en los grandes. Aruba escribe la línea separadora con una fecha RFC 2822 (`From MBOX_EXPORT Sun, 27 Sep 2026 17:09:11 +0000 (GMT)`) en lugar de la asctime clásica, y la comprobación de separadores que se añadió con el #16 solo aceptaba esta última. Ahora se aceptan también las fechas RFC 2822, con la zona horaria obligatoria y, detrás, como mucho un comentario entre paréntesis, así que un texto del cuerpo que cite una fecha sigue sin partir el mensaje.
+- Novedad: **`stats` cuenta los mensajes sin Message-ID** (#33), también como `without_message_id` en `--json`. Si sale 0 y no hay duplicados, el Message-ID sirve como clave única de ese buzón.
+- Novedad: **`attachments --dirname seq-no|seq-no0`** (#32) nombra la carpeta de cada mensaje con su posición en el buzón (desde 1, o desde 0) en vez de con su fecha y asunto, que por zonas horarias y recortes costaba emparejar. Los números se rellenan con ceros hasta los dígitos que pida el número de mensajes, o hasta `--seq-width N`. La posición coincide con el campo `index` de `search --json`. `dts` (fecha y asunto) sigue siendo el valor por defecto; `attachment_dirname` y `attachment_seq_width` en `[export]` lo cambian.
+- Novedad: **cada export HTML empieza con un `<h1>` oculto a la vista** (`Email 0023 — fecha — asunto`) **y un marcador invisible `__EMAIL_START_0023__`** (#36), numerados como `seq-no`. Al pasar las páginas a PDF con wkhtmltopdf y unirlas, cada mensaje tiene su marcador en el PDF y el separador indica dónde volver a partirlo (comprobado con wkhtmltopdf 0.12.6.1). Los lectores de pantalla reciben el encabezado como encabezado principal de la página.
+
 ## v0.8.0
 
 Versión de seguridad, accesibilidad y usabilidad fruto de una revisión completa, con exportación a Maildir y tema claro. Incluye además el endurecimiento de v0.7.4 (más abajo), que nunca llegó a publicarse por separado. 29 tests nuevos (290 en total). Sin cambios en el formato del índice.

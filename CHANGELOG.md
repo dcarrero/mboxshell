@@ -4,6 +4,15 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.8.1
+
+A fix for mailboxes exported from Aruba's webmail, plus three small features requested on GitHub. 4 new tests (294 total). No index format change.
+
+- Fix: **mailboxes exported from Aruba's webmail opened as a single message** (#35), with a "message too large" notice on big ones. Aruba writes the separator line with an RFC 2822 date (`From MBOX_EXPORT Sun, 27 Sep 2026 17:09:11 +0000 (GMT)`) instead of the classic asctime one, and the separator check added for #16 only accepted the latter. RFC 2822 dates are now accepted too, with a time zone required and nothing but a parenthesised comment after it, so body text quoting a date still does not split a message.
+- Feature: **`stats` counts messages without a Message-ID** (#33), also as `without_message_id` in `--json`. When it is 0 and there are no duplicates, the Message-ID is a safe unique key for that mailbox.
+- Feature: **`attachments --dirname seq-no|seq-no0`** (#32) names each message's folder after its position in the mailbox (from 1, or from 0) instead of its date and subject, which time zones and truncation made hard to match back. Numbers are zero-padded to the digits the message count needs, or to `--seq-width N`. The position matches the `index` field of `search --json`. `dts` (date and subject) stays the default; `attachment_dirname` and `attachment_seq_width` under `[export]` change it.
+- Feature: **every HTML export starts with a visually hidden `<h1>`** (`Email 0023 — date — subject`) **and an invisible `__EMAIL_START_0023__` marker** (#36), numbered like `seq-no`. Converted with wkhtmltopdf and joined into one PDF, each message gets a bookmark and the marker shows where to split the PDF again (checked with wkhtmltopdf 0.12.6.1). Screen readers get the heading as the page's main heading.
+
 ## v0.8.0
 
 A security, accessibility and usability release from a full review of the tool, plus Maildir export and a light theme. It also carries the v0.7.4 hardening below, which was never published on its own. 29 new tests (290 total). No index format change.
