@@ -36,7 +36,8 @@ const MAX_HEADER_RETAIN: usize = 16 * 1024 * 1024;
 /// - Mixed `\n` and `\r\n` line endings
 /// - `From ` lines not preceded by a blank line (logs a warning)
 /// - `From `-prefixed lines inside message bodies: only lines shaped like a
-///   real separator (`From <sender> <asctime date>`) split messages, and
+///   real separator (`From <sender> <asctime date>`, or an RFC 2822 date as
+///   Aruba's webmail writes it) split messages, and
 ///   git `format-patch` pseudo-separators (magic date `Mon Sep 17 00:00:00
 ///   2001`) are treated as content unless the file itself is a patch series
 /// - Truncated messages at EOF
@@ -433,6 +434,7 @@ fn read_line_capped<R: BufRead>(
 /// quotes an email verbatim — disqualifies the line. A bare `From ` line
 /// with nothing after it is also a separator: some writers (e.g.
 /// Thunderbird exporting a Gmail account) emit exactly that (issue #16).
+/// An RFC 2822 date in place of asctime is accepted too (issue #35).
 fn classify_from_line(line: &[u8]) -> FromLineKind {
     // Skip BOM if present at very start
     let line = if line.starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -447,6 +449,9 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
         return FromLineKind::Content;
     };
     let tokens: Vec<&str> = rest.split_ascii_whitespace().collect();
+    if tokens.len() > 1 && is_rfc2822_envelope_date(&tokens[1..]) {
+        return FromLineKind::Separator;
+    }
 
     // sender + "Www Mmm dd hh:mm:ss yyyy" (+ optional timezone)
     let date = match tokens.len() {
@@ -479,6 +484,32 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
         return FromLineKind::GitPatchMarker;
     }
     FromLineKind::Separator
+}
+
+/// RFC 2822 date in the envelope instead of asctime, as written by Aruba's
+/// webmail export (issue #35): `[Www,] dd Mmm yyyy hh:mm:ss zone [(comment)]`.
+/// The zone is required and only a parenthesised comment may follow it, so
+/// body prose that happens to contain a date still reads as content.
+fn is_rfc2822_envelope_date(tokens: &[&str]) -> bool {
+    let tokens = match tokens.first().and_then(|t| t.strip_suffix(',')) {
+        Some(dow) if is_day_of_week(dow) => &tokens[1..],
+        _ => tokens,
+    };
+    let [day, mon, year, time, zone, comment @ ..] = tokens else {
+        return false;
+    };
+    let comment_ok = match comment {
+        [] => true,
+        [first, ..] => {
+            first.starts_with('(') && comment.last().is_some_and(|last| last.ends_with(')'))
+        }
+    };
+    is_day(day)
+        && is_month(mon)
+        && is_year(year)
+        && is_time(time)
+        && is_timezone(zone)
+        && comment_ok
 }
 
 fn is_day_of_week(s: &str) -> bool {
@@ -604,6 +635,80 @@ mod tests {
             classify_from_line(b"From user@example.com Fri Jul  8 12:08:34 EDT 2011\n"),
             Separator
         );
+    }
+
+    #[test]
+    fn test_classify_from_line_rfc2822_date() {
+        use FromLineKind::*;
+        // Aruba webmail export (issue #35), CRLF ending
+        assert_eq!(
+            classify_from_line(b"From MBOX_EXPORT Sun, 27 Sep 2026 17:09:11 +0000 (GMT)\r\n"),
+            Separator
+        );
+        // Without day of week, without comment, multi-word comment
+        assert_eq!(
+            classify_from_line(b"From u@e.com 27 Sep 2026 17:09:11 +0200\n"),
+            Separator
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Sun, 27 Sep 2026 17:09:11 CEST (Central European)\n"),
+            Separator
+        );
+        // A zone is required, and nothing but a comment may follow it
+        assert_eq!(
+            classify_from_line(b"From u@e.com Sun, 27 Sep 2026 17:09:11\n"),
+            Content
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Sun, 27 Sep 2026 17:09:11 +0000<br>\n"),
+            Content
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Sun, 27 Sep 2026 17:09:11 +0000 wrote:\n"),
+            Content
+        );
+        assert_eq!(
+            classify_from_line(b"From u@e.com Sun, 32 Sep 2026 17:09:11 +0000\n"),
+            Content
+        );
+    }
+
+    /// Regression test for issue #35: an Aruba webmail export (RFC 2822
+    /// envelope dates, CRLF) must split into one entry per message.
+    #[test]
+    fn test_aruba_export_splits_messages() {
+        use std::io::Write;
+
+        let mut data = Vec::new();
+        for i in 1..=3 {
+            data.extend_from_slice(b"From MBOX_EXPORT Sun, 27 Sep 2026 17:09:11 +0000 (GMT)\r\n");
+            data.extend_from_slice(format!("Subject: Message {i}\r\n").as_bytes());
+            data.extend_from_slice(format!("Message-ID: <{i}@example.com>\r\n").as_bytes());
+            data.extend_from_slice(b"\r\nBody\r\n\r\n");
+        }
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut subjects: Vec<String> = Vec::new();
+        let count = parser
+            .parse_headers_only(
+                &mut |_off, _len, headers| {
+                    let h = String::from_utf8_lossy(headers);
+                    let subj = h
+                        .lines()
+                        .find(|l| l.starts_with("Subject: "))
+                        .unwrap_or("")
+                        .to_string();
+                    subjects.push(subj);
+                    true
+                },
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(count, 3, "each RFC 2822 envelope must start a message");
+        assert_eq!(subjects[2], "Subject: Message 3");
     }
 
     #[test]
