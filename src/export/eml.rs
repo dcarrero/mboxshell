@@ -95,7 +95,11 @@ fn eml_filename(entry: &MailEntry) -> String {
 }
 
 /// Strip the `From ` separator line from raw MBOX message bytes.
+///
+/// A leading UTF-8 BOM is skipped as well. [`MboxStore`] already drops it,
+/// but bytes from elsewhere may still carry one.
 pub(crate) fn skip_from_line(raw: &[u8]) -> &[u8] {
+    let raw = raw.strip_prefix(&[0xEF, 0xBB, 0xBF][..]).unwrap_or(raw);
     if raw.starts_with(b"From ") {
         // Find the end of the first line
         if let Some(pos) = raw.iter().position(|&b| b == b'\n') {
@@ -624,6 +628,12 @@ mod tests {
     }
 
     #[test]
+    fn test_skip_from_line_after_bom() {
+        let raw = b"\xEF\xBB\xBFFrom user@example.com Thu Jan 01\nSubject: Test\n\nBody";
+        assert!(skip_from_line(raw).starts_with(b"Subject:"));
+    }
+
+    #[test]
     fn test_skip_from_line_no_from() {
         let raw = b"Subject: Test\n\nBody";
         let result = skip_from_line(raw);
@@ -748,6 +758,32 @@ mod tests {
         assert_eq!(
             extract_boundary("multipart/mixed; boundary=abc; charset=utf-8"),
             Some("abc".to_string())
+        );
+    }
+
+    /// A mailbox whose first byte is a UTF-8 BOM, as some Windows tools write.
+    const BOM_MBOX: &[u8] =
+        b"\xEF\xBB\xBFFrom a@b Thu Jan 04 10:00:00 2024\nSubject: First\n\nbody one\n\n\
+        From c@d Fri Jan 05 10:00:00 2024\nSubject: Second\n\nbody two\n";
+
+    #[test]
+    fn test_export_eml_strips_bom_from_first_message() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("bom.mbox");
+        std::fs::write(&src, BOM_MBOX).unwrap();
+        let entries = crate::index::builder::build_index(&src, true, None).unwrap();
+        assert_eq!(entries[0].subject, "First");
+        let mut store = MboxStore::open(&src).unwrap();
+
+        let out = dir.path().join("out");
+        std::fs::create_dir_all(&out).unwrap();
+        let path = export_eml(&mut store, &entries[0], &out).unwrap();
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        assert!(name.contains("First"), "file name lost the subject: {name}");
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            b"Subject: First\n\nbody one\n",
+            "the BOM and the envelope line must not reach the .eml"
         );
     }
 }

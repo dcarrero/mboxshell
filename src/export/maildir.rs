@@ -248,4 +248,29 @@ mod tests {
         assert!(name_b.ends_with(&format!("{sep}2,")), "{name_b}");
         assert_eq!(body_b.as_slice(), b"Subject: B\n\nhi\n");
     }
+
+    /// A mailbox whose first byte is a UTF-8 BOM, as some Windows tools write.
+    const BOM_MBOX: &[u8] =
+        b"\xEF\xBB\xBFFrom a@b Thu Jan 04 10:00:00 2024\nSubject: First\n\nbody one\n\n\
+        From c@d Fri Jan 05 10:00:00 2024\nSubject: Second\n\nbody two\n";
+
+    #[test]
+    fn test_export_maildir_strips_bom_from_first_message() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("bom.mbox");
+        std::fs::write(&src, BOM_MBOX).unwrap();
+        let entries = builder::build_index(&src, true, None).unwrap();
+        let mut store = MboxStore::open(&src).unwrap();
+        let maildir = dir.path().join("Maildir");
+        export_maildir(&mut store, &[&entries[0]], &maildir, &|_, _| {}).unwrap();
+        let file = std::fs::read_dir(maildir.join("cur"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            std::fs::read(file.path()).unwrap(),
+            b"Subject: First\n\nbody one\n"
+        );
+    }
 }

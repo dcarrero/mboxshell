@@ -24,6 +24,9 @@ const DEFAULT_CACHE_SIZE: usize = 50;
 /// decoded from its first bytes with a notice; exports still copy it whole.
 pub const MAX_DECODE_BYTES: u64 = 256 * 1024 * 1024;
 
+/// The UTF-8 byte order mark, which the indexer tolerates before a `From ` line.
+const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+
 /// Reads messages from an MBOX file using index offsets.
 ///
 /// Maintains an LRU cache of decoded [`MailBody`] objects so that
@@ -85,6 +88,10 @@ impl MboxStore {
     }
 
     /// Read the raw bytes of a message (not cached).
+    ///
+    /// A UTF-8 BOM in front of the message (the first one of a file written by
+    /// some Windows tools) is dropped, so every exporter sees the `From `
+    /// envelope line first, as in any other message.
     pub fn get_raw_message(&mut self, entry: &MailEntry) -> Result<Vec<u8>> {
         self.read_raw(entry)
     }
@@ -104,7 +111,7 @@ impl MboxStore {
         self.read_at(entry.offset, entry.length)
     }
 
-    /// Seek to `offset` and read `length` bytes.
+    /// Seek to `offset` and read `length` bytes, minus a leading UTF-8 BOM.
     fn read_at(&mut self, offset: u64, length: u64) -> Result<Vec<u8>> {
         debug!(offset, length, "Reading message from MBOX");
         self.file
@@ -120,6 +127,9 @@ impl MboxStore {
         self.file
             .read_exact(&mut buf)
             .map_err(|e| MboxError::io(&self.path, e))?;
+        if buf.starts_with(UTF8_BOM) {
+            buf.drain(..UTF8_BOM.len());
+        }
         Ok(buf)
     }
 }
@@ -148,5 +158,24 @@ mod tests {
         assert!(text.len() < 1024, "only the head may be decoded");
         // Exports still get every byte.
         assert_eq!(store.get_raw_message(&entries[0]).unwrap(), data);
+    }
+
+    #[test]
+    fn test_raw_message_drops_leading_bom() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bom.mbox");
+        std::fs::write(
+            &path,
+            b"\xEF\xBB\xBFFrom a@b Thu Jan 01 00:00:00 2024\nSubject: x\n\nbody\n",
+        )
+        .unwrap();
+        let entries = crate::index::builder::build_index(&path, true, None).unwrap();
+        let mut store = MboxStore::open(&path).unwrap();
+        let raw = store.get_raw_message(&entries[0]).unwrap();
+        assert!(raw.starts_with(b"From a@b "), "got: {raw:?}");
+        assert_eq!(
+            store.get_message(&entries[0]).unwrap().text.as_deref(),
+            Some("body\n")
+        );
     }
 }

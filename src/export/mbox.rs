@@ -1182,4 +1182,31 @@ mod tests {
         let out = mbox_record(b"Subject: Hi\n\nno trailing newline", &sample_entry());
         assert!(out.ends_with(b"no trailing newline\n\n"));
     }
+
+    /// A mailbox whose first byte is a UTF-8 BOM, as some Windows tools write.
+    const BOM_MBOX: &[u8] =
+        b"\xEF\xBB\xBFFrom a@b Thu Jan 04 10:00:00 2024\nSubject: First\n\nbody one\n\n\
+        From c@d Fri Jan 05 10:00:00 2024\nSubject: Second\n\nbody two\n";
+
+    #[test]
+    fn test_export_mbox_does_not_duplicate_separator_after_bom() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("bom.mbox");
+        std::fs::write(&src, BOM_MBOX).unwrap();
+        let entries = builder::build_index(&src, true, None).unwrap();
+        let mut store = MboxStore::open(&src).unwrap();
+        let out = dir.path().join("out.mbox");
+        let selection: Vec<&MailEntry> = entries.iter().collect();
+        export_mbox(&mut store, &selection, &out, &|_, _| {}).unwrap();
+
+        let written = std::fs::read(&out).unwrap();
+        assert!(
+            written.starts_with(b"From a@b Thu Jan 04 10:00:00 2024\nSubject: First\n"),
+            "got: {:?}",
+            String::from_utf8_lossy(&written)
+        );
+        let reread = builder::build_index(&out, true, None).unwrap();
+        assert_eq!(reread.len(), 2);
+        assert_eq!(reread[0].subject, "First");
+    }
 }
