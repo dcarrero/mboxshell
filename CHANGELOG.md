@@ -4,8 +4,11 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v0.9.0
 
+Exported messages can now be matched to their attachment folders, and a fix for mailboxes that start with a byte order mark. 7 new tests (301 total). No index format change.
+
+- Feature: **`export` takes `--dirname dts|seq-no|seq-no0` and `--seq-width N`, like `attachments`** (#39), with the same `attachment_dirname` / `attachment_seq_width` defaults from `[export]`. Under `seq-no`/`seq-no0`, each EML, TXT and HTML file is named after its message's attachment folder (`0007.html` goes with `0007/`); under `dts`, the default, file names are unchanged. TXT and HTML exports also print that folder under the attachment list. Numbers are padded for the whole mailbox even when `--query` selects only some messages, so both commands always agree.
 - Fix: **in a mailbox that starts with a UTF-8 BOM, the first message was exported wrong.** Its `.eml` and Maildir file kept the `From ` envelope line as if it were a header, so the subject was lost and the file was named `unknown_unknown`; `export --format mbox` took it for an EML and wrote a second `From MAILER-DAEMON` separator in front of it. The BOM is now dropped where messages are read from the mailbox, so every export sees the first message like any other.
 
 ## v0.8.2

@@ -4,8 +4,11 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
-## Sin publicar
+## v0.9.0
 
+Los mensajes exportados ya se pueden emparejar con su carpeta de adjuntos, y se arregla la exportación de buzones que empiezan por una marca de orden de bytes. 7 tests nuevos (301 en total). Sin cambios en el formato del índice.
+
+- Novedad: **`export` admite `--dirname dts|seq-no|seq-no0` y `--seq-width N`, como `attachments`** (#39), con los mismos valores por defecto `attachment_dirname` / `attachment_seq_width` de `[export]`. Con `seq-no`/`seq-no0`, cada fichero EML, TXT y HTML se llama como la carpeta de adjuntos de su mensaje (`0007.html` va con `0007/`); con `dts`, el valor por defecto, los nombres no cambian. Las exportaciones TXT y HTML indican además esa carpeta bajo la lista de adjuntos. Los números se rellenan según el buzón entero aunque `--query` seleccione solo algunos mensajes, así que los dos comandos siempre coinciden.
 - Arreglo: **en un buzón que empieza por un BOM UTF-8, el primer mensaje se exportaba mal.** Su `.eml` y su fichero Maildir conservaban la línea de sobre `From ` como si fuera una cabecera, así que se perdía el asunto y el fichero se llamaba `unknown_unknown`; `export --format mbox` lo tomaba por un EML y escribía delante un segundo separador `From MAILER-DAEMON`. Ahora el BOM se descarta al leer los mensajes del buzón, y todas las exportaciones ven el primer mensaje como cualquier otro.
 
 ## v0.8.2
