@@ -4,6 +4,10 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## Sin publicar
+
+- Arreglo: **en un buzón que empieza por un BOM UTF-8, el primer mensaje se exportaba mal.** Su `.eml` y su fichero Maildir conservaban la línea de sobre `From ` como si fuera una cabecera, así que se perdía el asunto y el fichero se llamaba `unknown_unknown`; `export --format mbox` lo tomaba por un EML y escribía delante un segundo separador `From MAILER-DAEMON`. Ahora el BOM se descarta al leer los mensajes del buzón, y todas las exportaciones ven el primer mensaje como cualquier otro.
+
 ## v0.8.2
 
 Arreglo de un cierre inesperado al exportar. Sin funciones nuevas y sin cambios en el formato del índice.
