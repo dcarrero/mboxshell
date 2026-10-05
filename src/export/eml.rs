@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use super::attachment::FolderNaming;
 use crate::model::mail::MailEntry;
 use crate::store::reader::MboxStore;
 
@@ -15,7 +16,7 @@ pub fn export_eml(
     entry: &MailEntry,
     output_dir: &Path,
 ) -> anyhow::Result<PathBuf> {
-    export_eml_opts(store, entry, output_dir, false)
+    export_eml_opts(store, entry, output_dir, false, None)
 }
 
 /// Export a single message as an `.eml` file with options.
@@ -25,11 +26,15 @@ pub fn export_eml(
 /// for both single-part and multipart messages (the MIME tree is walked
 /// recursively and each leaf is re-encoded in place). Helps strict-UTF-8
 /// tools like `eml-extractor` and `emlAnalyzer`.
+///
+/// Under sequence `naming` the file is named like the message's attachment
+/// folder (`0007.eml`); otherwise after its date, sender and subject.
 pub fn export_eml_opts(
     store: &mut MboxStore,
     entry: &MailEntry,
     output_dir: &Path,
     qp: bool,
+    naming: Option<FolderNaming>,
 ) -> anyhow::Result<PathBuf> {
     let raw = store.get_raw_message(entry)?;
     let stripped = skip_from_line(&raw);
@@ -39,7 +44,10 @@ pub fn export_eml_opts(
         bytes = reencode_message_as_qp(bytes);
     }
 
-    let filename = eml_filename(entry);
+    let filename = match FolderNaming::file_stem(naming, entry) {
+        Some(stem) => format!("{stem}.eml"),
+        None => eml_filename(entry),
+    };
     let path = output_dir.join(&filename);
     Ok(super::attachment::write_unique(&path, &bytes)?)
 }
@@ -53,15 +61,17 @@ pub fn export_multiple_eml(
     output_dir: &Path,
     progress: &dyn Fn(usize, usize),
 ) -> anyhow::Result<Vec<PathBuf>> {
-    export_multiple_eml_opts(store, entries, output_dir, false, progress)
+    export_multiple_eml_opts(store, entries, output_dir, false, None, progress)
 }
 
-/// Export multiple messages as `.eml` files with options.
+/// Export multiple messages as `.eml` files with options (see
+/// [`export_eml_opts`]).
 pub fn export_multiple_eml_opts(
     store: &mut MboxStore,
     entries: &[&MailEntry],
     output_dir: &Path,
     qp: bool,
+    naming: Option<FolderNaming>,
     progress: &dyn Fn(usize, usize),
 ) -> anyhow::Result<Vec<PathBuf>> {
     std::fs::create_dir_all(output_dir)?;
@@ -70,7 +80,7 @@ pub fn export_multiple_eml_opts(
 
     for (i, entry) in entries.iter().enumerate() {
         progress(i, total);
-        let path = export_eml_opts(store, entry, output_dir, qp)?;
+        let path = export_eml_opts(store, entry, output_dir, qp, naming)?;
         paths.push(path);
     }
     progress(total, total);

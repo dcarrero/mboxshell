@@ -173,11 +173,12 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `--qp` | Recodificar el texto de 8 bits como quoted-printable para que el `.eml` sea ASCII de 7 bits puro (ayuda a herramientas estrictas como `eml-extractor`). **Solo EML.** |
 | `--raw-html` | Mantener el cuerpo HTML original **sin sanear** (se conservan scripts, `on*`, iframes). Solo para archivado local — nunca sirvas estos ficheros. **Solo HTML.** |
 | `--allow-remote-images` | Conservar las imágenes remotas (`http(s)://`) en los exports HTML saneados. Están **bloqueadas por defecto**: abrir el fichero las descargaría, y los píxeles de rastreo le dicen al remitente cuándo y desde dónde se leyó el mensaje. Una nota al principio de cada página dice cuántas se bloquearon. **Solo HTML.** |
+| `--dirname dts\|seq-no\|seq-no0`, `--seq-width N` | Nombrar los ficheros como las carpetas de `attachments`. `dts` (por defecto) deja los nombres de siempre; `seq-no`/`seq-no0` nombran cada fichero con el número de su mensaje (`0007.html` va con la carpeta `0007/`). En TXT y HTML, la lista de adjuntos indica además esa carpeta. Los valores por defecto salen de `attachment_dirname` / `attachment_seq_width`. **EML, TXT y HTML.** |
 | `--force` | Reconstruye el índice antes de exportar. Aquí se escribe entero: `-f` es `--format`. |
 
 #### Salida de `stats`
 
-`attachments` nombra por defecto la carpeta de cada mensaje con su fecha y asunto (`20240305_090807_Factura`). Con `--dirname seq-no` la carpeta es la posición del mensaje en el buzón, contando desde 1 (`seq-no0` cuenta desde 0); los números se rellenan con ceros hasta los dígitos que pida el número de mensajes, o al menos hasta `--seq-width N`. Esa posición es el campo `index` de `search --json` (que cuenta desde 0), así que cada carpeta se empareja con su mensaje sin adivinar zonas horarias ni asuntos recortados. `attachment_dirname` y `attachment_seq_width` en `[export]` fijan los valores por defecto.
+`attachments` nombra por defecto la carpeta de cada mensaje con su fecha y asunto (`20240305_090807_Factura`). Con `--dirname seq-no` la carpeta es la posición del mensaje en el buzón, contando desde 1 (`seq-no0` cuenta desde 0); los números se rellenan con ceros hasta los dígitos que pida el número de mensajes, o al menos hasta `--seq-width N`. Esa posición es el campo `index` de `search --json` (que cuenta desde 0), así que cada carpeta se empareja con su mensaje sin adivinar zonas horarias ni asuntos recortados. `attachment_dirname` y `attachment_seq_width` en `[export]` fijan los valores por defecto. `export` admite los mismos `--dirname` y `--seq-width`, con los mismos valores por defecto, para que un mensaje exportado y su carpeta de adjuntos se llamen igual; los números se rellenan según el buzón entero aunque `--query` exporte solo unos pocos mensajes.
 
 `stats` informa de: ruta y tamaño del fichero, nº de mensajes, rango de fechas (más antiguo/más reciente), tamaño del índice, tiempo de indexado, nº y porcentaje de mensajes con adjuntos, el número de `Message-ID` duplicados (con el recuento de IDs únicos), cuántos mensajes no tienen `Message-ID` (si es 0 y no hay duplicados, el Message-ID sirve como clave única de ese buzón), y los 10 remitentes principales. Añade `--json` para una salida legible por máquina.
 
@@ -498,7 +499,7 @@ size_width = 8
 default_format = "eml"          # eml | csv | txt | html
 # default_output_dir = "./salida"
 csv_separator  = ","
-attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (nombres de carpeta de attachments)
+attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (carpetas de attachments, ficheros de export)
 attachment_seq_width = 0        # dígitos mínimos de seq-no; 0 = los necesarios
 
 [performance]

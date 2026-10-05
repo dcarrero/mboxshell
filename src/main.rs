@@ -77,6 +77,10 @@ struct ExportFlags {
     raw_html: bool,
     /// `--allow-remote-images` (HTML only).
     allow_remote_images: bool,
+    /// `--dirname` (eml/txt/html), or the config file's when absent.
+    dirname: Option<AttachmentDirname>,
+    /// `--seq-width` (eml/txt/html), or the config file's when absent.
+    seq_width: Option<usize>,
 }
 
 /// How `attachments` names each message's folder (issue #32).
@@ -169,6 +173,16 @@ enum Commands {
         /// --format=html.
         #[arg(long)]
         allow_remote_images: bool,
+        /// Name eml/txt/html files like the `attachments` folders: dts
+        /// (date and subject, the default) keeps the usual names, seq-no or
+        /// seq-no0 name each file after its message's number (`0007.html`
+        /// for folder `0007/`). txt and html also list that folder under
+        /// the attachments.
+        #[arg(long, value_enum)]
+        dirname: Option<AttachmentDirname>,
+        /// Minimum digits of a seq-no/seq-no0 name, as in `attachments`
+        #[arg(long, value_name = "N")]
+        seq_width: Option<usize>,
         /// Force rebuild index even if one already exists
         #[arg(long)]
         force: bool,
@@ -338,6 +352,16 @@ const ARG_HELP_ES: &[(&str, &str, &str)] = &[
         "allow_remote_images",
         "Conservar las imágenes remotas en los exports HTML. Por defecto se bloquean: abrir el fichero las descargaría y los píxeles de rastreo delatan cuándo y desde dónde se leyó el mensaje. Solo afecta a --format=html",
     ),
+    (
+        "export",
+        "dirname",
+        "Nombrar los ficheros eml/txt/html como las carpetas de `attachments`: dts (fecha y asunto, por defecto) deja los nombres de siempre; seq-no o seq-no0 nombran cada fichero con el número de su mensaje (`0007.html` para la carpeta `0007/`). En txt y html, además, la lista de adjuntos indica esa carpeta",
+    ),
+    (
+        "export",
+        "seq_width",
+        "Dígitos mínimos de un nombre seq-no/seq-no0, como en `attachments`",
+    ),
     ("merge", "inputs", "Ficheros MBOX que combinar (dos o más)"),
     ("merge", "output", "Buzón combinado que escribir"),
     (
@@ -482,6 +506,8 @@ fn main() -> anyhow::Result<()> {
             qp,
             raw_html,
             allow_remote_images,
+            dirname,
+            seq_width,
             force,
         }) => cmd_export(
             &path,
@@ -493,7 +519,10 @@ fn main() -> anyhow::Result<()> {
                 qp,
                 raw_html,
                 allow_remote_images,
+                dirname,
+                seq_width,
             },
+            &config.export,
         ),
         Some(Commands::Merge {
             inputs,
@@ -732,17 +761,26 @@ fn cmd_export(
     query: Option<&str>,
     force: bool,
     flags: ExportFlags,
+    export_config: &mboxshell::config::ExportConfig,
 ) -> anyhow::Result<()> {
     let ExportFlags {
         qp,
         raw_html,
         allow_remote_images,
+        dirname,
+        seq_width,
     } = flags;
     if !path.exists() {
         anyhow::bail!("{}: {}", i18n::err_file_not_found(), path.display());
     }
 
+    // Resolve the configured name before indexing, so a typo costs nothing.
+    let dirname = resolve_dirname(dirname, export_config)?;
+
     let entries = builder::build_index(path, force, None)?;
+    // Numbered over the whole mailbox even with --query, so the names
+    // match the folders `attachments` creates (issue #39).
+    let naming = folder_naming(dirname, seq_width, export_config, entries.len());
     let mut store = mboxshell::store::reader::MboxStore::open(path)?;
 
     // Filter by query if provided
@@ -784,6 +822,7 @@ fn cmd_export(
                 &selected,
                 output,
                 qp,
+                Some(naming),
                 &|current, _total| {
                     pb.set_position(current as u64);
                 },
@@ -818,7 +857,7 @@ fn cmd_export(
             for (i, entry) in selected.iter().enumerate() {
                 pb.set_position(i as u64);
                 let body = store.get_message(entry)?;
-                mboxshell::export::text::export_text(entry, &body, output)?;
+                mboxshell::export::text::export_text_opts(entry, &body, output, Some(naming))?;
                 count += 1;
             }
             pb.finish_and_clear();
@@ -842,6 +881,7 @@ fn cmd_export(
                     output,
                     sanitize,
                     allow_remote_images,
+                    Some(naming),
                 )?;
                 count += 1;
             }
@@ -974,6 +1014,47 @@ fn cmd_merge(
     Ok(())
 }
 
+/// The `--dirname` given, or else the config file's `attachment_dirname`.
+fn resolve_dirname(
+    dirname: Option<AttachmentDirname>,
+    export_config: &mboxshell::config::ExportConfig,
+) -> anyhow::Result<AttachmentDirname> {
+    use clap::ValueEnum;
+
+    match dirname {
+        Some(d) => Ok(d),
+        None => {
+            AttachmentDirname::from_str(&export_config.attachment_dirname, true).map_err(|_| {
+                anyhow::anyhow!(
+                    "attachment_dirname = \"{}\": dts | seq-no | seq-no0",
+                    export_config.attachment_dirname
+                )
+            })
+        }
+    }
+}
+
+/// How `attachments` names its folders, and `export` its files, for a
+/// mailbox of `total` messages. Both commands go through here so their
+/// names always match (issue #39).
+fn folder_naming(
+    dirname: AttachmentDirname,
+    seq_width: Option<usize>,
+    export_config: &mboxshell::config::ExportConfig,
+    total: usize,
+) -> mboxshell::export::attachment::FolderNaming {
+    use mboxshell::export::attachment::FolderNaming;
+
+    match dirname {
+        AttachmentDirname::Dts => FolderNaming::DateSubject,
+        AttachmentDirname::SeqNo | AttachmentDirname::SeqNo0 => FolderNaming::sequence(
+            u64::from(dirname == AttachmentDirname::SeqNo),
+            seq_width.unwrap_or(export_config.attachment_seq_width),
+            total,
+        ),
+    }
+}
+
 /// Extract all attachments from an MBOX file.
 ///
 /// `dirname` and `seq_width` come from the command line and win over the
@@ -986,42 +1067,15 @@ fn cmd_attachments(
     export_config: &mboxshell::config::ExportConfig,
     force: bool,
 ) -> anyhow::Result<()> {
-    use clap::ValueEnum;
-    use mboxshell::export::attachment::FolderNaming;
-
     if !path.exists() {
         anyhow::bail!("{}: {}", i18n::err_file_not_found(), path.display());
     }
 
     // Resolve the configured name before indexing, so a typo costs nothing.
-    let dirname = match dirname {
-        Some(d) => d,
-        None => {
-            AttachmentDirname::from_str(&export_config.attachment_dirname, true).map_err(|_| {
-                anyhow::anyhow!(
-                    "attachment_dirname = \"{}\": dts | seq-no | seq-no0",
-                    export_config.attachment_dirname
-                )
-            })?
-        }
-    };
+    let dirname = resolve_dirname(dirname, export_config)?;
 
     let entries = builder::build_index(path, force, None)?;
-
-    let naming = match dirname {
-        AttachmentDirname::Dts => FolderNaming::DateSubject,
-        AttachmentDirname::SeqNo | AttachmentDirname::SeqNo0 => {
-            let start = u64::from(dirname == AttachmentDirname::SeqNo);
-            // Digits of the highest number, so the folders sort in order.
-            let last = (entries.len() as u64).saturating_sub(1) + start;
-            let auto = last.to_string().len();
-            let width = match seq_width.unwrap_or(export_config.attachment_seq_width) {
-                0 => auto,
-                w => w,
-            };
-            FolderNaming::Sequence { start, width }
-        }
-    };
+    let naming = folder_naming(dirname, seq_width, export_config, entries.len());
     let mut store = mboxshell::store::reader::MboxStore::open(path)?;
 
     let with_att: Vec<&mboxshell::model::mail::MailEntry> =

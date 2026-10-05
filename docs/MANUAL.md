@@ -173,11 +173,12 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `--qp` | Re-encode 8-bit text as quoted-printable so the `.eml` is pure 7-bit ASCII (helps strict tools like `eml-extractor`). **EML only.** |
 | `--raw-html` | Keep the original HTML body **unsanitized** (scripts, `on*`, iframes preserved). For local archival only — never serve these files. **HTML only.** |
 | `--allow-remote-images` | Keep remote images (`http(s)://`) in sanitized HTML exports. They are **blocked by default**: opening the file would fetch them, and tracking pixels tell the sender when and from where the message was read. A note at the top of each page says how many were blocked. **HTML only.** |
+| `--dirname dts\|seq-no\|seq-no0`, `--seq-width N` | Name the files like the `attachments` folders. `dts` (the default) keeps the usual names; `seq-no`/`seq-no0` name each file after its message's number (`0007.html` goes with folder `0007/`). TXT and HTML also print that folder under the attachment list. Defaults come from `attachment_dirname` / `attachment_seq_width`. **EML, TXT and HTML.** |
 | `--force` | Rebuild the index first. Spelled out in full here: `-f` is `--format`. |
 
 #### `stats` output
 
-`attachments` names each message's folder after its date and subject (`20240305_090807_Invoice`) by default. With `--dirname seq-no` the folder is the message's position in the mailbox, counting from 1 (`seq-no0` counts from 0); the numbers are zero-padded to as many digits as the message count needs, or to at least `--seq-width N`. That position is the `index` field of `search --json` (which counts from 0), so a folder can be matched back to its message without guessing time zones or truncated subjects. `attachment_dirname` and `attachment_seq_width` in `[export]` set the defaults.
+`attachments` names each message's folder after its date and subject (`20240305_090807_Invoice`) by default. With `--dirname seq-no` the folder is the message's position in the mailbox, counting from 1 (`seq-no0` counts from 0); the numbers are zero-padded to as many digits as the message count needs, or to at least `--seq-width N`. That position is the `index` field of `search --json` (which counts from 0), so a folder can be matched back to its message without guessing time zones or truncated subjects. `attachment_dirname` and `attachment_seq_width` in `[export]` set the defaults. `export` takes the same `--dirname` and `--seq-width`, and the same config defaults, so an exported message and its attachment folder share a name; the numbers are padded for the whole mailbox even when `--query` exports only a few messages.
 
 `stats` reports: file path and size, message count, date range (oldest/newest), index size, indexing time, count and percentage of messages with attachments, the number of duplicate `Message-ID`s (with the count of unique IDs), how many messages have no `Message-ID` (when it is 0 and there are no duplicates, the Message-ID works as a unique key for that mailbox), and the top 10 senders. Add `--json` for a machine-readable object.
 
@@ -498,7 +499,7 @@ size_width = 8
 default_format = "eml"          # eml | csv | txt | html
 # default_output_dir = "./out"
 csv_separator  = ","
-attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (attachments folder names)
+attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (attachments folders, export file names)
 attachment_seq_width = 0        # minimum digits for seq-no; 0 = as many as needed
 
 [performance]

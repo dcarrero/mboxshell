@@ -82,7 +82,7 @@ pub struct ExportConfig {
     pub csv_separator: char,
     /// How `attachments` names each message's folder: "dts" (date and
     /// subject), "seq-no" (position in the mailbox, from 1) or "seq-no0"
-    /// (from 0).
+    /// (from 0). `export` names its eml/txt/html files the same way.
     pub attachment_dirname: String,
     /// Minimum digits of a "seq-no"/"seq-no0" folder, zero-padded. 0 picks
     /// the digits of the mailbox's message count, so folders sort in order.

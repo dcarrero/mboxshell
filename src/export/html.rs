@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 use crate::model::mail::{MailBody, MailEntry};
 
+use super::attachment::FolderNaming;
 use super::eml::{sanitize_filename_part, truncate_at_char_boundary};
 
 /// Export a single message as a standalone HTML file.
@@ -30,7 +31,7 @@ pub fn export_html(
     body: &MailBody,
     output_dir: &Path,
 ) -> anyhow::Result<PathBuf> {
-    export_html_opts(entry, body, output_dir, true, false)
+    export_html_opts(entry, body, output_dir, true, false, None)
 }
 
 /// Export a single message as a standalone HTML file with options.
@@ -39,14 +40,22 @@ pub fn export_html(
 /// opening the page would otherwise fetch them, and a tracking pixel tells
 /// the sender when and from where the archive was read. A note at the top
 /// of the page says how many were blocked.
+///
+/// With `naming`, the attachment list ends with the folder `mboxshell
+/// attachments` extracts them into under that naming, and sequence naming
+/// also names the file after it (`0007.html` for folder `0007/`).
 pub fn export_html_opts(
     entry: &MailEntry,
     body: &MailBody,
     output_dir: &Path,
     sanitize: bool,
     allow_remote_images: bool,
+    naming: Option<FolderNaming>,
 ) -> anyhow::Result<PathBuf> {
-    let filename = html_filename(entry);
+    let filename = match FolderNaming::file_stem(naming, entry) {
+        Some(stem) => format!("{stem}.html"),
+        None => html_filename(entry),
+    };
     let path = output_dir.join(&filename);
 
     let mut out = String::new();
@@ -137,7 +146,14 @@ pub fn export_html_opts(
                 size
             ));
         }
-        out.push_str("</ul>\n</div>\n");
+        out.push_str("</ul>\n");
+        if let Some(naming) = naming {
+            out.push_str(&format!(
+                "<p>Folder from <code>mboxshell attachments</code>: <code>{}/</code></p>\n",
+                escape_html(&naming.folder_name(entry))
+            ));
+        }
+        out.push_str("</div>\n");
     }
 
     out.push_str("</body>\n</html>\n");
@@ -368,7 +384,7 @@ mod tests {
             attachments: vec![],
         };
         let tmp = tempfile::tempdir().unwrap();
-        let path = export_html_opts(&entry, &body, tmp.path(), false, false).unwrap();
+        let path = export_html_opts(&entry, &body, tmp.path(), false, false, None).unwrap();
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("<script>x</script>"));
     }

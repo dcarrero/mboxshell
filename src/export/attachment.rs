@@ -57,6 +57,39 @@ pub enum FolderNaming {
     },
 }
 
+impl FolderNaming {
+    /// Sequence naming for a mailbox of `total` messages.
+    ///
+    /// A `width` of 0 means as many digits as the highest number needs, so
+    /// the names sort in order. Always pass the whole mailbox's count, not
+    /// a filtered selection's: `attachments` and `export` must agree.
+    pub fn sequence(start: u64, width: usize, total: usize) -> Self {
+        let last = (total as u64).saturating_sub(1) + start;
+        let width = match width {
+            0 => last.to_string().len(),
+            w => w,
+        };
+        FolderNaming::Sequence { start, width }
+    }
+
+    /// Name of `entry`'s attachment folder, as `export_bulk_attachments`
+    /// creates it. Exports print it so a message can be matched to its
+    /// attachments (issue #39).
+    pub fn folder_name(self, entry: &MailEntry) -> String {
+        message_folder_name(entry, self)
+    }
+
+    /// File name stem for an exported message: the folder's number under
+    /// sequence naming, so `0007.html` goes with folder `0007/`. `None`
+    /// keeps each exporter's own date-and-subject name.
+    pub(crate) fn file_stem(naming: Option<Self>, entry: &MailEntry) -> Option<String> {
+        match naming {
+            Some(n @ FolderNaming::Sequence { .. }) => Some(n.folder_name(entry)),
+            _ => None,
+        }
+    }
+}
+
 /// Extract all attachments from multiple messages.
 ///
 /// Creates a subfolder per message, named as `naming` says:
@@ -205,6 +238,27 @@ mod tests {
         assert_eq!(message_folder_name(&entry, seq(1, 1)), "10");
         assert!(
             message_folder_name(&entry, FolderNaming::DateSubject).starts_with("20240305_090807_")
+        );
+    }
+
+    #[test]
+    fn test_sequence_auto_width() {
+        // 1000 messages: seq-no ends at 1000 (4 digits), seq-no0 at 999 (3)
+        assert_eq!(
+            FolderNaming::sequence(1, 0, 1000),
+            FolderNaming::Sequence { start: 1, width: 4 }
+        );
+        assert_eq!(
+            FolderNaming::sequence(0, 0, 1000),
+            FolderNaming::Sequence { start: 0, width: 3 }
+        );
+        assert_eq!(
+            FolderNaming::sequence(0, 6, 1000),
+            FolderNaming::Sequence { start: 0, width: 6 }
+        );
+        assert_eq!(
+            FolderNaming::sequence(1, 0, 0),
+            FolderNaming::Sequence { start: 1, width: 1 }
         );
     }
 }
