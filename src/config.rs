@@ -118,14 +118,16 @@ impl Default for ExportConfig {
 impl Config {
     /// Replace every value the program cannot use with its default, so a
     /// typo degrades one setting instead of the whole file. Returns one
-    /// warning per replaced value. `theme` and `attachment_dirname` are
-    /// checked where they are used.
+    /// warning per replaced value. `attachment_dirname` is checked where it
+    /// is used, and an invalid one stops the command there.
     pub fn sanitized(mut self) -> (Self, Vec<String>) {
         let defaults = Config::default();
         let mut warnings = Vec::new();
         let mut warn_invalid = |key: &str, value: &str| {
             warnings.push(format!(
-                "Invalid value for {key}: {value:?}; using the default"
+                "{} {key}: {value:?}; {}",
+                crate::i18n::msg_config_invalid_value(),
+                crate::i18n::msg_config_using_default()
             ));
         };
 
@@ -154,6 +156,10 @@ impl Config {
         }
 
         let d = &mut self.display;
+        if crate::tui::theme::ThemeKind::from_name(&d.theme).is_none() {
+            warn_invalid("display.theme", &d.theme);
+            d.theme = defaults.display.theme;
+        }
         if !matches!(d.layout.as_str(), "horizontal" | "vertical" | "list-only") {
             warn_invalid("display.layout", &d.layout);
             d.layout = defaults.display.layout;
@@ -438,12 +444,13 @@ csv_separator = ";"
         cfg.general.sort_order = "up".into();
         cfg.general.date_format = "%Y-%Q".into();
         cfg.general.log_level = "loud".into();
+        cfg.display.theme = "solarized".into();
         cfg.display.layout = "stacked".into();
         cfg.display.max_cached_messages = 0;
         cfg.export.csv_separator = '"';
         let (cfg, warnings) = cfg.sanitized();
         assert_eq!(cfg, Config::default());
-        assert_eq!(warnings.len(), 7);
+        assert_eq!(warnings.len(), 8);
     }
 
     #[test]
@@ -452,6 +459,7 @@ csv_separator = ";"
         cfg.general.default_sort = "subject".into();
         cfg.general.sort_order = "asc".into();
         cfg.general.date_format = "%d/%m/%Y".into();
+        cfg.display.theme = "Terminal".into();
         cfg.display.layout = "list-only".into();
         cfg.export.csv_separator = '\t';
         assert_eq!(cfg.clone().sanitized(), (cfg, Vec::new()));

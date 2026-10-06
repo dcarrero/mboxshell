@@ -188,6 +188,16 @@ msg!(
     "No se puede leer el fichero de configuraci\u{f3}n"
 );
 msg!(
+    msg_config_invalid_value,
+    "Invalid value for",
+    "Valor no v\u{e1}lido para"
+);
+msg!(
+    msg_config_using_default,
+    "using the default",
+    "se usa el valor por defecto"
+);
+msg!(
     msg_config_parse_error,
     "Warning: this file is not valid TOML, so mboxshell ignores it and uses the defaults:",
     "Aviso: este fichero no es TOML v\u{e1}lido, as\u{ed} que mboxshell lo ignora y usa los valores por defecto:"
