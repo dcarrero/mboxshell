@@ -162,6 +162,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `attachments <path> -o <out> [--dirname dts\|seq-no\|seq-no0] [--seq-width N]` | Extract all attachments into a directory, one folder per message |
 | `completions <shell>` | Print shell completion script (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Print a man page to stdout |
+| `config [path\|show\|defaults]` | Print where the config file is, its contents or the defaults (see [Configuration file](#9-configuration-file)) |
 
 #### `export` options
 
@@ -214,7 +215,7 @@ Switch any time with the number keys:
 | Key | Layout |
 |-----|--------|
 | `1` | List only (full-screen list; `Enter` shows the message full-screen) |
-| `2` | Horizontal split (list on top, message below) — default |
+| `2` | Horizontal split (list on top, message below) — default; `layout` in the config file picks another |
 | `3` | Vertical split (list left, message right) |
 
 ### Message view modes
@@ -470,53 +471,57 @@ Decodes and writes every attachment across the whole mailbox to the output direc
 
 Configuration is optional — mboxShell works out of the box. When present, the file is read from:
 
-1. `$MBOXSHELL_CONFIG` (if set), otherwise
-2. `~/.config/mboxshell/config.toml` (Linux/macOS) · `%APPDATA%\mboxshell\config.toml` (Windows)
+1. `$MBOXSHELL_CONFIG`, if set
+2. Otherwise, the platform config directory:
+   - Linux: `$XDG_CONFIG_HOME/mboxshell/config.toml`, or `~/.config/mboxshell/config.toml`
+   - macOS: `~/Library/Application Support/mboxshell/config.toml` (not `~/.config`)
+   - Windows: `%APPDATA%\mboxshell\config.toml`
 
-An invalid or missing file falls back to defaults silently. Full file with the **real default values**:
+`mboxshell config` shows where that is on your machine, without writing anything:
+
+```bash
+mboxshell config            # path of the config file (says so if it doesn't exist yet)
+mboxshell config show       # print the file (alias: cat), with a warning for any value it ignores
+mboxshell config defaults   # print the defaults as a commented file
+mboxshell config defaults > "$(mboxshell config path)"   # start from the defaults
+```
+
+Every key is optional. A value mboxShell can't use (an unknown sort column, a bad `date_format`…) falls back to its default with a warning on stderr; a file that isn't valid TOML is ignored as a whole, with a warning. Keys from older versions (`[columns]`, `[performance]`, `message_text_width`, `default_format`, `default_output_dir`) never had any effect and are now ignored. This is the output of `mboxshell config defaults`:
 
 ```toml
 [general]
-default_sort = "date"          # date | from | subject | size
-sort_order   = "desc"          # desc | asc
-date_format  = "%Y-%m-%d %H:%M"
-# cache_dir  = "/custom/path"  # default: OS cache dir + /mboxshell
-log_level    = "warn"          # error | warn | info | debug | trace
+default_sort = "date"             # date | from | subject | size
+sort_order = "desc"               # desc | asc
+date_format = "%Y-%m-%d %H:%M"    # strftime format for the message list
+log_level = "warn"                # error | warn | info | debug | trace
+# cache_dir = "/path/to/dir"      # fallback indexes and log (default: the system cache dir)
 
 [display]
-theme               = "dark"        # dark | light | terminal
-layout              = "horizontal"  # horizontal | vertical | list-only
-show_sidebar        = false         # show the labels sidebar on start
-max_cached_messages = 50
-message_text_width  = 0             # 0 = use full panel width
-
-[columns]
-date_width = 17
-from_width = 20
-size_width = 8
+theme = "dark"                    # dark | light | terminal (NO_COLOR forces terminal)
+layout = "horizontal"             # horizontal | vertical | list-only
+show_sidebar = true               # label sidebar, when the mailbox has labels
+max_cached_messages = 50          # decoded messages kept in memory
 
 [export]
-default_format = "eml"          # eml | csv | txt | html
-# default_output_dir = "./out"
-csv_separator  = ","
-attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (attachments folders, export file names)
-attachment_seq_width = 0        # minimum digits for seq-no; 0 = as many as needed
-
-[performance]
-read_buffer_size = 131072       # 128 KB streaming buffer
-max_message_size = 268435456    # 256 MB cap per message
-lru_cache_size   = 50           # decoded messages kept in memory
+csv_separator = ","               # one character, e.g. ";" or "\t"
+attachment_dirname = "dts"        # dts | seq-no | seq-no0
+attachment_seq_width = 0          # minimum digits for seq-no names (0 = automatic)
 ```
+
+- `default_sort` / `sort_order`: the list's order when a mailbox opens; the sort keys in the TUI change it as before.
+- `date_format`: any [strftime](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) format; the date column widens to fit it.
+- `layout` / `show_sidebar`: how the TUI starts; `1`/`2`/`3` and `l` still change them.
+- `csv_separator`: for `export -f csv` and the TUI's CSV export; fields containing it are quoted.
 
 Related paths:
 
-- **Index**: `<mailbox>.mboxshell.idx`, next to the source file.
+- **Index**: `.<mailbox>.mboxshell.idx`, next to the source file; if that folder is read-only, in the cache directory.
 - **Cache directory**: `cache_dir`, or the OS cache dir + `/mboxshell`.
 - **Log file**: `<cache directory>/mboxshell.log`.
 
 ### Themes and accessibility
 
-`theme` is the `[display]` setting the TUI applies today:
+`theme` picks the colours:
 
 | Theme | For |
 |-------|-----|

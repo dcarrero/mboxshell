@@ -14,9 +14,6 @@ use crate::model::attachment::AttachmentMeta;
 use crate::model::mail::{MailBody, MailEntry};
 use crate::parser::mime;
 
-/// Default number of decoded messages to keep in the LRU cache.
-const DEFAULT_CACHE_SIZE: usize = 50;
-
 /// Most bytes of one message read in to display or search it (256 MB).
 ///
 /// The length comes from the mailbox, so a single 20 GB "message" used to be
@@ -48,8 +45,9 @@ impl MboxStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
         let file = File::open(&path).map_err(|e| MboxError::io(&path, e))?;
-        let cache_size =
-            NonZeroUsize::new(DEFAULT_CACHE_SIZE).expect("DEFAULT_CACHE_SIZE is non-zero");
+        // `display.max_cached_messages`; `Config::sanitized` rejects 0.
+        let cache_size = NonZeroUsize::new(crate::config::active().display.max_cached_messages)
+            .unwrap_or(NonZeroUsize::MIN);
         Ok(Self {
             path,
             file,

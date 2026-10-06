@@ -153,6 +153,46 @@ msg!(
     "Generar p\u{e1}gina de manual"
 );
 msg!(
+    help_cmd_config,
+    "Show the config file: where it is, its contents or the defaults",
+    "Mostrar el fichero de configuraci\u{f3}n: d\u{f3}nde est\u{e1}, qu\u{e9} contiene o los valores por defecto"
+);
+msg!(
+    help_cmd_config_path,
+    "Print the path of the config file, whether or not it exists (default)",
+    "Mostrar la ruta del fichero de configuraci\u{f3}n, exista o no (por defecto)"
+);
+msg!(
+    help_cmd_config_show,
+    "Print the config file, or fail if there is none",
+    "Mostrar el fichero de configuraci\u{f3}n, o fallar si no existe"
+);
+msg!(
+    help_cmd_config_defaults,
+    "Print the built-in defaults as a commented config file",
+    "Mostrar los valores por defecto como un fichero de configuraci\u{f3}n comentado"
+);
+msg!(
+    msg_config_no_path,
+    "Cannot determine the config directory; set MBOXSHELL_CONFIG",
+    "No se puede determinar el directorio de configuraci\u{f3}n; define MBOXSHELL_CONFIG"
+);
+msg!(
+    msg_config_not_created,
+    "(not created yet: `mboxshell config defaults` prints a starting point)",
+    "(a\u{fa}n no existe: `mboxshell config defaults` muestra uno para empezar)"
+);
+msg!(
+    msg_config_cannot_read,
+    "Cannot read the config file",
+    "No se puede leer el fichero de configuraci\u{f3}n"
+);
+msg!(
+    msg_config_parse_error,
+    "Warning: this file is not valid TOML, so mboxshell ignores it and uses the defaults:",
+    "Aviso: este fichero no es TOML v\u{e1}lido, as\u{ed} que mboxshell lo ignora y usa los valores por defecto:"
+);
+msg!(
     app_after_help,
     "Copyright (c) 2026 David Carrero Fern\u{e1}ndez-Baillo \u{2014} MIT License\nSource Code: https://github.com/dcarrero/mboxshell",
     "Copyright (c) 2026 David Carrero Fern\u{e1}ndez-Baillo \u{2014} Licencia MIT\nC\u{f3}digo fuente: https://github.com/dcarrero/mboxshell"

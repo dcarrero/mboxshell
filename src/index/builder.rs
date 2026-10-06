@@ -324,11 +324,10 @@ pub fn index_path_for(mbox_path: &Path) -> PathBuf {
 
 /// Fallback index path inside the user cache directory.
 ///
-/// Example: `~/.cache/mboxshell/<sha256_of_path>.idx`
+/// Example: `~/.cache/mboxshell/<sha256_of_path>.idx`, or inside
+/// `general.cache_dir` when the config sets one.
 pub fn cache_index_path_for(mbox_path: &Path) -> PathBuf {
-    let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| PathBuf::from(".cache"))
-        .join("mboxshell");
+    let cache_dir = crate::config::cache_dir(crate::config::active());
 
     let mut hasher = Sha256::new();
     hasher.update(mbox_path.to_string_lossy().as_bytes());

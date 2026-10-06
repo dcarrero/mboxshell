@@ -162,6 +162,7 @@ mboxshell [FLAGS GLOBALES] <FICHERO>     # sin comando = abrir <FICHERO> en la T
 | `attachments <ruta> -o <salida> [--dirname dts\|seq-no\|seq-no0] [--seq-width N]` | Extraer todos los adjuntos a una carpeta, con una subcarpeta por mensaje |
 | `completions <shell>` | Imprimir el script de autocompletado (`bash`, `zsh`, `fish`, `powershell`, `elvish`) |
 | `manpage` | Imprimir una página de manual por stdout |
+| `config [path\|show\|defaults]` | Mostrar dónde está el fichero de configuración, qué contiene o los valores por defecto (ver [Fichero de configuración](#9-fichero-de-configuración)) |
 
 #### Opciones de `export`
 
@@ -214,7 +215,7 @@ Cámbialos en cualquier momento con las teclas numéricas:
 | Tecla | Diseño |
 |-------|--------|
 | `1` | Solo lista (lista a pantalla completa; `Enter` muestra el mensaje a pantalla completa) |
-| `2` | División horizontal (lista arriba, mensaje abajo) — por defecto |
+| `2` | División horizontal (lista arriba, mensaje abajo) — por defecto; `layout` en el fichero de configuración elige otra |
 | `3` | División vertical (lista a la izquierda, mensaje a la derecha) |
 
 ### Modos de la vista del mensaje
@@ -470,53 +471,57 @@ Decodifica y escribe todos los adjuntos de todo el buzón en la carpeta de salid
 
 La configuración es opcional — mboxShell funciona sin ella. Cuando existe, el fichero se lee de:
 
-1. `$MBOXSHELL_CONFIG` (si está definida), si no
-2. `~/.config/mboxshell/config.toml` (Linux/macOS) · `%APPDATA%\mboxshell\config.toml` (Windows)
+1. `$MBOXSHELL_CONFIG`, si está definida
+2. Si no, la carpeta de configuración del sistema:
+   - Linux: `$XDG_CONFIG_HOME/mboxshell/config.toml`, o `~/.config/mboxshell/config.toml`
+   - macOS: `~/Library/Application Support/mboxshell/config.toml` (no `~/.config`)
+   - Windows: `%APPDATA%\mboxshell\config.toml`
 
-Un fichero inválido o ausente recurre a los valores por defecto en silencio. Fichero completo con los **valores por defecto reales**:
+`mboxshell config` te dice dónde está en tu equipo, sin escribir nada:
+
+```bash
+mboxshell config            # ruta del fichero (avisa si aún no existe)
+mboxshell config show       # mostrar el fichero (alias: cat), avisando de los valores que ignora
+mboxshell config defaults   # mostrar los valores por defecto como un fichero comentado
+mboxshell config defaults > "$(mboxshell config path)"   # empezar desde los valores por defecto
+```
+
+Todas las claves son opcionales. Un valor que mboxShell no puede usar (una columna de orden desconocida, un `date_format` erróneo…) vuelve a su valor por defecto con un aviso por stderr; un fichero que no es TOML válido se ignora entero, también con aviso. Las claves de versiones anteriores (`[columns]`, `[performance]`, `message_text_width`, `default_format`, `default_output_dir`) nunca tuvieron efecto y ahora se ignoran. Esta es la salida de `mboxshell config defaults` (los comentarios del fichero están en inglés):
 
 ```toml
 [general]
-default_sort = "date"          # date | from | subject | size
-sort_order   = "desc"          # desc | asc
-date_format  = "%Y-%m-%d %H:%M"
-# cache_dir  = "/ruta/propia"  # por defecto: dir. de caché del SO + /mboxshell
-log_level    = "warn"          # error | warn | info | debug | trace
+default_sort = "date"             # date | from | subject | size
+sort_order = "desc"               # desc | asc
+date_format = "%Y-%m-%d %H:%M"    # strftime format for the message list
+log_level = "warn"                # error | warn | info | debug | trace
+# cache_dir = "/path/to/dir"      # fallback indexes and log (default: the system cache dir)
 
 [display]
-theme               = "dark"        # dark | light | terminal
-layout              = "horizontal"  # horizontal | vertical | list-only
-show_sidebar        = false         # mostrar la barra de etiquetas al arrancar
-max_cached_messages = 50
-message_text_width  = 0             # 0 = usar todo el ancho del panel
-
-[columns]
-date_width = 17
-from_width = 20
-size_width = 8
+theme = "dark"                    # dark | light | terminal (NO_COLOR forces terminal)
+layout = "horizontal"             # horizontal | vertical | list-only
+show_sidebar = true               # label sidebar, when the mailbox has labels
+max_cached_messages = 50          # decoded messages kept in memory
 
 [export]
-default_format = "eml"          # eml | csv | txt | html
-# default_output_dir = "./salida"
-csv_separator  = ","
-attachment_dirname   = "dts"    # dts | seq-no | seq-no0 (carpetas de attachments, ficheros de export)
-attachment_seq_width = 0        # dígitos mínimos de seq-no; 0 = los necesarios
-
-[performance]
-read_buffer_size = 131072       # búfer de streaming de 128 KB
-max_message_size = 268435456    # tope de 256 MB por mensaje
-lru_cache_size   = 50           # mensajes decodificados en memoria
+csv_separator = ","               # one character, e.g. ";" or "\t"
+attachment_dirname = "dts"        # dts | seq-no | seq-no0
+attachment_seq_width = 0          # minimum digits for seq-no names (0 = automatic)
 ```
+
+- `default_sort` / `sort_order`: el orden de la lista al abrir un buzón; las teclas de ordenación de la TUI lo cambian como siempre.
+- `date_format`: cualquier formato [strftime](https://docs.rs/chrono/latest/chrono/format/strftime/index.html); la columna de fecha se ensancha para que quepa.
+- `layout` / `show_sidebar`: cómo arranca la TUI; `1`/`2`/`3` y `l` siguen cambiándolos.
+- `csv_separator`: para `export -f csv` y la exportación CSV de la TUI; los campos que lo contienen van entre comillas.
 
 Rutas relacionadas:
 
-- **Índice**: `<buzón>.mboxshell.idx`, junto al fichero de origen.
+- **Índice**: `.<buzón>.mboxshell.idx`, junto al fichero de origen; si esa carpeta es de solo lectura, en la carpeta de caché.
 - **Carpeta de caché**: `cache_dir`, o el dir. de caché del SO + `/mboxshell`.
 - **Fichero de log**: `<carpeta de caché>/mboxshell.log`.
 
 ### Temas y accesibilidad
 
-`theme` es el ajuste de `[display]` que la TUI aplica hoy:
+`theme` elige los colores:
 
 | Tema | Para |
 |------|------|

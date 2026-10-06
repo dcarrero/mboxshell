@@ -13,10 +13,24 @@ use crate::model::mail::MailEntry;
 ///
 /// If `include_snippet` is true and `snippets` is provided, a "Snippet" column
 /// is added with the first 200 chars of the body text.
+///
+/// Fields are separated by `export.csv_separator` from the config (`,` by
+/// default).
 pub fn export_csv(
     entries: &[&MailEntry],
     output_path: &Path,
     snippets: Option<&[String]>,
+) -> anyhow::Result<()> {
+    let sep = crate::config::active().export.csv_separator;
+    export_csv_with_separator(entries, output_path, snippets, sep)
+}
+
+/// [`export_csv`] with an explicit field separator.
+pub fn export_csv_with_separator(
+    entries: &[&MailEntry],
+    output_path: &Path,
+    snippets: Option<&[String]>,
+    sep: char,
 ) -> anyhow::Result<()> {
     // Buffered (one syscall per row made 100k rows spend most of their time
     // in the kernel) and written to a fresh temp file renamed into place, so
@@ -28,11 +42,21 @@ pub fn export_csv(
     file.write_all(&[0xEF, 0xBB, 0xBF])?;
 
     // Header row
-    let mut header = "Date,From,To,CC,Subject,Size,Has_Attachments,Labels,Message_ID".to_string();
+    let mut columns = vec![
+        "Date",
+        "From",
+        "To",
+        "CC",
+        "Subject",
+        "Size",
+        "Has_Attachments",
+        "Labels",
+        "Message_ID",
+    ];
     if snippets.is_some() {
-        header.push_str(",Snippet");
+        columns.push("Snippet");
     }
-    writeln!(file, "{header}")?;
+    writeln!(file, "{}", columns.join(&sep.to_string()))?;
 
     // Data rows
     for (i, entry) in entries.iter().enumerate() {
@@ -42,26 +66,24 @@ pub fn export_csv(
         let cc_str = join_guarded(entry.cc.iter().map(format_address));
         let labels = join_guarded(entry.labels.iter().cloned());
 
-        let mut row = format!(
-            "{},{},{},{},{},{},{},{},{}",
-            csv_escape(&date),
-            csv_escape(&from),
-            csv_escape(&to_str),
-            csv_escape(&cc_str),
-            csv_escape(&entry.subject),
-            entry.length,
-            entry.has_attachments,
-            csv_escape(&labels),
-            csv_escape(&entry.message_id),
-        );
+        let mut fields = vec![
+            csv_escape(&date, sep),
+            csv_escape(&from, sep),
+            csv_escape(&to_str, sep),
+            csv_escape(&cc_str, sep),
+            csv_escape(&entry.subject, sep),
+            entry.length.to_string(),
+            entry.has_attachments.to_string(),
+            csv_escape(&labels, sep),
+            csv_escape(&entry.message_id, sep),
+        ];
 
         if let Some(snips) = snippets {
             let snippet = snips.get(i).map(|s| s.as_str()).unwrap_or("");
-            row.push(',');
-            row.push_str(&csv_escape(snippet));
+            fields.push(csv_escape(snippet, sep));
         }
 
-        writeln!(file, "{row}")?;
+        writeln!(file, "{}", fields.join(&sep.to_string()))?;
     }
 
     file.flush()?;
@@ -111,13 +133,14 @@ fn formula_guard(value: &str) -> String {
 /// Escape a value for CSV (RFC 4180).
 ///
 /// The value is formula-guarded (see [`formula_guard`]), then wrapped in
-/// double quotes if it contains a comma, a semicolon, a quote or a line break.
+/// double quotes if it contains a comma, a semicolon, the field separator
+/// `sep`, a quote or a line break.
 /// Semicolons are quoted too because spreadsheets in locales whose decimal
 /// separator is the comma (Excel in es-ES, de-DE, fr-FR…) use `;` as the field
 /// separator, and an unquoted one would split the cell.
-fn csv_escape(value: &str) -> String {
+fn csv_escape(value: &str, sep: char) -> String {
     let guarded = formula_guard(value);
-    if guarded.contains([',', ';', '"', '\n', '\r']) {
+    if guarded.contains([',', ';', '"', '\n', '\r', sep]) {
         format!("\"{}\"", guarded.replace('"', "\"\""))
     } else {
         guarded
@@ -128,54 +151,58 @@ fn csv_escape(value: &str) -> String {
 mod tests {
     use super::*;
 
+    fn esc(value: &str) -> String {
+        csv_escape(value, ',')
+    }
+
     #[test]
     fn test_csv_escape_simple() {
-        assert_eq!(csv_escape("hello"), "hello");
+        assert_eq!(esc("hello"), "hello");
     }
 
     #[test]
     fn test_csv_escape_comma() {
-        assert_eq!(csv_escape("hello, world"), "\"hello, world\"");
+        assert_eq!(esc("hello, world"), "\"hello, world\"");
     }
 
     #[test]
     fn test_csv_escape_quotes() {
-        assert_eq!(csv_escape("say \"hi\""), "\"say \"\"hi\"\"\"");
+        assert_eq!(esc("say \"hi\""), "\"say \"\"hi\"\"\"");
     }
 
     #[test]
     fn test_csv_escape_newline() {
-        assert_eq!(csv_escape("line1\nline2"), "\"line1\nline2\"");
+        assert_eq!(esc("line1\nline2"), "\"line1\nline2\"");
     }
 
     #[test]
     fn test_csv_escape_formula_injection() {
-        assert_eq!(csv_escape("=cmd|'/c calc'!A1"), "'=cmd|'/c calc'!A1");
-        assert_eq!(csv_escape("+1234"), "'+1234");
-        assert_eq!(csv_escape("-2+3"), "'-2+3");
-        assert_eq!(csv_escape("@SUM(A1)"), "'@SUM(A1)");
+        assert_eq!(esc("=cmd|'/c calc'!A1"), "'=cmd|'/c calc'!A1");
+        assert_eq!(esc("+1234"), "'+1234");
+        assert_eq!(esc("-2+3"), "'-2+3");
+        assert_eq!(esc("@SUM(A1)"), "'@SUM(A1)");
     }
 
     #[test]
     fn test_csv_escape_formula_injection_with_comma() {
         // Guard prefix and RFC 4180 quoting must compose.
-        assert_eq!(csv_escape("=1,2"), "\"'=1,2\"");
+        assert_eq!(esc("=1,2"), "\"'=1,2\"");
     }
 
     #[test]
     fn test_csv_escape_inner_equals_not_guarded() {
-        assert_eq!(csv_escape("a=b"), "a=b");
+        assert_eq!(esc("a=b"), "a=b");
     }
 
     #[test]
     fn test_csv_escape_quotes_semicolon() {
-        assert_eq!(csv_escape("a; b"), "\"a; b\"");
-        assert_eq!(csv_escape("=1;2"), "\"'=1;2\"");
+        assert_eq!(esc("a; b"), "\"a; b\"");
+        assert_eq!(esc("=1;2"), "\"'=1;2\"");
     }
 
     #[test]
     fn test_csv_escape_guards_after_leading_spaces() {
-        assert_eq!(csv_escape("  =1+1"), "'  =1+1");
+        assert_eq!(esc("  =1+1"), "'  =1+1");
     }
 
     #[test]
@@ -200,7 +227,7 @@ mod tests {
             );
         }
         // And the whole cell is quoted, so neither `,` nor `;` splits it.
-        let cell = csv_escape(&joined);
+        let cell = esc(&joined);
         assert!(cell.starts_with('"') && cell.ends_with('"'), "{cell}");
     }
 
@@ -239,6 +266,22 @@ mod tests {
             row,
             "2024-01-04 09:00:00,'-cmd <e@x>,\"Ana <a@x>; '=2+5 <b@x>\",'@SUM(A1) <c@x>,\
              \"Hi; there, you\",10,false,\"Inbox; '=evil\",<m@x>"
+        );
+    }
+
+    #[test]
+    fn test_tab_separator_quotes_fields_containing_tabs() {
+        assert_eq!(csv_escape("a\tb", '\t'), "\"a\tb\"");
+        assert_eq!(csv_escape("a|b", '|'), "\"a|b\"");
+        assert_eq!(csv_escape("a|b", ','), "a|b");
+
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("out.tsv");
+        export_csv_with_separator(&[], &out, None, '\t').unwrap();
+        let text = std::fs::read_to_string(&out).unwrap();
+        assert_eq!(
+            text.trim_start_matches('\u{feff}').trim_end(),
+            "Date\tFrom\tTo\tCC\tSubject\tSize\tHas_Attachments\tLabels\tMessage_ID"
         );
     }
 }

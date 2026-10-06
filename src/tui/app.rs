@@ -60,6 +60,18 @@ pub enum LayoutMode {
     VerticalSplit,
 }
 
+impl LayoutMode {
+    /// The layout named by `display.layout` ("horizontal", "vertical" or
+    /// "list-only"); anything else is the horizontal split.
+    pub fn from_config(name: &str) -> Self {
+        match name {
+            "vertical" => Self::VerticalSplit,
+            "list-only" => Self::ListOnly,
+            _ => Self::HorizontalSplit,
+        }
+    }
+}
+
 /// Column used for sorting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortColumn {
@@ -67,6 +79,19 @@ pub enum SortColumn {
     From,
     Subject,
     Size,
+}
+
+impl SortColumn {
+    /// The column named by `general.default_sort` ("date", "from", "subject"
+    /// or "size"); anything else sorts by date.
+    pub fn from_config(name: &str) -> Self {
+        match name {
+            "from" => Self::From,
+            "subject" => Self::Subject,
+            "size" => Self::Size,
+            _ => Self::Date,
+        }
+    }
 }
 
 /// Field currently focused in the search filter popup.
@@ -387,6 +412,7 @@ impl App {
         let has_labels = !all_labels.is_empty();
 
         let entries = Arc::new(entries);
+        let config = crate::config::active();
 
         let mut app = Self {
             mbox_path,
@@ -398,7 +424,7 @@ impl App {
             message_scroll_offset: 0,
             marked: HashSet::new(),
             focus: PanelFocus::MailList,
-            layout: LayoutMode::HorizontalSplit,
+            layout: LayoutMode::from_config(&config.display.layout),
             show_help: false,
             help_scroll: 0,
             help_max_scroll: 0,
@@ -411,7 +437,7 @@ impl App {
             threaded_view: false,
             threads: Vec::new(),
             thread_depths: Vec::new(),
-            show_sidebar: has_labels,
+            show_sidebar: has_labels && config.display.show_sidebar,
             all_labels,
             label_counts,
             sidebar_selected: 0,
@@ -437,8 +463,8 @@ impl App {
             search_history: Vec::new(),
             search_history_index: None,
             search_draft: String::new(),
-            sort_column: SortColumn::Date,
-            sort_ascending: false,
+            sort_column: SortColumn::from_config(&config.general.default_sort),
+            sort_ascending: config.general.sort_order == "asc",
             current_body: None,
             render_cache: None,
             body_search_active: false,
@@ -456,7 +482,7 @@ impl App {
             pending_html_view: None,
         };
 
-        // Sort by date descending and load first message
+        // Apply the configured sort and load the first message
         app.apply_sort();
         if !app.visible_indices.is_empty() {
             app.load_selected_body();
@@ -1697,5 +1723,23 @@ mod async_search_tests {
         );
         // A poll with nothing pending is a no-op.
         app.poll_incremental_search();
+    }
+
+    #[test]
+    fn test_layout_and_sort_from_config_names() {
+        use super::{LayoutMode, SortColumn};
+        assert_eq!(
+            LayoutMode::from_config("vertical"),
+            LayoutMode::VerticalSplit
+        );
+        assert_eq!(LayoutMode::from_config("list-only"), LayoutMode::ListOnly);
+        assert_eq!(
+            LayoutMode::from_config("horizontal"),
+            LayoutMode::HorizontalSplit
+        );
+        assert_eq!(SortColumn::from_config("from"), SortColumn::From);
+        assert_eq!(SortColumn::from_config("subject"), SortColumn::Subject);
+        assert_eq!(SortColumn::from_config("size"), SortColumn::Size);
+        assert_eq!(SortColumn::from_config("date"), SortColumn::Date);
     }
 }

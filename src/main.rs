@@ -234,6 +234,24 @@ enum Commands {
     },
     /// Generate a man page
     Manpage,
+    /// Show the config file: where it is, its contents or the defaults
+    Config {
+        #[command(subcommand)]
+        action: Option<ConfigAction>,
+    },
+}
+
+/// What `mboxshell config` prints. Everything goes to stdout; nothing is
+/// written to disk.
+#[derive(Subcommand, Clone, Copy)]
+enum ConfigAction {
+    /// Print the path of the config file, whether or not it exists (default)
+    Path,
+    /// Print the config file, or fail if there is none
+    #[command(alias = "cat")]
+    Show,
+    /// Print the built-in defaults as a commented config file
+    Defaults,
 }
 
 /// Detect language early from --lang arg or system env, before clap processes --help.
@@ -297,6 +315,13 @@ fn build_localized_command() -> clap::Command {
                 }
                 "manpage" => {
                     s = s.about(i18n::help_cmd_manpage());
+                }
+                "config" => {
+                    s = s
+                        .about(i18n::help_cmd_config())
+                        .mut_subcommand("path", |c| c.about(i18n::help_cmd_config_path()))
+                        .mut_subcommand("show", |c| c.about(i18n::help_cmd_config_show()))
+                        .mut_subcommand("defaults", |c| c.about(i18n::help_cmd_config_defaults()));
                 }
                 _ => {}
             }
@@ -458,7 +483,8 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::from_arg_matches(&matches)?;
 
     // Load configuration
-    let config = mboxshell::config::load_config();
+    let (config, config_warnings) = mboxshell::config::load_config();
+    mboxshell::config::set_active(config.clone());
 
     // Configure logging: stderr + optional log file
     let log_level = match cli.verbose {
@@ -468,6 +494,12 @@ fn main() -> anyhow::Result<()> {
         _ => "trace",
     };
     setup_logging(log_level, &config);
+    // `config show` reports the same problems itself, next to the file.
+    if !matches!(cli.command, Some(Commands::Config { .. })) {
+        for warning in &config_warnings {
+            tracing::warn!("{warning}");
+        }
+    }
 
     // The one display setting the TUI reads today; `NO_COLOR` and
     // `MBOXSHELL_THEME` can override it (see `tui::theme`).
@@ -546,6 +578,7 @@ fn main() -> anyhow::Result<()> {
         ),
         Some(Commands::Completions { shell }) => cmd_completions(shell),
         Some(Commands::Manpage) => cmd_manpage(),
+        Some(Commands::Config { action }) => cmd_config(action.unwrap_or(ConfigAction::Path)),
     }
 }
 
@@ -591,6 +624,40 @@ fn setup_logging(level: &str, config: &mboxshell::config::Config) {
             .with(stderr_layer)
             .init();
     }
+}
+
+/// `mboxshell config`: print the config file's path, its contents or the
+/// built-in defaults. Read-only; everything goes to stdout.
+fn cmd_config(action: ConfigAction) -> anyhow::Result<()> {
+    let path = mboxshell::config::config_file_path();
+    match action {
+        ConfigAction::Path => {
+            let path = path.ok_or_else(|| anyhow::anyhow!(i18n::msg_config_no_path()))?;
+            println!("{}", path.display());
+            if !path.exists() {
+                eprintln!("{}", i18n::msg_config_not_created());
+            }
+        }
+        ConfigAction::Show => {
+            let path = path.ok_or_else(|| anyhow::anyhow!(i18n::msg_config_no_path()))?;
+            let contents = std::fs::read_to_string(&path).map_err(|e| {
+                anyhow::anyhow!("{} {}: {e}", i18n::msg_config_cannot_read(), path.display())
+            })?;
+            print!("{contents}");
+            // Say so if mboxshell would ignore the file, since `show` is
+            // where people look when a setting seems to have no effect.
+            match toml::from_str::<mboxshell::config::Config>(&contents) {
+                Ok(cfg) => {
+                    for warning in cfg.sanitized().1 {
+                        eprintln!("{warning}");
+                    }
+                }
+                Err(e) => eprintln!("{}\n{e}", i18n::msg_config_parse_error()),
+            }
+        }
+        ConfigAction::Defaults => print!("{}", mboxshell::config::defaults_toml()),
+    }
+    Ok(())
 }
 
 /// Generate shell completions and print to stdout.

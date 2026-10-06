@@ -10,6 +10,17 @@ use crate::tui::app::{App, PanelFocus, SortColumn};
 use crate::tui::text::sanitize_line;
 use crate::tui::theme::current_theme;
 
+/// Width of the date column for `format` (`general.date_format`, already
+/// validated): its widest rendering — a Wednesday in September, two-digit
+/// day and hour — plus one column of padding, between 6 and 40 columns.
+fn date_column_width(format: &str) -> u16 {
+    let widest = chrono::NaiveDate::from_ymd_opt(2026, 9, 30)
+        .and_then(|d| d.and_hms_opt(23, 59, 59))
+        .map(|dt| dt.and_utc().format(format).to_string())
+        .unwrap_or_default();
+    (widest.width() as u16 + 1).clamp(6, 40)
+}
+
 /// Render the message list table with virtual scrolling.
 pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let theme = current_theme();
@@ -38,8 +49,9 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     app.list_viewport_height = viewport_height;
 
     // Column widths
+    let date_format = crate::config::active().general.date_format.as_str();
     let mark_w = 2u16;
-    let date_w = 17u16;
+    let date_w = date_column_width(date_format);
     let size_w = 8u16;
     let att_w = 2u16;
     let from_w = 20u16.min(inner.width / 4);
@@ -106,7 +118,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                 if is_selected { ">" } else { " " },
                 if is_marked { "*" } else { " " }
             );
-            let date = entry.date.format("%Y-%m-%d %H:%M").to_string();
+            let date = entry.date.format(date_format).to_string();
 
             let from_display = if entry.from.display_name.is_empty() {
                 entry.from.address.clone()
@@ -195,5 +207,20 @@ fn truncate_str(s: &str, max_width: usize) -> String {
         }
         result.push_str("...");
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_date_column_width_follows_format() {
+        // The default "%Y-%m-%d %H:%M" is 16 columns, plus padding.
+        assert_eq!(date_column_width("%Y-%m-%d %H:%M"), 17);
+        assert_eq!(date_column_width("%d/%m/%y"), 9);
+        // "Wednesday 30 September 2026" is the widest English rendering.
+        assert_eq!(date_column_width("%A %d %B %Y"), 28);
+        assert_eq!(date_column_width("%d"), 6);
     }
 }

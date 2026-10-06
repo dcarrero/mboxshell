@@ -166,6 +166,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell attachments <ruta> -o <salida>` | Extraer todos los adjuntos |
 | `mboxshell completions <shell>` | Generar completions de shell (bash, zsh, fish, powershell, elvish) |
 | `mboxshell manpage` | Generar pagina de manual |
+| `mboxshell config [path\|show\|defaults]` | Mostrar dónde está el fichero de configuración, qué contiene o los valores por defecto |
 
 **Flags globales:**
 
@@ -265,25 +266,29 @@ La navegacion por la lista de mensajes es instantanea gracias al virtual scrolli
 
 ## Configuracion
 
-El archivo de configuracion se ubica en `~/.config/mboxshell/config.toml`:
+Es opcional. `mboxshell config` muestra dónde va el fichero en tu sistema (`~/.config/mboxshell/config.toml` en Linux, `~/Library/Application Support/mboxshell/config.toml` en macOS, `%APPDATA%\mboxshell\config.toml` en Windows, o `$MBOXSHELL_CONFIG`); `mboxshell config show` lo muestra y `mboxshell config defaults` lista todas las opciones con su valor por defecto:
 
 ```toml
 [general]
-default_sort = "date"
-sort_order = "desc"
-date_format = "%Y-%m-%d %H:%M"
-log_level = "warn"
+default_sort = "date"             # date | from | subject | size
+sort_order = "desc"               # desc | asc
+date_format = "%Y-%m-%d %H:%M"    # strftime format for the message list
+log_level = "warn"                # error | warn | info | debug | trace
+# cache_dir = "/path/to/dir"      # fallback indexes and log (default: the system cache dir)
 
 [display]
-theme = "dark"        # dark | light | terminal (NO_COLOR fuerza terminal)
-layout = "horizontal"
-show_sidebar = false
-max_cached_messages = 50
+theme = "dark"                    # dark | light | terminal (NO_COLOR forces terminal)
+layout = "horizontal"             # horizontal | vertical | list-only
+show_sidebar = true               # label sidebar, when the mailbox has labels
+max_cached_messages = 50          # decoded messages kept in memory
 
 [export]
-default_format = "eml"
-csv_separator = ","
+csv_separator = ","               # one character, e.g. ";" or "\t"
+attachment_dirname = "dts"        # dts | seq-no | seq-no0
+attachment_seq_width = 0          # minimum digits for seq-no names (0 = automatic)
 ```
+
+Más detalles en el [manual](docs/MANUAL-ES.md#9-fichero-de-configuración).
 
 ## Arquitectura
 

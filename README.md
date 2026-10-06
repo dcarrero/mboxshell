@@ -166,6 +166,7 @@ mboxshell completions fish > ~/.config/fish/completions/mboxshell.fish
 | `mboxshell attachments <path> -o <output>` | Extract all attachments |
 | `mboxshell completions <shell>` | Generate shell completions (bash, zsh, fish, powershell, elvish) |
 | `mboxshell manpage` | Generate a man page |
+| `mboxshell config [path\|show\|defaults]` | Show where the config file is, its contents or the defaults |
 
 **Global flags:**
 
@@ -265,25 +266,29 @@ Message list navigation is instantaneous thanks to virtual scrolling (only visib
 
 ## Configuration
 
-The configuration file is located at `~/.config/mboxshell/config.toml`:
+Optional. `mboxshell config` prints where the file goes on your system (`~/.config/mboxshell/config.toml` on Linux, `~/Library/Application Support/mboxshell/config.toml` on macOS, `%APPDATA%\mboxshell\config.toml` on Windows, or `$MBOXSHELL_CONFIG`); `mboxshell config show` prints it and `mboxshell config defaults` prints every option with its default:
 
 ```toml
 [general]
-default_sort = "date"
-sort_order = "desc"
-date_format = "%Y-%m-%d %H:%M"
-log_level = "warn"
+default_sort = "date"             # date | from | subject | size
+sort_order = "desc"               # desc | asc
+date_format = "%Y-%m-%d %H:%M"    # strftime format for the message list
+log_level = "warn"                # error | warn | info | debug | trace
+# cache_dir = "/path/to/dir"      # fallback indexes and log (default: the system cache dir)
 
 [display]
-theme = "dark"        # dark | light | terminal (NO_COLOR forces terminal)
-layout = "horizontal"
-show_sidebar = false
-max_cached_messages = 50
+theme = "dark"                    # dark | light | terminal (NO_COLOR forces terminal)
+layout = "horizontal"             # horizontal | vertical | list-only
+show_sidebar = true               # label sidebar, when the mailbox has labels
+max_cached_messages = 50          # decoded messages kept in memory
 
 [export]
-default_format = "eml"
-csv_separator = ","
+csv_separator = ","               # one character, e.g. ";" or "\t"
+attachment_dirname = "dts"        # dts | seq-no | seq-no0
+attachment_seq_width = 0          # minimum digits for seq-no names (0 = automatic)
 ```
+
+See the [manual](docs/MANUAL.md#9-configuration-file) for details.
 
 ## Architecture
 
