@@ -4,6 +4,15 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.0.0
+
+La primera versión estable: el fichero de configuración por fin hace lo que dice, y `mboxshell config` muestra dónde está y qué contiene. A partir de aquí, la línea de órdenes y el fichero de configuración siguen Semantic Versioning, así que un cambio incompatible implica una versión mayor nueva. 7 tests nuevos (308 en total). Sin cambios en el formato del índice.
+
+- Novedad: **`mboxshell config [path|show|defaults]`** (#40) muestra dónde está el fichero de configuración (y avisa si aún no existe), muestra el fichero (`show`, alias `cat`) avisando de cada valor que se ignora, o muestra todos los valores por defecto como un fichero comentado. Solo escribe en stdout: `mboxshell config defaults > "$(mboxshell config path)"` sirve para empezar.
+- Arreglo: **la mayoría de opciones del config no hacían nada.** Solo se leían `log_level`, `theme` y las dos opciones de adjuntos. Ahora funcionan `default_sort`, `sort_order`, `date_format` (la columna de fecha se ensancha para que quepa), `layout`, `show_sidebar`, `max_cached_messages`, `csv_separator` (los campos que lo contienen van entre comillas) y `cache_dir` (ahora también para los índices de respaldo). Desaparecen `[columns]`, `[performance]`, `message_text_width`, `default_format` y `default_output_dir`; un fichero antiguo que las tenga sigue cargando.
+- Arreglo: **un valor erróneo se ignoraba en silencio, y un `date_format` erróneo cerraba la TUI.** Cada valor no válido vuelve a su valor por defecto con un aviso por stderr. Los avisos sobre el fichero de configuración se perdían, porque se emitían antes de arrancar el log.
+- Docs: **en macOS el fichero de configuración es `~/Library/Application Support/mboxshell/config.toml`**, no `~/.config/mboxshell/config.toml` como decía el README.
+
 ## v0.9.0
 
 Los mensajes exportados ya se pueden emparejar con su carpeta de adjuntos, y se arregla la exportación de buzones que empiezan por una marca de orden de bytes. 7 tests nuevos (301 en total). Sin cambios en el formato del índice.

@@ -4,6 +4,15 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.0.0
+
+The first stable release: the config file now does what it says, and `mboxshell config` shows where it is and what is in it. From here on, the command line and the config file follow Semantic Versioning, so a breaking change means a new major version. 7 new tests (308 total). No index format change.
+
+- Feature: **`mboxshell config [path|show|defaults]`** (#40) prints where the config file is (and says so if it doesn't exist yet), prints the file (`show`, alias `cat`) with a warning for every value it ignores, or prints all the defaults as a commented file. It only writes to stdout: `mboxshell config defaults > "$(mboxshell config path)"` is a starting point.
+- Fix: **most config options did nothing.** Only `log_level`, `theme` and the two attachment options were read. `default_sort`, `sort_order`, `date_format` (the date column widens to fit), `layout`, `show_sidebar`, `max_cached_messages`, `csv_separator` (fields containing it are quoted) and `cache_dir` (now also for fallback indexes) work now. `[columns]`, `[performance]`, `message_text_width`, `default_format` and `default_output_dir` are gone; an old file that has them still loads.
+- Fix: **a bad value was ignored in silence, and a bad `date_format` crashed the TUI.** Each invalid value now falls back to its default with a warning on stderr. Warnings about the config file were lost before, because they were logged before logging started.
+- Docs: **on macOS the config file is `~/Library/Application Support/mboxshell/config.toml`**, not `~/.config/mboxshell/config.toml` as the README said.
+
 ## v0.9.0
 
 Exported messages can now be matched to their attachment folders, and a fix for mailboxes that start with a byte order mark. 7 new tests (301 total). No index format change.
