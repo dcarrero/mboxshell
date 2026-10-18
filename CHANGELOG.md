@@ -11,6 +11,7 @@ The search syntax can now be looked up without leaving the program (#48). 3 new 
 - Feature: **the help (`?`) lists every search operator**, with the date format and a pointer to the README and the manual. Before, it showed one line with 8 of the 15 operators: `cc:`, `filename:`, `id:`, `before:`/`after:`, date ranges, `size:` units, `OR` and `-` were missing. Descriptions wrap to the window instead of being cut off.
 - Feature: **`F1` opens the help at the search syntax**, also from inside the search bar, where `?` is part of the query. `Esc` goes back to the query as you left it. The search bar hint now starts with `F1 all operators`, so it shows even at 80 columns.
 - Feature: **`search --help` and `export --help` end with the same operator list**, in English or Spanish.
+- Security: **`ammonia` updated to 4.2.4**, the library that sanitizes HTML exports, for RUSTSEC-2026-0373, RUSTSEC-2021-0157 and RUSTSEC-2021-0158 (CSS `url()` in `style` attributes and SVG animation tags could get past the sanitizer). v1.0.0 and earlier are affected; `--raw-html` exports were never sanitized.
 
 ## v1.0.0
 

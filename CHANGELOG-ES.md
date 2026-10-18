@@ -11,6 +11,7 @@ La sintaxis de búsqueda ya se puede consultar sin salir del programa (#48). 3 t
 - Novedad: **la ayuda (`?`) enumera todos los operadores de búsqueda**, con el formato de fecha y un enlace al README y al manual. Antes mostraba una línea con 8 de los 15 operadores: faltaban `cc:`, `filename:`, `id:`, `before:`/`after:`, los rangos de fecha, las unidades de `size:`, `OR` y `-`. Las descripciones se ajustan a la ventana en vez de cortarse.
 - Novedad: **`F1` abre la ayuda en la sintaxis de búsqueda**, también desde la barra de búsqueda, donde `?` forma parte de la consulta. `Esc` vuelve a la consulta tal como estaba. El aviso de la barra empieza ahora por `F1 todos los operadores`, así que se ve incluso a 80 columnas.
 - Novedad: **`search --help` y `export --help` terminan con la misma lista de operadores**, en inglés o en español.
+- Seguridad: **`ammonia`, la biblioteca que sanea los exports HTML, pasa a 4.2.4**, por RUSTSEC-2026-0373, RUSTSEC-2021-0157 y RUSTSEC-2021-0158 (un `url()` de CSS en atributos `style` y las etiquetas de animación SVG podían colarse por el saneador). Afecta a v1.0.0 y anteriores; los exports con `--raw-html` nunca se sanearon.
 
 ## v1.0.0
 
