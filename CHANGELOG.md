@@ -4,6 +4,14 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.0
+
+The search syntax can now be looked up without leaving the program (#48). 3 new tests (311 total). No index format change.
+
+- Feature: **the help (`?`) lists every search operator**, with the date format and a pointer to the README and the manual. Before, it showed one line with 8 of the 15 operators: `cc:`, `filename:`, `id:`, `before:`/`after:`, date ranges, `size:` units, `OR` and `-` were missing. Descriptions wrap to the window instead of being cut off.
+- Feature: **`F1` opens the help at the search syntax**, also from inside the search bar, where `?` is part of the query. `Esc` goes back to the query as you left it. The search bar hint now starts with `F1 all operators`, so it shows even at 80 columns.
+- Feature: **`search --help` and `export --help` end with the same operator list**, in English or Spanish.
+
 ## v1.0.0
 
 The first stable release: the config file now does what it says, and `mboxshell config` shows where it is and what is in it. From here on, the command line and the config file follow Semantic Versioning, so a breaking change means a new major version. 7 new tests (308 total). No index format change.
