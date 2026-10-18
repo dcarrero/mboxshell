@@ -10,8 +10,8 @@ Security fixes are applied to the **latest released minor version** on `main`. O
 
 | Version | Supported |
 |--------:|:---------:|
-| 1.0.x   | ✅ |
-| < 1.0   | ❌ |
+| 1.1.x   | ✅ |
+| < 1.1   | ❌ |
 
 The MSRV is documented in `Cargo.toml` (`rust-version`). Reports that only reproduce on unsupported Rust versions are out of scope.
 
