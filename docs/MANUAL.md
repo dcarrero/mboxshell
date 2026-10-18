@@ -324,6 +324,7 @@ The search prompt opens at the **top of the message panel**, next to the body.
 | `Ctrl-U` | Clear the query |
 | `Enter` | Run the search (body/full-text searches run on a background thread). A filter it cannot read (`after:2024-13-45`, `size:big`) is reported instead of being ignored |
 | `↑` / `↓` | Browse search history |
+| `F1` | Open the help at the full list of search operators; `Esc` brings you back to the query |
 | `Esc` | Cancel and restore the previous view |
 
 ### Search filter popup (after pressing `f`)
@@ -409,6 +410,8 @@ In the filter popup, the **Search within previous results** checkbox confines th
 mboxshell search mail.mbox "from:user@gmail.com date:2024"
 mboxshell search mail.mbox "has:attachment subject:invoice" --json
 ```
+
+`mboxshell search --help` (and `export --help`, for `--query`) ends with the same operator list.
 
 `--json` prints structured results for scripting.
 

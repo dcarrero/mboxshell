@@ -104,9 +104,13 @@ mod tests {
     #[test]
     fn renders_every_screen_at_small_and_large_sizes() {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/simple.mbox");
-        let screens: [fn(&mut App); 5] = [
+        let screens: [fn(&mut App); 6] = [
             |_| {},
             |a| a.show_help = true,
+            |a| {
+                a.search_active = true;
+                a.open_search_syntax_help();
+            },
             |a| a.search_active = true,
             |a| a.show_search_filter = true,
             |a| a.show_export = true,

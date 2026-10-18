@@ -299,10 +299,14 @@ fn build_localized_command() -> clap::Command {
                     s = s.about(i18n::help_cmd_stats());
                 }
                 "search" => {
-                    s = s.about(i18n::help_cmd_search());
+                    s = s
+                        .about(i18n::help_cmd_search())
+                        .after_help(i18n::search_syntax_text());
                 }
                 "export" => {
-                    s = s.about(i18n::help_cmd_export());
+                    s = s
+                        .about(i18n::help_cmd_export())
+                        .after_help(i18n::search_syntax_text());
                 }
                 "merge" => {
                     s = s.about(i18n::help_cmd_merge());

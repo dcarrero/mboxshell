@@ -215,6 +215,7 @@ La etiqueta de origen es el nombre de buzón que tú ves: en una exportación de
 | `r` | Mostrar mensaje en formato raw |
 | `1` / `2` / `3` | Layout: solo lista / horizontal / vertical |
 | `?` | Ayuda |
+| `F1` | Sintaxis de búsqueda (también dentro de la barra de búsqueda) |
 | `q` | Salir |
 
 ## Sintaxis de busqueda

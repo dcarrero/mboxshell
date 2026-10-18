@@ -324,6 +324,7 @@ El prompt de búsqueda se abre en la **parte superior del panel del mensaje**, j
 | `Ctrl-U` | Borrar la consulta |
 | `Enter` | Ejecutar la búsqueda (las de cuerpo/texto completo corren en un hilo en segundo plano). Un filtro que no se entiende (`after:2024-13-45`, `size:big`) se avisa en vez de ignorarse |
 | `↑` / `↓` | Navegar por el historial de búsquedas |
+| `F1` | Abrir la ayuda en la lista completa de operadores de búsqueda; `Esc` vuelve a la consulta |
 | `Esc` | Cancelar y restaurar la vista anterior |
 
 ### Popup de filtros de búsqueda (tras pulsar `f`)
@@ -409,6 +410,8 @@ En el popup de filtros, la casilla **Buscar dentro de resultados previos** limit
 mboxshell search correo.mbox "from:user@gmail.com date:2024"
 mboxshell search correo.mbox "has:attachment subject:factura" --json
 ```
+
+`mboxshell search --help` (y `export --help`, por `--query`) termina con la misma lista de operadores.
 
 `--json` imprime resultados estructurados para scripts.
 

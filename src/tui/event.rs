@@ -30,21 +30,15 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
     // been seen; this key dismisses it and still does its usual job.
     app.acknowledge_status();
 
-    // ── Search bar input mode (captures all keys) ─────────
-    if app.search_active {
-        return handle_search_input(app, key);
-    }
-
-    // ── In-body search prompt (captures all keys) ─────────
-    if app.body_search_active {
-        return handle_body_search_input(app, key);
-    }
-
-    // ── Popup handling (captures all keys) ────────────────
+    // ── Help popup (captures all keys) ────────────────────
+    // Ahead of the search bar: F1 opens the help over a half-typed query,
+    // and Esc must close the help, not abandon the search under it.
     if app.show_help {
         let page = 10;
         match key.code {
-            KeyCode::Esc | KeyCode::Char('?') | KeyCode::Char('q') => app.show_help = false,
+            KeyCode::Esc | KeyCode::Char('?') | KeyCode::Char('q') | KeyCode::F(1) => {
+                app.show_help = false
+            }
             KeyCode::Down | KeyCode::Char('j') => app.help_scroll += 1,
             KeyCode::Up | KeyCode::Char('k') => {
                 app.help_scroll = app.help_scroll.saturating_sub(1);
@@ -60,6 +54,17 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // ── Search bar input mode (captures all keys) ─────────
+    if app.search_active {
+        return handle_search_input(app, key);
+    }
+
+    // ── In-body search prompt (captures all keys) ─────────
+    if app.body_search_active {
+        return handle_body_search_input(app, key);
+    }
+
+    // ── Popup handling (captures all keys) ────────────────
     if app.show_attachments {
         return handle_attachment_popup(app, key);
     }
@@ -84,6 +89,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         (_, KeyCode::Char('?')) => {
             app.show_help = true;
             app.help_scroll = 0;
+            return Ok(());
+        }
+        // F1: the help, scrolled to the search syntax
+        (_, KeyCode::F(1)) => {
+            app.open_search_syntax_help();
             return Ok(());
         }
         // Tab: cycle focus forward
@@ -836,6 +846,8 @@ fn save_all_attachments(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<V
 /// Key handling when the search bar is active.
 fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
     match key.code {
+        // `?` is a character a query may contain, so the syntax lives on F1.
+        KeyCode::F(1) => app.open_search_syntax_help(),
         KeyCode::Esc => {
             app.search_active = false;
             app.search_history_index = None;
@@ -1080,6 +1092,29 @@ mod tests {
 
     fn key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
         KeyEvent::new(code, modifiers)
+    }
+
+    #[test]
+    fn f1_in_the_search_bar_shows_the_syntax_and_esc_keeps_the_query() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.search_active = true;
+        app.search_query = "from:al".to_string();
+
+        handle_key_event(&mut app, key(KeyCode::F(1), KeyModifiers::NONE)).expect("F1");
+        assert!(app.show_help && app.help_jump_to_syntax);
+        assert_eq!(
+            app.search_query, "from:al",
+            "F1 is not typed into the query"
+        );
+
+        // Keys now drive the help, not the query under it.
+        handle_key_event(&mut app, key(KeyCode::Char('j'), KeyModifiers::NONE)).expect("j");
+        assert_eq!(app.search_query, "from:al");
+
+        handle_key_event(&mut app, key(KeyCode::Esc, KeyModifiers::NONE)).expect("Esc");
+        assert!(!app.show_help, "Esc closes the help");
+        assert!(app.search_active, "...and leaves the search bar open");
+        assert_eq!(app.search_query, "from:al");
     }
 
     #[test]

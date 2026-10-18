@@ -435,6 +435,98 @@ msg!(
     "Up/Down in search bar: navigate history",
     "Arriba/Abajo en barra b\u{fa}squeda: navegar historial"
 );
+msg!(
+    tui_help_search_syntax_key,
+    "F1 in search bar: this syntax",
+    "F1 en la barra de b\u{fa}squeda: esta sintaxis"
+);
+
+// ── Search syntax reference (TUI help, `search --help`) ─────────
+
+msg!(
+    search_syntax_title,
+    "Search syntax",
+    "Sintaxis de b\u{fa}squeda"
+);
+
+/// Every search operator with a one-line description, for the in-app help
+/// and `search --help`. Keep in step with `search::query` and the README.
+pub fn search_syntax() -> &'static [(&'static str, &'static str)] {
+    match lang() {
+        Lang::En => &[
+            ("word", "Subject, from, to and the message text"),
+            ("\"two words\"", "Quotes keep a phrase together"),
+            ("from: to: cc:", "Sender / recipients, name or address"),
+            ("subject:", "Subject line"),
+            ("body:", "Message text (reads the mailbox)"),
+            ("filename:", "Attachment file name (reads the mailbox)"),
+            ("label:", "Gmail label, e.g. label:Inbox"),
+            ("id:", "Message-ID"),
+            ("has:attachment", "With attachments (has:no-attachment)"),
+            ("date:2024", "A year, month (2024-03) or day (2024-03-15)"),
+            ("date:2024-01..2024-06", "Range, both ends included"),
+            ("after:2024-01-01", "From that day on, the day included"),
+            ("before:2024-07-01", "Up to that day, the day excluded"),
+            ("size:>1mb  size:<100kb", "Larger / smaller (b, kb, mb, gb)"),
+            ("a b", "Both must match (AND)"),
+            ("a OR b", "Either; binds tighter than AND"),
+            ("-word  -from:bob", "Exclude"),
+        ],
+        Lang::Es => &[
+            (
+                "palabra",
+                "Asunto, remitente, destinatario y texto del mensaje",
+            ),
+            ("\"dos palabras\"", "Las comillas mantienen la frase junta"),
+            (
+                "from: to: cc:",
+                "Remitente / destinatarios, nombre o direcci\u{f3}n",
+            ),
+            ("subject:", "Asunto"),
+            ("body:", "Texto del mensaje (lee el buz\u{f3}n)"),
+            ("filename:", "Nombre de un adjunto (lee el buz\u{f3}n)"),
+            ("label:", "Etiqueta de Gmail, p. ej. label:Inbox"),
+            ("id:", "Message-ID"),
+            ("has:attachment", "Con adjuntos (has:no-attachment, sin)"),
+            (
+                "date:2024",
+                "Un a\u{f1}o, un mes (2024-03) o un d\u{ed}a (2024-03-15)",
+            ),
+            ("date:2024-01..2024-06", "Rango, ambos extremos incluidos"),
+            ("after:2024-01-01", "Desde ese d\u{ed}a, incluido"),
+            ("before:2024-07-01", "Hasta ese d\u{ed}a, sin incluirlo"),
+            (
+                "size:>1mb  size:<100kb",
+                "Mayor / menor que (b, kb, mb, gb)",
+            ),
+            ("a b", "Ambos deben cumplirse (Y)"),
+            ("a OR b", "Cualquiera; OR liga m\u{e1}s fuerte que Y"),
+            ("-palabra  -from:ana", "Excluir"),
+        ],
+    }
+}
+
+msg!(
+    search_syntax_notes,
+    "Dates are YYYY-MM-DD; there are no parentheses. Full reference: README (Search syntax) and docs/MANUAL.md, https://github.com/dcarrero/mboxshell",
+    "Las fechas van en AAAA-MM-DD; no hay par\u{e9}ntesis. Referencia completa: README (Search syntax) y docs/MANUAL-ES.md, https://github.com/dcarrero/mboxshell"
+);
+
+/// The search syntax as plain text, for clap's `after_help`.
+pub fn search_syntax_text() -> String {
+    let width = search_syntax()
+        .iter()
+        .map(|(op, _)| op.chars().count())
+        .max()
+        .unwrap_or(0);
+    let mut out = format!("{}:\n", search_syntax_title());
+    for (op, desc) in search_syntax() {
+        out.push_str(&format!("  {op:<width$}  {desc}\n"));
+    }
+    out.push('\n');
+    out.push_str(search_syntax_notes());
+    out
+}
 
 // ── Status bar hints ────────────────────────────────────────────
 
@@ -641,8 +733,8 @@ msg!(
 msg!(tui_history, "history", "historial");
 msg!(
     tui_search_hint,
-    "from: to: subject: body: date: before: after: has:attachment label: size:>1mb  (Enter to run, F for form)",
-    "from: to: subject: body: date: before: after: has:attachment label: size:>1mb  (Enter para buscar, F formulario)"
+    "F1 all operators \u{b7} from: to: subject: body: date: after: before: has:attachment label: size:>1mb \u{b7} Enter to run",
+    "F1 todos los operadores \u{b7} from: to: subject: body: date: after: before: has:attachment label: size:>1mb \u{b7} Enter para buscar"
 );
 msg!(
     tui_no_html_part,

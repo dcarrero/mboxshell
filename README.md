@@ -215,6 +215,7 @@ The source label is the mailbox name you see: for an Apple Mail export — a dir
 | `r` | Toggle raw message source |
 | `1` / `2` / `3` | Layout: list only / horizontal split / vertical split |
 | `?` | Help |
+| `F1` | Search syntax (also inside the search bar) |
 | `q` | Quit |
 
 ## Search syntax

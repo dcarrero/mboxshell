@@ -38,7 +38,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let sep_width = inner_width.saturating_sub(2);
 
     // Build all lines
-    let lines = build_lines(cols, col_width, sep_width, &theme);
+    let (lines, syntax_line) = build_lines(cols, col_width, sep_width, &theme);
 
     // Size popup to fit content: lines + 2 (borders) + 1 (bottom padding)
     let content_height = lines.len() as u16 + 1; // +1 small bottom padding
@@ -59,6 +59,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let visible = area.height.saturating_sub(2) as usize;
     let total = lines.len();
     app.help_max_scroll = total.saturating_sub(visible);
+    if app.help_jump_to_syntax {
+        app.help_jump_to_syntax = false;
+        app.help_scroll = syntax_line;
+    }
     app.help_scroll = app.help_scroll.min(app.help_max_scroll);
     if app.help_max_scroll > 0 {
         let first = app.help_scroll + 1;
@@ -74,13 +78,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     super::park_cursor(frame, inner, 0);
 }
 
-/// Build all the help content lines.
+/// Build all the help content lines, plus the index of the search syntax
+/// header so F1 can scroll straight to it.
 fn build_lines<'a>(
     cols: usize,
     col_width: usize,
     sep_width: usize,
     theme: &crate::tui::theme::Theme,
-) -> Vec<Line<'a>> {
+) -> (Vec<Line<'a>>, usize) {
     let mut lines: Vec<Line> = Vec::new();
 
     // ── App header ─────────────────────────────────
@@ -226,13 +231,19 @@ fn build_lines<'a>(
         theme,
     );
     lines.push(Line::from(Span::styled(
-        "    from: to: subject: body: label: date: size: has:attachment",
-        theme.help_dim,
-    )));
-    lines.push(Line::from(Span::styled(
         format!("    {}", i18n::tui_help_search_history()),
         theme.help_dim,
     )));
+    lines.push(Line::from(Span::styled(
+        format!("    {}", i18n::tui_help_search_syntax_key()),
+        theme.help_dim,
+    )));
+    lines.push(Line::from(""));
+
+    // ── Search syntax ─────────────────────────────
+    let syntax_line = lines.len();
+    add_section_header(&mut lines, i18n::search_syntax_title(), theme, sep_width);
+    add_syntax_table(&mut lines, sep_width, theme);
     lines.push(Line::from(""));
 
     // ── Layout & General ──────────────────────────
@@ -284,7 +295,78 @@ fn build_lines<'a>(
         theme.help_dim,
     )));
 
-    lines
+    (lines, syntax_line)
+}
+
+/// One row per search operator, then the notes, all wrapped to the popup
+/// width rather than cut: this is the only place in the app that spells the
+/// syntax out, so a truncated description would hide the very detail
+/// (a date format, a unit) someone opened it for.
+///
+/// A single column: the operators are wider than a shortcut key. On a
+/// narrow terminal each description goes under its operator.
+fn add_syntax_table(
+    lines: &mut Vec<Line<'static>>,
+    width: usize,
+    theme: &crate::tui::theme::Theme,
+) {
+    let syntax = i18n::search_syntax();
+    let op_w = syntax.iter().map(|(op, _)| op.width()).max().unwrap_or(0);
+    // "    " + operator + "  " + description
+    let side_by_side = 4 + op_w + 2 + 20 <= width;
+
+    for (op, desc) in syntax {
+        if side_by_side {
+            let indent = " ".repeat(4 + op_w + 2);
+            let rows = wrap_words(desc, width.saturating_sub(indent.len()));
+            for (i, row) in rows.into_iter().enumerate() {
+                let lead = if i == 0 {
+                    Span::styled(format!("    {op:<op_w$}  "), theme.search_prompt)
+                } else {
+                    Span::raw(indent.clone())
+                };
+                lines.push(Line::from(vec![lead, Span::styled(row, theme.popup)]));
+            }
+        } else {
+            lines.push(Line::from(Span::styled(
+                format!("    {op}"),
+                theme.search_prompt,
+            )));
+            for row in wrap_words(desc, width.saturating_sub(6)) {
+                lines.push(Line::from(Span::styled(
+                    format!("      {row}"),
+                    theme.popup,
+                )));
+            }
+        }
+    }
+
+    for row in wrap_words(i18n::search_syntax_notes(), width.saturating_sub(4)) {
+        lines.push(Line::from(Span::styled(
+            format!("    {row}"),
+            theme.help_dim,
+        )));
+    }
+}
+
+/// Greedy word wrap measured in terminal columns. A word longer than the
+/// width (a URL) gets a row of its own rather than being split.
+fn wrap_words(text: &str, width: usize) -> Vec<String> {
+    let mut rows = Vec::new();
+    let mut row = String::new();
+    for word in text.split_whitespace() {
+        if !row.is_empty() && row.width() + 1 + word.width() > width {
+            rows.push(std::mem::take(&mut row));
+        }
+        if !row.is_empty() {
+            row.push(' ');
+        }
+        row.push_str(word);
+    }
+    if !row.is_empty() {
+        rows.push(row);
+    }
+    rows
 }
 
 /// Add a section header with a trailing separator line.
@@ -376,6 +458,46 @@ fn centered_rect_exact(width: u16, height: u16, area: Rect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_wrap_words_respects_width() {
+        let rows = wrap_words("one two three four five", 9);
+        assert_eq!(rows, ["one two", "three", "four five"]);
+        // An over-long word stays whole on its own row.
+        assert_eq!(
+            wrap_words("a https://example.com b", 5),
+            ["a", "https://example.com", "b"]
+        );
+        assert!(wrap_words("", 10).is_empty());
+    }
+
+    #[test]
+    fn test_syntax_table_lists_every_field_operator() {
+        let theme = crate::tui::theme::current_theme();
+        let (lines, syntax_line) = build_lines(3, 30, 90, &theme);
+        let text: String = lines[syntax_line..]
+            .iter()
+            .flat_map(|l| l.spans.iter().map(|s| s.content.to_string()))
+            .collect();
+        for op in [
+            "from:",
+            "to:",
+            "cc:",
+            "subject:",
+            "body:",
+            "filename:",
+            "label:",
+            "id:",
+            "has:attachment",
+            "date:",
+            "after:",
+            "before:",
+            "size:",
+            "OR",
+        ] {
+            assert!(text.contains(op), "{op} missing from the help");
+        }
+    }
 
     #[test]
     fn test_fit_to_width_never_splits_a_character() {

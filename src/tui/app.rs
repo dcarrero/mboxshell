@@ -241,6 +241,8 @@ pub struct App {
     pub help_scroll: usize,
     /// Largest useful `help_scroll`, recorded by the help popup's render.
     pub help_max_scroll: usize,
+    /// Scroll the help popup to the search syntax on its next render (F1).
+    pub help_jump_to_syntax: bool,
     /// Attachment popup visible?
     pub show_attachments: bool,
     /// Show all headers in message view?
@@ -428,6 +430,7 @@ impl App {
             show_help: false,
             help_scroll: 0,
             help_max_scroll: 0,
+            help_jump_to_syntax: false,
             show_attachments: false,
             show_full_headers: false,
             show_raw: false,
@@ -643,6 +646,13 @@ impl App {
         } else {
             0
         }
+    }
+
+    /// Open the help popup scrolled to the search syntax reference.
+    pub fn open_search_syntax_help(&mut self) {
+        self.show_help = true;
+        self.help_scroll = 0;
+        self.help_jump_to_syntax = true;
     }
 
     /// Apply a label filter from the sidebar.
