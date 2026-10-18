@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.0
+
+HTML exports now show the images a message embeds. 5 new tests (316 total). No index format change.
+
+- Feature: **inline images are embedded in HTML exports** (#49). Every `<img src="cid:…">` is replaced with the matching part of the message as a `data:` URI, so the page shows logos and pictures with no file next to it and nothing is fetched. Before, those images were removed. Only PNG, JPEG, GIF and WebP are embedded, recognised by their first bytes rather than by the type the sender declared, so an SVG (which can carry scripts) or an HTML part labelled `image/png` never is. On by default in `export -f html` and in the TUI's HTML export; `--no-inline-images` leaves them out, and `--raw-html` keeps the `cid:` references as they were.
+- Fix: **an unknown `theme` in the config file was ignored without a warning**: it fell back to `dark` silently, both at startup and in `config show`. It now gets the same warning as any other invalid value, and that warning is translated (it was always in English).
+
 ## v1.1.0
 
 The search syntax can now be looked up without leaving the program (#48). 3 new tests (311 total). No index format change.
