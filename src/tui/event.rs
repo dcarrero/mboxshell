@@ -702,6 +702,21 @@ fn export_current_eml(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
     }
 }
 
+/// Sanitized HTML export with the message's inline (`cid:`) images embedded.
+fn export_html_with_images(
+    app: &mut App,
+    entry: &crate::model::mail::MailEntry,
+    body: &crate::model::mail::MailBody,
+    output_dir: &std::path::Path,
+) -> anyhow::Result<PathBuf> {
+    use crate::export::html::{export_html_with, HtmlOptions, InlineImages};
+    let opts = HtmlOptions {
+        inline_images: InlineImages::load(&mut app.store, entry, body)?,
+        ..HtmlOptions::default()
+    };
+    export_html_with(entry, body, output_dir, &opts)
+}
+
 /// Export the current message — or all marked messages — as standalone HTML.
 fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<String> {
     std::fs::create_dir_all(output_dir)?;
@@ -716,7 +731,7 @@ fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<St
         let count = entries.len();
         for entry in &entries {
             let body = app.store.get_message(entry)?;
-            crate::export::html::export_html(entry, &body, output_dir)?;
+            export_html_with_images(app, entry, &body, output_dir)?;
         }
         Ok(format!(
             "{} {count} {} -> {}",
@@ -727,7 +742,7 @@ fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<St
     } else if let (Some(entry), Some(body)) =
         (app.current_entry().cloned(), app.current_body.clone())
     {
-        let path = crate::export::html::export_html(&entry, &body, output_dir)?;
+        let path = export_html_with_images(app, &entry, &body, output_dir)?;
         let name = path
             .file_name()
             .and_then(|n| n.to_str())

@@ -81,6 +81,26 @@ pub fn extract_attachment(raw_message: &[u8], attachment: &AttachmentMeta) -> Re
     )))
 }
 
+/// Decode several attachments of one message with a single parse.
+///
+/// The result follows the order of `attachments`; a part that is no longer
+/// where its `part_index` says comes back as `None`.
+pub fn extract_attachments(
+    raw_message: &[u8],
+    attachments: &[&AttachmentMeta],
+) -> Result<Vec<Option<Vec<u8>>>> {
+    let message_bytes = skip_from_line(raw_message);
+    let parser = MessageParser::default();
+    let msg = parser.parse(message_bytes).ok_or_else(|| {
+        MboxError::MimeError("Failed to parse message for attachment extraction".into())
+    })?;
+    let parts: Vec<_> = msg.attachments().collect();
+    Ok(attachments
+        .iter()
+        .map(|a| parts.get(a.part_index).map(|p| p.contents().to_vec()))
+        .collect())
+}
+
 /// Build attachment metadata from a parsed `mail_parser::Message`.
 fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<AttachmentMeta> {
     use mail_parser::MimeHeaders;

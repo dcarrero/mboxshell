@@ -6,6 +6,7 @@ use std::time::Instant;
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
 
+use mboxshell::export::html::{HtmlOptions, InlineImages};
 use mboxshell::i18n;
 use mboxshell::index::{builder, reader as index_reader};
 
@@ -77,6 +78,8 @@ struct ExportFlags {
     raw_html: bool,
     /// `--allow-remote-images` (HTML only).
     allow_remote_images: bool,
+    /// `--no-inline-images` (HTML only).
+    no_inline_images: bool,
     /// `--dirname` (eml/txt/html), or the config file's when absent.
     dirname: Option<AttachmentDirname>,
     /// `--seq-width` (eml/txt/html), or the config file's when absent.
@@ -173,6 +176,12 @@ enum Commands {
         /// --format=html.
         #[arg(long)]
         allow_remote_images: bool,
+        /// Leave out the images the message shows inline (`cid:`). By
+        /// default they are embedded in the page as `data:` URIs, after
+        /// checking they are PNG, JPEG, GIF or WebP; they come from the
+        /// message itself, so nothing is fetched. Only affects --format=html.
+        #[arg(long)]
+        no_inline_images: bool,
         /// Name eml/txt/html files like the `attachments` folders: dts
         /// (date and subject, the default) keeps the usual names, seq-no or
         /// seq-no0 name each file after its message's number (`0007.html`
@@ -383,6 +392,11 @@ const ARG_HELP_ES: &[(&str, &str, &str)] = &[
     ),
     (
         "export",
+        "no_inline_images",
+        "Dejar fuera las imágenes que el mensaje muestra integradas (`cid:`). Por defecto se incrustan en la página como URI `data:`, tras comprobar que son PNG, JPEG, GIF o WebP; vienen del propio mensaje, así que no se descarga nada. Solo afecta a --format=html",
+    ),
+    (
+        "export",
         "dirname",
         "Nombrar los ficheros eml/txt/html como las carpetas de `attachments`: dts (fecha y asunto, por defecto) deja los nombres de siempre; seq-no o seq-no0 nombran cada fichero con el número de su mensaje (`0007.html` para la carpeta `0007/`). En txt y html, además, la lista de adjuntos indica esa carpeta",
     ),
@@ -542,6 +556,7 @@ fn main() -> anyhow::Result<()> {
             qp,
             raw_html,
             allow_remote_images,
+            no_inline_images,
             dirname,
             seq_width,
             force,
@@ -555,6 +570,7 @@ fn main() -> anyhow::Result<()> {
                 qp,
                 raw_html,
                 allow_remote_images,
+                no_inline_images,
                 dirname,
                 seq_width,
             },
@@ -838,6 +854,7 @@ fn cmd_export(
         qp,
         raw_html,
         allow_remote_images,
+        no_inline_images,
         dirname,
         seq_width,
     } = flags;
@@ -942,17 +959,25 @@ fn cmd_export(
         ExportFormat::Html => {
             std::fs::create_dir_all(output)?;
             let mut count = 0usize;
-            let sanitize = !raw_html;
             for (i, entry) in selected.iter().enumerate() {
                 pb.set_position(i as u64);
                 let body = store.get_message(entry)?;
-                mboxshell::export::html::export_html_opts(
+                // Raw mode keeps the markup exactly as it was, `cid:` included.
+                let inline_images = if raw_html || no_inline_images {
+                    InlineImages::default()
+                } else {
+                    InlineImages::load(&mut store, entry, &body)?
+                };
+                mboxshell::export::html::export_html_with(
                     entry,
                     &body,
                     output,
-                    sanitize,
-                    allow_remote_images,
-                    Some(naming),
+                    &HtmlOptions {
+                        raw: raw_html,
+                        allow_remote_images,
+                        inline_images,
+                        naming: Some(naming),
+                    },
                 )?;
                 count += 1;
             }

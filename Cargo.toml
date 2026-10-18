@@ -70,6 +70,8 @@ quoted_printable = "0.5"
 
 # HTML sanitization for exported messages (strip scripts, on* handlers, etc.)
 ammonia = "4"
+# Inline (`cid:`) images embedded as `data:` URIs in HTML exports
+base64 = "0.22"
 
 # TUI
 # `unstable-rendered-line-info` exposes `Paragraph::line_count`, used by the

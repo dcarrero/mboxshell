@@ -1471,6 +1471,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "assert_fs",
+ "base64",
  "bincode",
  "chrono",
  "clap",

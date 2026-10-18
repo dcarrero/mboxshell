@@ -174,6 +174,7 @@ mboxshell [GLOBAL FLAGS] <FILE>        # no command = open <FILE> in the TUI
 | `--qp` | Re-encode 8-bit text as quoted-printable so the `.eml` is pure 7-bit ASCII (helps strict tools like `eml-extractor`). **EML only.** |
 | `--raw-html` | Keep the original HTML body **unsanitized** (scripts, `on*`, iframes preserved). For local archival only — never serve these files. **HTML only.** |
 | `--allow-remote-images` | Keep remote images (`http(s)://`) in sanitized HTML exports. They are **blocked by default**: opening the file would fetch them, and tracking pixels tell the sender when and from where the message was read. A note at the top of each page says how many were blocked. **HTML only.** |
+| `--no-inline-images` | Leave out the images the message shows inline (`<img src="cid:…">`). By default they are **embedded in the page** as `data:` URIs, so it shows them with no file next to it. They come from the message itself, so nothing is fetched, and only PNG, JPEG, GIF and WebP are embedded, recognised by their bytes rather than by the type the sender declared (an SVG can carry scripts). Not with `--raw-html`, which keeps the `cid:` references as they were. **HTML only.** |
 | `--dirname dts\|seq-no\|seq-no0`, `--seq-width N` | Name the files like the `attachments` folders. `dts` (the default) keeps the usual names; `seq-no`/`seq-no0` name each file after its message's number (`0007.html` goes with folder `0007/`). TXT and HTML also print that folder under the attachment list. Defaults come from `attachment_dirname` / `attachment_seq_width`. **EML, TXT and HTML.** |
 | `--force` | Rebuild the index first. Spelled out in full here: `-f` is `--format`. |
 
@@ -426,7 +427,7 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 | EML | `eml` (default) | one `.eml` per message in the output directory | Add `--qp` for pure 7-bit ASCII bodies |
 | CSV | `csv` | a single `.csv` summary file | UTF-8 with BOM (Excel-friendly); separator configurable |
 | Plain text | `txt` / `text` | one `.txt` per message | Decoded text body |
-| HTML | `html` | one standalone `.html` per message | Body sanitized and remote images blocked by default (`--allow-remote-images` keeps them); `--raw-html` keeps it untouched (local archival only) |
+| HTML | `html` | one standalone `.html` per message | Body sanitized, inline (`cid:`) images embedded (`--no-inline-images` leaves them out) and remote images blocked by default (`--allow-remote-images` keeps them); `--raw-html` keeps it untouched (local archival only) |
 | MBOX | `mbox` | a single new `.mbox` mailbox | The selection written back out as a mailbox. Messages read from an MBOX are copied byte for byte; ones without an envelope line get a `From ` line and `From `-quoting synthesized. The source file is never modified. |
 | Maildir | `maildir` | a Maildir directory (`cur/`, `new/`, `tmp/`) | One file per message in `cur/`, without the mbox `From ` line and with `>From ` quoting undone. `Status:`/`X-Status:` (and Gmail's `Opened`/`Starred` labels) become Maildir flags (`S`, `R`, `F`, `T`, `D`); file times are set to the message date. Exporting into an existing Maildir adds to it and never overwrites. On Windows the flag separator is `;` instead of `:`. |
 
