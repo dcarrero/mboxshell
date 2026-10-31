@@ -4,6 +4,12 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.1
+
+The paperclip now means there is something to open. 8 new tests (324 total). The index format changes (v5): existing indexes are rebuilt automatically the first time a mailbox is opened.
+
+- Fix: **messages with no attachment were marked as having one** (#51). Any message whose top-level type was `multipart/mixed` or `multipart/related` got the paperclip, counted in `stats` and matched `has:attachment`, while `a` said "No attachments". Alpine, for one, wraps plain-text mail in `multipart/mixed` with a single text part. The indexer now looks at the headers of each MIME part as it reads the file, with no extra reads: a part counts as an attachment if it has a filename, an `attachment` disposition, or a type other than text (a PDF, an image, a forwarded message…). The same rule applies to `.eml` files.
+
 ## v1.2.0
 
 HTML exports now show the images a message embeds. 5 new tests (316 total). No index format change.

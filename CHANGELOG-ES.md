@@ -4,6 +4,12 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.2.1
+
+El clip ya solo aparece cuando hay algo que abrir. 8 tests nuevos (324 en total). Cambia el formato del índice (v5): los índices existentes se regeneran solos la primera vez que se abre el buzón.
+
+- Arreglo: **mensajes sin adjuntos salían como si los tuvieran** (#51). Todo mensaje cuyo tipo de primer nivel fuera `multipart/mixed` o `multipart/related` llevaba el clip, contaba en `stats` y coincidía con `has:attachment`, mientras que `a` decía «Sin adjuntos». Alpine, por ejemplo, envuelve los correos de solo texto en `multipart/mixed` con una única parte de texto. El indexador mira ahora las cabeceras de cada parte MIME mientras lee el fichero, sin lecturas extra: una parte cuenta como adjunto si tiene nombre de fichero, disposición `attachment` o un tipo que no sea texto (un PDF, una imagen, un mensaje reenviado…). La misma regla se aplica a los ficheros `.eml`.
+
 ## v1.2.0
 
 Los exports HTML muestran ya las imágenes que el mensaje lleva integradas. 5 tests nuevos (316 en total). Sin cambios en el formato del índice.
