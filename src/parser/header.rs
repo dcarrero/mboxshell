@@ -8,12 +8,32 @@ use crate::model::mail::MailEntry;
 
 /// Build a [`MailEntry`] from raw header bytes.
 ///
-/// Only the headers we need for the index are extracted. The body is not read.
+/// Only the headers we need for the index are extracted. The body is not read,
+/// so a top-level `multipart/mixed` or `multipart/related` counts as "has
+/// attachments"; use [`parse_headers_to_entry_scanned`] when the body was
+/// scanned.
 pub fn parse_headers_to_entry(
     raw_headers: &[u8],
     offset: u64,
     message_length: u64,
     sequence: u64,
+) -> crate::error::Result<MailEntry> {
+    parse_headers_to_entry_scanned(raw_headers, offset, message_length, sequence, None)
+}
+
+/// Like [`parse_headers_to_entry`], with the result of scanning the body.
+///
+/// `body_has_attachment` is what
+/// [`AttachmentScanner`](crate::parser::attachment_scan::AttachmentScanner)
+/// found in the body. When it is `Some`, a multipart message is marked as
+/// having attachments only if a real attachment part was seen (issue #51:
+/// Alpine wraps plain-text mails in `multipart/mixed`).
+pub fn parse_headers_to_entry_scanned(
+    raw_headers: &[u8],
+    offset: u64,
+    message_length: u64,
+    sequence: u64,
+    body_has_attachment: Option<bool>,
 ) -> crate::error::Result<MailEntry> {
     let text = decode_header_bytes(raw_headers);
     let headers = unfold_headers(&text);
@@ -54,8 +74,14 @@ pub fn parse_headers_to_entry(
         .map(|ct| ct.split(';').next().unwrap_or("").trim().to_lowercase())
         .unwrap_or_else(|| "text/plain".to_string());
 
-    let has_attachments = content_type.starts_with("multipart/mixed")
-        || content_type.starts_with("multipart/related")
+    let has_attachment_parts = match body_has_attachment {
+        Some(found) => content_type.starts_with("multipart/") && found,
+        None => {
+            content_type.starts_with("multipart/mixed")
+                || content_type.starts_with("multipart/related")
+        }
+    };
+    let has_attachments = has_attachment_parts
         || headers
             .iter()
             .any(|(k, v)| k == "content-disposition" && v.to_lowercase().contains("attachment"));

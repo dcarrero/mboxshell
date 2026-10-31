@@ -31,7 +31,9 @@ pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 /// v4: `MailEntry` gained `thread_id` (`X-GM-THRID`), and
 /// `mbox_modified_time` switched from seconds to nanoseconds — both change
 /// what an index means, so v3 files are rebuilt.
-pub const VERSION: u32 = 4;
+/// v5: `has_attachments` now comes from the MIME parts in the body, not from
+/// a top-level `multipart/mixed` alone (issue #51), so v4 files are rebuilt.
+pub const VERSION: u32 = 5;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;

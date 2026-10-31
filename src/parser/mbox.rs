@@ -10,6 +10,11 @@ use std::path::{Path, PathBuf};
 use tracing::warn;
 
 use crate::error::{MboxError, Result};
+use crate::parser::attachment_scan::AttachmentScanner;
+
+/// Callback of [`MboxParser::parse_headers_scanned`]:
+/// `(offset, message_length, header_bytes, body_has_attachment) -> keep_going`.
+pub type ScannedHeaderCallback<'a> = dyn FnMut(u64, u64, &[u8], bool) -> bool + 'a;
 
 /// Size of the internal read buffer (1 MB for fast sequential reads on modern SSDs).
 const READ_BUFFER_SIZE: usize = 1024 * 1024;
@@ -214,6 +219,23 @@ impl MboxParser {
         header_callback: &mut dyn FnMut(u64, u64, &[u8]) -> bool,
         progress_callback: Option<&dyn Fn(u64, u64)>,
     ) -> Result<u64> {
+        self.parse_headers_scanned(
+            &mut |offset, length, headers, _| header_callback(offset, length, headers),
+            progress_callback,
+        )
+    }
+
+    /// Like [`parse_headers_only`](Self::parse_headers_only), but also tells
+    /// the callback whether the body has an attachment-like MIME part.
+    ///
+    /// The callback receives `(offset, message_length, header_bytes,
+    /// body_has_attachment)`. The flag comes from [`AttachmentScanner`], fed
+    /// with the body lines this loop already reads (issue #51).
+    pub fn parse_headers_scanned(
+        &self,
+        header_callback: &mut ScannedHeaderCallback<'_>,
+        progress_callback: Option<&dyn Fn(u64, u64)>,
+    ) -> Result<u64> {
         if self.file_size == 0 {
             return Ok(0);
         }
@@ -232,6 +254,7 @@ impl MboxParser {
         let mut last_progress: u64 = 0;
         let mut prev_message_start: Option<u64> = None;
         let mut prev_headers: Option<Vec<u8>> = None;
+        let mut scanner = AttachmentScanner::new();
 
         // Reusable line buffer — avoids allocation per line
         let mut line_buf: Vec<u8> = Vec::with_capacity(4096);
@@ -287,7 +310,7 @@ impl MboxParser {
                         .take()
                         .unwrap_or_else(|| std::mem::take(&mut header_buf));
                     let msg_length = current_offset - pstart;
-                    if !header_callback(pstart, msg_length, &pheaders) {
+                    if !header_callback(pstart, msg_length, &pheaders, scanner.found()) {
                         return Ok(count);
                     }
                     count += 1;
@@ -297,7 +320,10 @@ impl MboxParser {
                 header_buf.extend_from_slice(&line_buf);
                 in_headers = true;
                 prev_message_start = Some(current_offset);
-            } else if in_headers {
+                scanner = AttachmentScanner::new();
+            } else if !in_headers {
+                scanner.feed(&line_buf);
+            } else {
                 if is_blank_line(&line_buf) {
                     // End of headers — save without cloning (swap trick)
                     in_headers = false;
@@ -326,7 +352,7 @@ impl MboxParser {
         if let Some(pstart) = prev_message_start {
             let hdrs = prev_headers.unwrap_or(header_buf);
             let msg_length = current_offset - pstart;
-            if header_callback(pstart, msg_length, &hdrs) {
+            if header_callback(pstart, msg_length, &hdrs, scanner.found()) {
                 count += 1;
             }
         }
@@ -1028,6 +1054,64 @@ mod tests {
         assert!(all_headers[0].contains("X-Foo: bar"));
         assert!(all_headers[0].contains("Date: Wed, 22 Apr 2020"));
         assert!(all_headers[1].contains("Subject: Second"));
+    }
+
+    #[test]
+    fn test_scanned_attachment_flag_per_message() {
+        use std::io::Write;
+        // Issue #51: the exact sample (Alpine-style multipart/mixed holding a
+        // single text part, no blank line before the first boundary),
+        // followed by a message with a real PDF part. The flag must follow
+        // each message's own body, not leak from one to the next.
+        let mut data = Vec::new();
+        data.extend_from_slice(
+            b"From xyz@xyz.com\n\
+Date: Sun, 1 Mar 2026 10:04:50 -0500 (EST)\n\
+From: xyz <xyz@xyz.com>\n\
+Subject: dummy subject\n\
+Content-Type: multipart/mixed; boundary=\"464285959-821626569-1772377490=:3751081\"\n\
+--464285959-821626569-1772377490=:3751081\n\
+Content-Type: text/plain; format=flowed; charset=UTF-8\n\
+Content-Transfer-Encoding: 8BIT\n\
+\n\
+Lorem ipsum.\n\
+\n\
+--464285959-821626569-1772377490=:3751081--\n\
+\n",
+        );
+        data.extend_from_slice(
+            b"From a@b.c Mon Mar  2 10:00:00 2026\n\
+Content-Type: multipart/mixed; boundary=\"B\"\n\
+\n\
+--B\n\
+Content-Type: text/plain\n\
+\n\
+hi\n\
+--B\n\
+Content-Type: application/pdf; name=\"a.pdf\"\n\
+\n\
+JVBERi0=\n\
+--B--\n\
+\n",
+        );
+        data.extend_from_slice(b"From c@d.e Tue Mar  3 10:00:00 2026\nSubject: plain\n\nBody\n");
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(&data).unwrap();
+        file.flush().unwrap();
+
+        let parser = MboxParser::new(file.path()).unwrap();
+        let mut flags = Vec::new();
+        parser
+            .parse_headers_scanned(
+                &mut |_off, _len, _h, has_attachment| {
+                    flags.push(has_attachment);
+                    true
+                },
+                None,
+            )
+            .unwrap();
+        assert_eq!(flags, vec![false, true, false]);
     }
 
     #[test]

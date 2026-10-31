@@ -59,12 +59,18 @@ pub fn build_index_cancelable(
     let mut entries: Vec<MailEntry> = Vec::new();
     let mut sequence: u64 = 0;
 
-    parser.parse_headers_only(
-        &mut |offset, length, header_bytes| {
+    parser.parse_headers_scanned(
+        &mut |offset, length, header_bytes, body_has_attachment| {
             if should_cancel() {
                 return false; // detiene el parseo
             }
-            match header::parse_headers_to_entry(header_bytes, offset, length, sequence) {
+            match header::parse_headers_to_entry_scanned(
+                header_bytes,
+                offset,
+                length,
+                sequence,
+                Some(body_has_attachment),
+            ) {
                 Ok(entry) => {
                     entries.push(entry);
                     sequence += 1;

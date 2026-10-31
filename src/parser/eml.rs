@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::error::{MboxError, Result};
 use crate::model::mail::MailEntry;
+use crate::parser::attachment_scan::AttachmentScanner;
 use crate::parser::header;
 
 /// Parse a single `.eml` file and return its [`MailEntry`].
@@ -25,7 +26,14 @@ pub fn parse_eml(path: impl AsRef<Path>, sequence: u64) -> Result<MailEntry> {
     let header_end = find_header_end(&data).unwrap_or(data.len());
     let header_bytes = &data[..header_end];
 
-    header::parse_headers_to_entry(header_bytes, 0, length, sequence)
+    let body_has_attachment = AttachmentScanner::scan(&data[header_end..]);
+    header::parse_headers_to_entry_scanned(
+        header_bytes,
+        0,
+        length,
+        sequence,
+        Some(body_has_attachment),
+    )
 }
 
 /// Find the byte offset where headers end (position of the first blank line).
