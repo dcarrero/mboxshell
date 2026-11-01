@@ -25,13 +25,15 @@ When you export your email from Gmail using Google Takeout, you get one or more 
 - **Extract attachments** individually or in bulk
 - **Merge multiple MBOX files** into one, removing duplicates
 
-## Also on Mac: mboxViewer
+## Also as a desktop app: Mbox Viewer Pro for Mac, Windows and Linux
 
-If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewerpro.com) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
+Not a fan of the terminal? [Mbox Viewer Pro](https://mboxviewerpro.com) is a desktop app by the same author, built on mboxShell's parsing engine, with a familiar mailbox-style interface to open, browse and search MBOX and EML files of any size without importing them into a mail client. Everything stays on your own computer: nothing is uploaded. It's available on:
 
-## Also on Linux: Mbox Viewer Pro
+- **Mac** — macOS 14 Sonoma or later, Universal Binary (native on Apple Silicon). [Mac App Store](https://apps.apple.com/app/mbox-viewer-pro/id6759237715) or [direct download](https://mboxviewerpro.com/download/).
+- **Windows** — Windows 10/11 and Windows Server. [Microsoft Store](https://apps.microsoft.com/store/detail/9NW3GVFG7DDB) or [direct download](https://mboxviewerpro.com/download/).
+- **Linux** (beta) — native GTK 4 and libadwaita app. Packages for Ubuntu 24.04+ and Debian 13 (`.deb`), Fedora 44+ (`.rpm`) and Flatpak, on x86_64 and ARM64. [Download for Linux](https://mboxviewerpro.com/linux/).
 
-Not a fan of the terminal? [Mbox Viewer Pro is now available for Linux](https://mboxviewerpro.com/linux/) (beta): the same desktop app as on Mac and Windows, by the same author, built natively with GTK 4 and libadwaita. It opens MBOX and EML files of any size on your own computer, without uploading anything. Packages for Ubuntu 24.04+ and Debian 13 (`.deb`), Fedora 44+ (`.rpm`) and Flatpak, on x86_64 and ARM64. Without a licence it works as the free version, with mailboxes up to 1 GB and no time limit. If you'd rather stay in the terminal, mboxShell remains free and open source.
+Without a licence it works as the free version, with mailboxes up to 1 GB and no time limit. If you'd rather stay in the terminal, mboxShell remains free and open source.
 
 ## Also in your browser: Online Mbox Viewer
 

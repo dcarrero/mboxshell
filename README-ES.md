@@ -25,13 +25,15 @@ Cuando exportas tu correo de Gmail con Google Takeout, recibes uno o varios arch
 - **Extraer adjuntos** de forma masiva o individual
 - **Combinar varios MBOX** en uno solo, eliminando duplicados
 
-## Tambien en Mac: mboxViewer
+## También como app de escritorio: Mbox Viewer Pro para Mac, Windows y Linux
 
-Si prefieres una experiencia grafica nativa en macOS, echa un vistazo a [mboxViewer](https://mboxviewerpro.com) — una app nativa para Mac creada por el mismo equipo. Ofrece una interfaz de buzon de correo familiar para abrir, explorar y buscar archivos MBOX sin necesidad de importarlos en un cliente de correo. Arrastra tu archivo `.mbox` y tendras acceso instantaneo a todos tus mensajes, adjuntos y etiquetas en una ventana nativa de macOS. Ideal para quienes quieren la potencia del motor de parsing de mboxShell con la comodidad de una interfaz de escritorio.
+¿No te convence la terminal? [Mbox Viewer Pro](https://mboxviewerpro.com/es/) es una app de escritorio del mismo autor, basada en el motor de parsing de mboxShell, con una interfaz de buzón de correo familiar para abrir, explorar y buscar archivos MBOX y EML de cualquier tamaño sin importarlos en un cliente de correo. Todo se queda en tu equipo: no se sube nada. Está disponible para:
 
-## También en Linux: Mbox Viewer Pro
+- **Mac**: macOS 14 Sonoma o posterior, Universal Binary (nativa en Apple Silicon). [Mac App Store](https://apps.apple.com/app/mbox-viewer-pro/id6759237715) o [descarga directa](https://mboxviewerpro.com/es/descargar/).
+- **Windows**: Windows 10/11 y Windows Server. [Microsoft Store](https://apps.microsoft.com/store/detail/9NW3GVFG7DDB) o [descarga directa](https://mboxviewerpro.com/es/descargar/).
+- **Linux** (beta): app nativa con GTK 4 y libadwaita. Paquetes para Ubuntu 24.04+ y Debian 13 (`.deb`), Fedora 44+ (`.rpm`) y Flatpak, en x86_64 y ARM64. [Descarga para Linux](https://mboxviewerpro.com/es/linux/).
 
-¿No te convence la terminal? [Mbox Viewer Pro ya está disponible para Linux](https://mboxviewerpro.com/es/linux/) (beta): la misma app de escritorio que en Mac y Windows, del mismo autor, hecha de forma nativa con GTK 4 y libadwaita. Abre archivos MBOX y EML de cualquier tamaño en tu propio equipo, sin subir nada. Paquetes para Ubuntu 24.04+ y Debian 13 (`.deb`), Fedora 44+ (`.rpm`) y Flatpak, en x86_64 y ARM64. Sin licencia funciona como versión gratuita, con buzones de hasta 1 GB y sin límite de tiempo. Si prefieres seguir en la terminal, mboxShell sigue siendo libre y gratuito.
+Sin licencia funciona como versión gratuita, con buzones de hasta 1 GB y sin límite de tiempo. Si prefieres seguir en la terminal, mboxShell sigue siendo libre y gratuito.
 
 ## Tambien en el navegador: Online Mbox Viewer
 
