@@ -29,6 +29,10 @@ When you export your email from Gmail using Google Takeout, you get one or more 
 
 If you prefer a native graphical experience on macOS, check out [mboxViewer](https://mboxviewerpro.com) — a native Mac app built by the same team. It provides a familiar mailbox-style interface to open, browse and search MBOX files without ever importing them into a mail client. Drag and drop your `.mbox` file, and you get instant access to all your messages, attachments and labels in a clean macOS-native window. Ideal for users who want the power of mboxShell's parsing engine with the comfort of a desktop GUI.
 
+## Also on Linux: Mbox Viewer Pro
+
+Not a fan of the terminal? [Mbox Viewer Pro is now available for Linux](https://mboxviewerpro.com/linux/) (beta): the same desktop app as on Mac and Windows, by the same author, built natively with GTK 4 and libadwaita. It opens MBOX and EML files of any size on your own computer, without uploading anything. Packages for Ubuntu 24.04+ and Debian 13 (`.deb`), Fedora 44+ (`.rpm`) and Flatpak, on x86_64 and ARM64. Without a licence it works as the free version, with mailboxes up to 1 GB and no time limit. If you'd rather stay in the terminal, mboxShell remains free and open source.
+
 ## Also in your browser: Online Mbox Viewer
 
 Need to peek at an MBOX file without installing anything? Try [Online Mbox Viewer](https://onlinemboxviewer.com) — a free, MIT-licensed web app by the same author. It opens and renders `.mbox` files entirely in your browser: nothing is uploaded to any server, so your email stays on your machine. Perfect for a quick look from any device. Source code at [github.com/dcarrero/online-mbox-viewer](https://github.com/dcarrero/online-mbox-viewer).
