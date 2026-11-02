@@ -42,7 +42,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 # Progress
-indicatif = "0.17"
+indicatif = "0.18"
 
 # Cross-platform directories
 dirs = "5"
@@ -78,7 +78,7 @@ base64 = "0.22"
 # message view to compute wrap-aware scroll offsets (so in-body search `n`/`N`
 # reliably brings a match into view on messages with long, wrapped lines).
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
-crossterm = "0.28"
+crossterm = "0.29"
 
 # Distributed binaries: smaller and faster at the cost of slower release
 # builds (only paid on tag pushes).
@@ -96,3 +96,7 @@ predicates = "3"
 [[bench]]
 name = "parsing"
 harness = false
+
+# No `unsafe` in mboxshell itself: a forbid can't be overridden by an inner allow.
+[lints.rust]
+unsafe_code = "forbid"
