@@ -119,6 +119,23 @@ cargo build --release --target aarch64-apple-darwin
 cargo install --git https://github.com/dcarrero/mboxshell.git
 ```
 
+### Gestores de paquetes
+
+**Nix / NixOS**: mboxshell está en [nixpkgs](https://search.nixos.org/packages?channel=unstable&query=mboxshell):
+
+```bash
+nix-shell -p mboxshell        # probarlo en una shell temporal
+nix run nixpkgs#mboxshell     # o ejecutarlo directamente (flakes)
+```
+
+En NixOS, añade `mboxshell` a `environment.systemPackages`. Las versiones nuevas llegan solas a nixpkgs unstable, normalmente en pocos días.
+
+**Arch Linux (AUR)**: [`mboxshell`](https://aur.archlinux.org/packages/mboxshell) (última versión publicada) y [`mboxshell-git`](https://aur.archlinux.org/packages/mboxshell-git) (último `main`):
+
+```bash
+yay -S mboxshell              # o paru -S mboxshell
+```
+
 ## Uso rapido
 
 ```bash
