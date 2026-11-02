@@ -377,7 +377,7 @@ src/
 | `encoding_rs` | Charset decoding |
 | `chrono` | Dates and time zones |
 | `clap` | CLI argument parsing |
-| `serde` + `bincode` | Index serialization |
+| `serde` + `postcard` | Index serialization |
 | `sha2` | Index integrity verification |
 | `lru` | Decoded message cache |
 | `tracing` | Structured logging |

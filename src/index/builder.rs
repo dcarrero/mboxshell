@@ -148,11 +148,10 @@ fn load_index_from_file(
         return Ok(None);
     }
 
-    let header: IndexHeader =
-        bincode::deserialize(&data[..HEADER_SIZE]).map_err(|e| MboxError::InvalidIndex {
-            path: idx_path.to_path_buf(),
-            reason: format!("Header deserialization failed: {e}"),
-        })?;
+    let Some(header) = IndexHeader::from_bytes(&data[..HEADER_SIZE]) else {
+        debug!("Index header unreadable");
+        return Ok(None);
+    };
 
     if let Err(reason) = header.validate() {
         debug!(reason = %reason, "Index header invalid");
@@ -181,11 +180,15 @@ fn load_index_from_file(
         return Ok(None);
     }
 
-    let entries: Vec<MailEntry> =
-        bincode::deserialize(&data[HEADER_SIZE..]).map_err(|e| MboxError::InvalidIndex {
-            path: idx_path.to_path_buf(),
-            reason: format!("Entry deserialization failed: {e}"),
-        })?;
+    // A payload that does not decode is a corrupt index, like every other
+    // check above: rebuild it instead of refusing to open the mailbox.
+    let entries: Vec<MailEntry> = match postcard::from_bytes(&data[HEADER_SIZE..]) {
+        Ok(entries) => entries,
+        Err(e) => {
+            debug!(error = %e, "Index entries undecodable");
+            return Ok(None);
+        }
+    };
 
     if entries.len() as u64 != header.message_count {
         debug!("Message count mismatch");
@@ -227,13 +230,8 @@ fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
         sha256_first_4kb: hash,
     };
 
-    let header_bytes = bincode::serialize(&header)?;
-    let entries_bytes = bincode::serialize(entries)?;
-
-    // Pad header to HEADER_SIZE
-    let mut padded_header = vec![0u8; HEADER_SIZE];
-    let copy_len = header_bytes.len().min(HEADER_SIZE);
-    padded_header[..copy_len].copy_from_slice(&header_bytes[..copy_len]);
+    let padded_header = header.to_bytes();
+    let entries_bytes = postcard::to_allocvec(entries)?;
 
     // Try writing next to the MBOX file first
     let idx_path = index_path_for(mbox_path);
@@ -443,6 +441,48 @@ mod tests {
 
         // A valid index still loads after rebuilding.
         write_index(&mbox_path, &entries).expect("write valid index");
+        assert!(load_index(&mbox_path).expect("load").is_some());
+    }
+
+    #[test]
+    fn test_index_round_trips_every_field() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+
+        let built = build_index(&mbox_path, true, None).expect("build index");
+        let loaded = load_index(&mbox_path).expect("load").expect("valid index");
+        assert_eq!(loaded.len(), built.len());
+        for (a, b) in built.iter().zip(&loaded) {
+            // MailEntry has no PartialEq; its Debug form covers every field.
+            assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        }
+    }
+
+    #[test]
+    fn test_old_or_corrupt_index_is_rebuilt_not_an_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+        let entries = build_index(&mbox_path, true, None).expect("build index");
+        let idx = index_path_for(&mbox_path);
+        let good = std::fs::read(&idx).expect("read index");
+
+        // A v5 (bincode) index: same header, version 5 at byte 8.
+        let mut old = good.clone();
+        old[8..12].copy_from_slice(&5u32.to_le_bytes());
+        std::fs::write(&idx, &old).expect("write v5");
+        assert!(load_index(&mbox_path).expect("no error").is_none());
+
+        // Valid header, garbage payload.
+        let mut corrupt = good[..HEADER_SIZE].to_vec();
+        corrupt.extend_from_slice(&[0xFF; 64]);
+        std::fs::write(&idx, &corrupt).expect("write corrupt");
+        assert!(load_index(&mbox_path).expect("no error").is_none());
+
+        // Opening rebuilds it.
+        let rebuilt = build_index(&mbox_path, false, None).expect("rebuild");
+        assert_eq!(rebuilt.len(), entries.len());
         assert!(load_index(&mbox_path).expect("load").is_some());
     }
 }

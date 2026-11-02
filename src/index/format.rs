@@ -13,9 +13,14 @@
 //! │  (padding to 128 bytes)              │
 //! ├──────────────────────────────────────┤
 //! │ ENTRIES (variable)                   │
-//! │  bincode-serialized Vec<MailEntry>   │
+//! │  postcard-serialized Vec<MailEntry>  │
 //! └──────────────────────────────────────┘
 //! ```
+//!
+//! The header is written by hand, little-endian at fixed offsets, so it does
+//! not depend on any serializer: every index version so far (including the
+//! bincode ones, v1-v5) has this same header, and an old file is recognised
+//! by its `version` field and rebuilt.
 
 /// Magic bytes identifying an mboxShell index file.
 pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
@@ -33,7 +38,9 @@ pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 /// what an index means, so v3 files are rebuilt.
 /// v5: `has_attachments` now comes from the MIME parts in the body, not from
 /// a top-level `multipart/mixed` alone (issue #51), so v4 files are rebuilt.
-pub const VERSION: u32 = 5;
+/// v6: entries encoded with `postcard` instead of `bincode` (unmaintained,
+/// RUSTSEC-2025-0141). Same header bytes; v5 files are rebuilt.
+pub const VERSION: u32 = 6;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;
@@ -41,8 +48,8 @@ pub const HEADER_SIZE: usize = 128;
 /// Size of the SHA-256 hash prefix used for integrity checking.
 pub const HASH_PREFIX_LEN: usize = 4096;
 
-/// Serializable index header.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+/// Index header, stored in the first [`HEADER_SIZE`] bytes of the file.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexHeader {
     /// Magic bytes (must equal [`MAGIC`]).
     pub magic: [u8; 8],
@@ -64,7 +71,50 @@ pub struct IndexHeader {
     pub sha256_first_4kb: [u8; 32],
 }
 
+// Byte offsets of each header field.
+const OFF_VERSION: usize = 8;
+const OFF_FLAGS: usize = 12;
+const OFF_COUNT: usize = 16;
+const OFF_SIZE: usize = 24;
+const OFF_MTIME: usize = 32;
+const OFF_SHA: usize = 40;
+const HEADER_USED: usize = OFF_SHA + 32;
+
 impl IndexHeader {
+    /// Encode the header as its fixed [`HEADER_SIZE`]-byte form (zero padded).
+    pub fn to_bytes(&self) -> [u8; HEADER_SIZE] {
+        let mut b = [0u8; HEADER_SIZE];
+        b[..OFF_VERSION].copy_from_slice(&self.magic);
+        b[OFF_VERSION..OFF_FLAGS].copy_from_slice(&self.version.to_le_bytes());
+        b[OFF_FLAGS..OFF_COUNT].copy_from_slice(&self.flags.to_le_bytes());
+        b[OFF_COUNT..OFF_SIZE].copy_from_slice(&self.message_count.to_le_bytes());
+        b[OFF_SIZE..OFF_MTIME].copy_from_slice(&self.mbox_file_size.to_le_bytes());
+        b[OFF_MTIME..OFF_SHA].copy_from_slice(&self.mbox_modified_time.to_le_bytes());
+        b[OFF_SHA..HEADER_USED].copy_from_slice(&self.sha256_first_4kb);
+        b
+    }
+
+    /// Decode a header from the start of `bytes`; `None` if it is too short.
+    ///
+    /// Only reads the fields: [`IndexHeader::validate`] decides whether the
+    /// magic and version are acceptable.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let b = bytes.get(..HEADER_USED)?;
+        let mut magic = [0u8; 8];
+        magic.copy_from_slice(&b[..OFF_VERSION]);
+        let mut sha256_first_4kb = [0u8; 32];
+        sha256_first_4kb.copy_from_slice(&b[OFF_SHA..HEADER_USED]);
+        Some(Self {
+            magic,
+            version: u32::from_le_bytes(b[OFF_VERSION..OFF_FLAGS].try_into().ok()?),
+            flags: u32::from_le_bytes(b[OFF_FLAGS..OFF_COUNT].try_into().ok()?),
+            message_count: u64::from_le_bytes(b[OFF_COUNT..OFF_SIZE].try_into().ok()?),
+            mbox_file_size: u64::from_le_bytes(b[OFF_SIZE..OFF_MTIME].try_into().ok()?),
+            mbox_modified_time: i64::from_le_bytes(b[OFF_MTIME..OFF_SHA].try_into().ok()?),
+            sha256_first_4kb,
+        })
+    }
+
     /// Validate that the header is well-formed and matches the current format.
     pub fn validate(&self) -> std::result::Result<(), String> {
         if self.magic != *MAGIC {
@@ -77,5 +127,44 @@ impl IndexHeader {
             ));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample() -> IndexHeader {
+        IndexHeader {
+            magic: *MAGIC,
+            version: VERSION,
+            flags: 0,
+            message_count: 123_456,
+            mbox_file_size: 50_000_000_000,
+            mbox_modified_time: -1_700_000_000_123_456_789,
+            sha256_first_4kb: [7u8; 32],
+        }
+    }
+
+    #[test]
+    fn test_header_round_trip() {
+        let h = sample();
+        assert_eq!(IndexHeader::from_bytes(&h.to_bytes()), Some(h));
+        assert_eq!(IndexHeader::from_bytes(&[0u8; 10]), None);
+    }
+
+    #[test]
+    fn test_header_layout_matches_the_bincode_v1_to_v5_files() {
+        // bincode 1 wrote the same struct as fixed-width little-endian fields
+        // in declaration order; keeping that layout is what lets an old index
+        // be read far enough to see its version and be rebuilt.
+        let b = sample().to_bytes();
+        assert_eq!(&b[..8], MAGIC);
+        assert_eq!(&b[8..12], &VERSION.to_le_bytes());
+        assert_eq!(&b[16..24], &123_456u64.to_le_bytes());
+        assert_eq!(&b[24..32], &50_000_000_000u64.to_le_bytes());
+        assert_eq!(&b[32..40], &(-1_700_000_000_123_456_789i64).to_le_bytes());
+        assert_eq!(&b[40..72], &[7u8; 32]);
+        assert!(b[72..].iter().all(|&x| x == 0));
     }
 }

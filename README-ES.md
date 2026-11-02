@@ -377,7 +377,7 @@ src/
 | `encoding_rs` | Decodificacion de charsets |
 | `chrono` | Fechas y zonas horarias |
 | `clap` | Linea de comandos |
-| `serde` + `bincode` | Serializacion del indice |
+| `serde` + `postcard` | Serializacion del indice |
 | `sha2` | Integridad del indice |
 | `lru` | Cache de mensajes decodificados |
 | `tracing` | Logging estructurado |
