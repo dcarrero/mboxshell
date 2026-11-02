@@ -602,6 +602,31 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
+/// Size past which the log is moved aside to `mboxshell.log.old` at startup.
+const LOG_ROTATE_BYTES: u64 = 5 * 1024 * 1024;
+
+/// Keep the log file bounded and private before the appender opens it.
+///
+/// The appender never rotates, so a log past [`LOG_ROTATE_BYTES`] replaces
+/// `mboxshell.log.old` (one generation kept). The file is then created owner
+/// only (0600 on Unix): it names the mailboxes the user opens. Best-effort —
+/// any error just leaves logging as it was.
+fn prepare_log_file(path: &std::path::Path) {
+    if std::fs::metadata(path).is_ok_and(|m| m.len() > LOG_ROTATE_BYTES) {
+        let _ = std::fs::rename(path, path.with_extension("log.old"));
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        options.mode(0o600);
+        // `mode` only applies to a newly created file; tighten an older one.
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+    let _ = options.open(path);
+}
+
 /// Set up tracing with stderr output and optional file logging.
 fn setup_logging(level: &str, config: &mboxshell::config::Config) {
     use tracing_subscriber::layer::SubscriberExt;
@@ -627,6 +652,7 @@ fn setup_logging(level: &str, config: &mboxshell::config::Config) {
     // Try to set up file logging
     let log_dir = mboxshell::config::cache_dir(config);
     if std::fs::create_dir_all(&log_dir).is_ok() {
+        prepare_log_file(&log_dir.join("mboxshell.log"));
         let file_appender = tracing_appender::rolling::never(&log_dir, "mboxshell.log");
         let file_layer = tracing_subscriber::fmt::layer()
             .with_ansi(false)
