@@ -78,7 +78,9 @@ pub fn top_senders(entries: &[MailEntry], n: usize) -> Vec<(String, usize)> {
         *counts.entry(key).or_default() += 1;
     }
     let mut sorted: Vec<(String, usize)> = counts.into_iter().collect();
-    sorted.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+    // Ties broken by name: HashMap order is random per run, so equal counts
+    // used to come out in a different order every time.
+    sorted.sort_by(|(a, ca), (b, cb)| cb.cmp(ca).then_with(|| a.cmp(b)));
     sorted.truncate(n);
     sorted
 }
@@ -111,6 +113,23 @@ mod tests {
             thread_id: None,
             sequence: idx,
         }
+    }
+
+    #[test]
+    fn test_top_senders_ties_are_ordered_by_name() {
+        // user0..user4, one message each, plus two more from user3.
+        let mut entries: Vec<MailEntry> = (0..5).map(|i| make_entry(i, "")).collect();
+        entries.push(make_entry(3, ""));
+        entries.push(make_entry(3, ""));
+        let top = top_senders(&entries, 3);
+        assert_eq!(
+            top,
+            vec![
+                ("user3@example.com".to_string(), 3),
+                ("user0@example.com".to_string(), 1),
+                ("user1@example.com".to_string(), 1),
+            ]
+        );
     }
 
     #[test]
