@@ -4,6 +4,15 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.2.2
+
+Versión de mantenimiento tras una revisión de seguridad de las dependencias. 1 test nuevo (325 en total). Sin cambios en el formato del índice.
+
+- Arreglo: **exportar a CSV desde la TUI pisaba el export anterior.** Todos se guardaban como `mboxshell_export.csv` en la carpeta de descargas y sustituían al último sin avisar. Ahora un segundo export va a `mboxshell_export_1.csv`, luego `_2`, etc., como ya pasaba con los adjuntos.
+- Arreglo: **el log lo podían leer otros usuarios y crecía sin límite.** `mboxshell.log` es ahora solo del propietario (0600 en Unix, también el que ya existía), porque guarda los nombres de los buzones que abres. Al arrancar, si pasa de 5 MB se aparta a `mboxshell.log.old`.
+- Seguridad: **`indicatif` sube a 0.18** y deja de usar `number_prefix` (RUSTSEC-2025-0119, sin mantenimiento). **`crossterm` sube a 0.29**, la misma que ya usa ratatui, así que desaparece la segunda copia y con ella `rustix 0.38` (de 387 a 374 crates). `cargo audit` no encuentra vulnerabilidades conocidas; el único aviso que queda es que `bincode` no tiene mantenimiento.
+- Seguridad: **el código `unsafe` queda prohibido en mboxshell** (`unsafe_code = "forbid"`). No había ninguno; así seguirá.
+
 ## v1.2.1
 
 El clip ya solo aparece cuando hay algo que abrir. 8 tests nuevos (324 en total). Cambia el formato del índice (v5): los índices existentes se regeneran solos la primera vez que se abre el buzón.

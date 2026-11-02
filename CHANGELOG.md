@@ -4,6 +4,15 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.2.2
+
+A maintenance release from a security review of the dependencies. 1 new test (325 total). No index format change.
+
+- Fix: **exporting CSV from the TUI overwrote the previous export.** Every export was written to `mboxshell_export.csv` in the downloads folder, replacing the last one without a word. A second export now goes to `mboxshell_export_1.csv`, then `_2`, and so on, the same way attachments already did.
+- Fix: **the log file was readable by other users and grew without limit.** `mboxshell.log` is now owner-only (0600 on Unix, existing logs included), since it names the mailboxes you open. At startup a log over 5 MB is moved aside to `mboxshell.log.old`.
+- Security: **`indicatif` updated to 0.18**, which drops `number_prefix` (RUSTSEC-2025-0119, unmaintained). **`crossterm` updated to 0.29**, the version ratatui already uses, so the second copy is gone, and `rustix 0.38` with it (387 → 374 crates). `cargo audit` reports no known vulnerabilities; the one remaining warning is `bincode` being unmaintained.
+- Security: **`unsafe` code is now forbidden in mboxshell itself** (`unsafe_code = "forbid"`). There was none; this keeps it that way.
+
 ## v1.2.1
 
 The paperclip now means there is something to open. 8 new tests (324 total). The index format changes (v5): existing indexes are rebuilt automatically the first time a mailbox is opened.
