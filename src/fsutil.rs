@@ -32,6 +32,35 @@ pub fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
+/// Create a new, empty file at `path`, or at `stem_1.ext`, `stem_2.ext`… if
+/// that name is taken. Returns the path actually created and the open file.
+///
+/// The file is opened with `create_new`, so an existing file is never
+/// overwritten and a planted symlink is never followed.
+pub fn create_unique(path: &Path) -> io::Result<(PathBuf, File)> {
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let parent = path.parent().unwrap_or(Path::new("."));
+
+    let mut i: u64 = 0;
+    loop {
+        let candidate = match (i, ext.is_empty()) {
+            (0, _) => path.to_path_buf(),
+            (_, true) => parent.join(format!("{stem}_{i}")),
+            (_, false) => parent.join(format!("{stem}_{i}.{ext}")),
+        };
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(file) => return Ok((candidate, file)),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => i += 1,
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 /// The first of `inputs` that `output` would overwrite, if any.
 pub fn output_clobbers_input<'a>(output: &Path, inputs: &[&'a Path]) -> Option<&'a Path> {
     inputs
@@ -73,6 +102,19 @@ pub fn create_temp_beside(dest: &Path) -> io::Result<(PathBuf, File)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_create_unique_never_reuses_a_taken_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("mboxshell_export.csv");
+        std::fs::write(&target, "first").unwrap();
+
+        let (second, _) = create_unique(&target).unwrap();
+        let (third, _) = create_unique(&target).unwrap();
+        assert_eq!(second, dir.path().join("mboxshell_export_1.csv"));
+        assert_eq!(third, dir.path().join("mboxshell_export_2.csv"));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "first");
+    }
 
     #[test]
     fn test_same_file_sees_through_path_spelling() {

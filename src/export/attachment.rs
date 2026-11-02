@@ -160,30 +160,9 @@ fn message_folder_name(entry: &MailEntry, naming: FolderNaming) -> String {
 pub(crate) fn write_unique(path: &Path, data: &[u8]) -> std::io::Result<PathBuf> {
     use std::io::Write;
 
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-    let parent = path.parent().unwrap_or(Path::new("."));
-
-    let mut i: u64 = 0;
-    loop {
-        let candidate = match (i, ext.is_empty()) {
-            (0, _) => path.to_path_buf(),
-            (_, true) => parent.join(format!("{stem}_{i}")),
-            (_, false) => parent.join(format!("{stem}_{i}.{ext}")),
-        };
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&candidate)
-        {
-            Ok(mut file) => {
-                file.write_all(data)?;
-                return Ok(candidate);
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => i += 1,
-            Err(e) => return Err(e),
-        }
-    }
+    let (created, mut file) = crate::fsutil::create_unique(path)?;
+    file.write_all(data)?;
+    Ok(created)
 }
 
 #[cfg(test)]

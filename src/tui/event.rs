@@ -813,8 +813,14 @@ fn export_current_csv(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
     };
 
     let count = entries.len();
-    let csv_path = output_dir.join("mboxshell_export.csv");
-    crate::export::csv::export_csv(&entries, &csv_path, None)?;
+    // Reserve a free name (`mboxshell_export_1.csv`, …) so a second export
+    // never overwrites the first; export_csv then renames its temp over the
+    // empty placeholder.
+    let (csv_path, _) = crate::fsutil::create_unique(&output_dir.join("mboxshell_export.csv"))?;
+    if let Err(e) = crate::export::csv::export_csv(&entries, &csv_path, None) {
+        let _ = std::fs::remove_file(&csv_path);
+        return Err(e);
+    }
     Ok(format!(
         "{} {count} {} -> {}",
         i18n::tui_exported(),
