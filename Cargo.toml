@@ -1,6 +1,6 @@
 [package]
 name = "mboxshell"
-version = "1.2.2"
+version = "1.3.0"
 edition = "2021"
 rust-version = "1.85"
 description = "Fast terminal viewer for MBOX files of any size. Open, search and export emails from Gmail Takeout backups (50GB+) without loading them into memory."
@@ -24,6 +24,34 @@ include = [
     "/CHANGELOG.md",
     "/CHANGELOG-ES.md",
 ]
+
+# `cargo binstall mboxshell` downloads the release binary instead of compiling.
+[package.metadata.binstall]
+pkg-fmt = "bin"
+
+[package.metadata.binstall.overrides.aarch64-apple-darwin]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-macos-aarch64"
+
+[package.metadata.binstall.overrides.x86_64-apple-darwin]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-macos-x86_64"
+
+[package.metadata.binstall.overrides.x86_64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-linux-x86_64"
+
+[package.metadata.binstall.overrides.aarch64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-linux-aarch64"
+
+[package.metadata.binstall.overrides.riscv64gc-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-linux-riscv64"
+
+[package.metadata.binstall.overrides.x86_64-unknown-freebsd]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-freebsd-x86_64"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-windows-x86_64.exe"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/mboxshell-windows-arm64.exe"
 
 [dependencies]
 # Email parsing

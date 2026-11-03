@@ -4,6 +4,15 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.3.0
+
+mboxshell can now be installed with Homebrew, Scoop and Cargo, and the index drops its last unmaintained dependency. 5 new tests (330 total). The index format changes (v6): existing indexes are rebuilt automatically the first time a mailbox is opened.
+
+- Feature: **new ways to install.** `brew install dcarrero/tap/mboxshell` on macOS and Linux (with shell completions and the man page), `scoop install dcarrero/mboxshell` on Windows after `scoop bucket add dcarrero https://github.com/dcarrero/scoop-bucket`, and `cargo install mboxshell` or `cargo binstall mboxshell` from crates.io. All three follow each release on their own.
+- Security: **the index no longer uses `bincode`**, which is unmaintained (RUSTSEC-2025-0141). Entries are now written with `postcard`, and the 128-byte header by hand with the same layout as before, so an old index is recognised and rebuilt instead of failing. The index is also smaller: 25.3 MB instead of 39.4 MB for 100,000 messages, with the same load time. `cargo audit` now reports nothing at all.
+- Fix: **an index whose contents could not be read stopped the mailbox from opening.** It is now rebuilt, like any other index that no longer matches its file.
+- Fix: **senders with the same number of messages came out in a different order on every run** of `stats` and `stats --json`. Ties are now sorted by name.
+
 ## v1.2.2
 
 A maintenance release from a security review of the dependencies. 1 new test (325 total). No index format change.

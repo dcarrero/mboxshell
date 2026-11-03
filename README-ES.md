@@ -116,7 +116,9 @@ cargo build --release --target aarch64-apple-darwin
 ### Instalar via Cargo
 
 ```bash
-cargo install --git https://github.com/dcarrero/mboxshell.git
+cargo install mboxshell                 # desde crates.io
+cargo binstall mboxshell                # o bajar el binario del release, sin compilar
+cargo install --git https://github.com/dcarrero/mboxshell.git   # último main
 ```
 
 ### Gestores de paquetes

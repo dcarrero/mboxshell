@@ -91,7 +91,9 @@ sudo cp target/release/mboxshell /usr/local/bin/
 ### Install via Cargo
 
 ```bash
-cargo install --git https://github.com/dcarrero/mboxshell.git
+cargo install mboxshell                 # from crates.io
+cargo binstall mboxshell                # or fetch the release binary, no compiling
+cargo install --git https://github.com/dcarrero/mboxshell.git   # latest main
 ```
 
 > **macOS GUI alternative:** if you prefer a native graphical app, see [mboxViewer](https://mboxviewerpro.com) — same parsing engine, desktop interface.

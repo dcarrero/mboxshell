@@ -4,6 +4,15 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.3.0
+
+mboxshell ya se puede instalar con Homebrew, Scoop y Cargo, y el índice se quita su última dependencia sin mantenimiento. 5 tests nuevos (330 en total). Cambia el formato del índice (v6): los índices existentes se regeneran solos la primera vez que se abre cada buzón.
+
+- Novedad: **nuevas formas de instalarlo.** `brew install dcarrero/tap/mboxshell` en macOS y Linux (con los completions de la shell y la página de manual), `scoop install dcarrero/mboxshell` en Windows tras `scoop bucket add dcarrero https://github.com/dcarrero/scoop-bucket`, y `cargo install mboxshell` o `cargo binstall mboxshell` desde crates.io. Los tres se actualizan solos con cada versión.
+- Seguridad: **el índice deja de usar `bincode`**, que no tiene mantenimiento (RUSTSEC-2025-0141). Las entradas se guardan ahora con `postcard` y la cabecera de 128 bytes se escribe a mano con la misma disposición de antes, así que un índice antiguo se reconoce y se regenera en vez de fallar. Además ocupa menos: 25,3 MB en lugar de 39,4 MB para 100.000 mensajes, y carga igual de rápido. `cargo audit` ya no da ningún aviso.
+- Arreglo: **un índice cuyo contenido no se podía leer impedía abrir el buzón.** Ahora se regenera, como cualquier otro índice que ya no corresponde a su fichero.
+- Arreglo: **los remitentes con el mismo número de mensajes salían en distinto orden en cada ejecución** de `stats` y `stats --json`. Los empates se ordenan ahora por nombre.
+
 ## v1.2.2
 
 Versión de mantenimiento tras una revisión de seguridad de las dependencias. 1 test nuevo (325 en total). Sin cambios en el formato del índice.
