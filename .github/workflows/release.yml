@@ -209,13 +209,17 @@ jobs:
           " \
             $FILES
 
-  # Publishes the crate to crates.io. Needs CARGO_REGISTRY_TOKEN, a crates.io
-  # token scoped to the mboxshell crate (publish-new + publish-update); without
-  # it the job is skipped. A version that is already on crates.io (a tag moved
-  # to a later commit) is skipped too, since crates.io never takes it twice.
+  # Publishes the crate to crates.io through Trusted Publishing: no stored
+  # secret, the job trades its GitHub OIDC token for a short-lived crates.io
+  # token (configured on crates.io for dcarrero/mboxshell + release.yml, no
+  # environment). A version that is already on crates.io (a tag moved to a
+  # later commit) is skipped, since crates.io never takes it twice.
   crates:
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
@@ -223,14 +227,9 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Check version
+        id: check
         run: |
-          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
-            echo "::warning::CARGO_REGISTRY_TOKEN is not set; crate not published"
-            exit 0
-          fi
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION=$(cargo metadata --no-deps --format-version 1 \
             | jq -r '.packages[] | select(.name == "mboxshell") | .version')
@@ -243,9 +242,20 @@ jobs:
             "https://crates.io/api/v1/crates/mboxshell/$VERSION")
           if [ "$STATUS" = "200" ]; then
             echo "mboxshell $VERSION is already on crates.io"
-            exit 0
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
-          cargo publish --locked
+
+      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+        if: steps.check.outputs.publish == 'true'
+        id: auth
+
+      - name: Publish to crates.io
+        if: steps.check.outputs.publish == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked
 
   # Updates the Homebrew formula (dcarrero/homebrew-tap) and the Scoop
   # manifest (dcarrero/scoop-bucket) from the binaries just published. A
