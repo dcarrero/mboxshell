@@ -121,6 +121,21 @@ cargo install --git https://github.com/dcarrero/mboxshell.git
 
 ### Gestores de paquetes
 
+**Homebrew (macOS y Linux)**:
+
+```bash
+brew install dcarrero/tap/mboxshell
+```
+
+Instala el binario del release junto con los completions de la shell y la página de manual; `brew upgrade` recoge las versiones nuevas.
+
+**Scoop (Windows)**:
+
+```powershell
+scoop bucket add dcarrero https://github.com/dcarrero/scoop-bucket
+scoop install dcarrero/mboxshell
+```
+
 **Nix / NixOS**: mboxshell está en [nixpkgs](https://search.nixos.org/packages?channel=unstable&query=mboxshell):
 
 ```bash

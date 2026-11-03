@@ -10,6 +10,20 @@ repository = "https://github.com/dcarrero/mboxshell"
 homepage = "https://github.com/dcarrero/mboxshell"
 keywords = ["mbox", "email", "tui", "terminal", "viewer"]
 categories = ["command-line-utilities", "email"]
+readme = "README.md"
+# What goes to crates.io: the code and what the crate page links to. Fixtures,
+# docs, CI and local notes stay in the repository.
+include = [
+    "/src/**/*.rs",
+    "/benches/**/*.rs",
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/LICENSE",
+    "/README.md",
+    "/README-ES.md",
+    "/CHANGELOG.md",
+    "/CHANGELOG-ES.md",
+]
 
 [dependencies]
 # Email parsing

@@ -181,7 +181,14 @@ jobs:
           ### Installation
 
           \`\`\`bash
-          # Linux / macOS
+          # Homebrew (macOS / Linux)
+          brew install dcarrero/tap/mboxshell
+
+          # Scoop (Windows)
+          scoop bucket add dcarrero https://github.com/dcarrero/scoop-bucket
+          scoop install dcarrero/mboxshell
+
+          # Manual (Linux / macOS)
           chmod +x mboxshell-*
           sudo mv mboxshell-* /usr/local/bin/mboxshell
 
@@ -201,3 +208,47 @@ jobs:
           - Bilingual interface (English/Spanish)
           " \
             $FILES
+
+  # Updates the Homebrew formula (dcarrero/homebrew-tap) and the Scoop
+  # manifest (dcarrero/scoop-bucket) from the binaries just published. A
+  # separate job: if it fails, the release itself is already out. Pushing to
+  # those repos needs HOMEBREW_TAP_TOKEN, a fine-grained token with
+  # "Contents: read and write" on both; without it the job is skipped.
+  packages:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Update Homebrew tap and Scoop bucket
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUSH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$PUSH_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set; tap and bucket not updated"
+            exit 0
+          fi
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release download "$TAG" --dir assets \
+            -p 'mboxshell-macos-*' -p 'mboxshell-linux-x86_64' \
+            -p 'mboxshell-linux-aarch64' -p 'mboxshell-windows-*'
+          .github/scripts/package-manifests.sh "$TAG" assets out
+
+          publish() { # <repo> <file> <dest-dir>
+            git clone -q --depth 1 "https://x-access-token:${PUSH_TOKEN}@github.com/$1.git" "work-$1"
+            cp "$2" "work-$1/$3/"
+            cd "work-$1"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            if git diff --cached --quiet; then
+              echo "$1 already up to date"
+            else
+              git commit -qm "mboxshell ${TAG#v}"
+              git push -q
+            fi
+            cd "$GITHUB_WORKSPACE"
+          }
+          publish dcarrero/homebrew-tap out/mboxshell.rb Formula
+          publish dcarrero/scoop-bucket out/mboxshell.json bucket
