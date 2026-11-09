@@ -435,6 +435,23 @@ mboxshell search correo.mbox "has:attachment subject:factura" --json
 
 Cada página HTML empieza con un encabezado oculto a la vista, `Email 0023 — 2024-03-05 09:08 — Asunto`, y un marcador invisible `__EMAIL_START_0023__`; el número es la posición del mensaje en el buzón, contando desde 1 (igual que `attachments --dirname seq-no`). Si conviertes las páginas a PDF con una herramienta como wkhtmltopdf y las unes, el encabezado se convierte en un marcador del PDF por mensaje y el marcador invisible indica dónde volver a partirlo. Los lectores de pantalla lo reciben como encabezado principal de la página.
 
+### PDF
+
+mboxShell no genera PDF por sí mismo, pero la exportación HTML y la extracción de adjuntos están pensadas para que una herramienta externa termine el trabajo. [pdf-toolkit](https://github.com/ggrothendieck/pdf-toolkit), un CLI en Rust puro escrito justo para esto, convierte las páginas a PDF, incrusta los adjuntos de cada mensaje y lo une todo en un solo fichero:
+
+```bash
+mboxshell export -f html --dirname seq-no --output salida buzon.mbox
+mboxshell attachments --dirname seq-no --output salida buzon.mbox
+cd salida
+pdf-toolkit html2pdf .
+pdf-toolkit attach-to-pdf . --level page
+pdf-toolkit merge . -o combinado.pdf
+```
+
+Con `--dirname seq-no` los dos comandos comparten numeración: el mensaje `0023` queda en `0023.html` y sus adjuntos en `0023/`, que es lo que espera `attach-to-pdf`. Si vas a unirlos, usa `--level page` para que cada adjunto siga anclado a su mensaje; con un PDF por mensaje también sirve `--level document`, que muestran más visores. Las opciones de pdf-toolkit y cómo filtra los adjuntos están en su README.
+
+Si prefieres una app gráfica, [Mbox Viewer Pro](https://mboxviewerpro.com) para Mac, Windows y Linux (beta) exporta mensajes a PDF directamente.
+
 Combínalo con `--query` para exportar solo los mensajes coincidentes:
 
 ```bash

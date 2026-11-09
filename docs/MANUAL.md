@@ -435,6 +435,23 @@ mboxshell search mail.mbox "has:attachment subject:invoice" --json
 
 Each HTML page starts with a visually hidden heading, `Email 0023 — 2024-03-05 09:08 — Subject`, and an invisible `__EMAIL_START_0023__` marker; the number is the message's position in the mailbox, counting from 1 (the same as `attachments --dirname seq-no`). If you convert the pages to PDF with a tool such as wkhtmltopdf and join them, the heading becomes a PDF bookmark per message and the marker shows where to split the document again. Screen readers get it as the page's main heading.
 
+### PDF
+
+mboxShell has no PDF output of its own, but its HTML export and attachment extraction are laid out so an external tool can finish the job. [pdf-toolkit](https://github.com/ggrothendieck/pdf-toolkit), a pure-Rust CLI written for exactly this, converts the pages to PDF, embeds each message's attachments and merges everything into one file:
+
+```bash
+mboxshell export -f html --dirname seq-no --output outdir mail.mbox
+mboxshell attachments --dirname seq-no --output outdir mail.mbox
+cd outdir
+pdf-toolkit html2pdf .
+pdf-toolkit attach-to-pdf . --level page
+pdf-toolkit merge . -o combined.pdf
+```
+
+With `--dirname seq-no` both commands share the numbering: message `0023` becomes `0023.html` and its attachments go to `0023/`, which is what `attach-to-pdf` expects. Use `--level page` when you merge, so every attachment stays pinned to its own message; with one PDF per message, `--level document` also works and more PDF viewers show it. See pdf-toolkit's README for its options and how it screens attachments.
+
+If you prefer a graphical app, [Mbox Viewer Pro](https://mboxviewerpro.com) for Mac, Windows and Linux (beta) exports messages to PDF directly.
+
 Combine with `--query` to export only matching messages:
 
 ```bash

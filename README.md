@@ -180,6 +180,10 @@ mboxshell export mail.mbox --format maildir -o ~/Maildir/Archive
 # Extract attachments
 mboxshell attachments mail.mbox --output ./attachments/
 
+# PDF: HTML export + attachments, then pdf-toolkit (see the manual, "PDF")
+mboxshell export mail.mbox -f html --dirname seq-no -o outdir
+mboxshell attachments mail.mbox --dirname seq-no -o outdir
+
 # Merge multiple MBOX files (duplicates are removed by default)
 mboxshell merge file1.mbox file2.mbox -o merged.mbox
 
