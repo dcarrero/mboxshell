@@ -450,6 +450,18 @@ pdf-toolkit merge . -o combinado.pdf
 
 Con `--dirname seq-no` los dos comandos comparten numeración: el mensaje `0023` queda en `0023.html` y sus adjuntos en `0023/`, que es lo que espera `attach-to-pdf`. Si vas a unirlos, usa `--level page` para que cada adjunto siga anclado a su mensaje; con un PDF por mensaje también sirve `--level document`, que muestran más visores. Las opciones de pdf-toolkit y cómo filtra los adjuntos están en su README.
 
+Cualquier otro conversor de HTML a PDF también sirve para las páginas exportadas, aunque no incrustará los adjuntos. Dos opciones, cada una con su equilibrio entre velocidad y fidelidad:
+
+```bash
+cd outdir
+# sghtmltopdf: Rust puro, sin navegador, rápido; admite un subconjunto de CSS
+for f in *.html; do sghtmltopdf "$f" -o "${f%.html}.pdf"; done
+# Chromium/Chrome headless: es el que mejor pinta el HTML de los correos, pero más lento
+for f in *.html; do chromium --headless --no-pdf-header-footer --print-to-pdf="${f%.html}.pdf" "$f"; done
+```
+
+[sghtmltopdf](https://github.com/waka/sghtmltopdf) es un proyecto joven, así que comprueba el resultado con tu propio correo. wkhtmltopdf sigue funcionando, pero se archivó en 2023. La exportación HTML bloquea por defecto las imágenes remotas (`--allow-remote-images` o `--raw-html` las dejan pasar), así que ninguna de estas herramientas descarga nada de la red salvo que lo permitas.
+
 Si prefieres una app gráfica, [Mbox Viewer Pro](https://mboxviewerpro.com) para Mac, Windows y Linux (beta) exporta mensajes a PDF directamente.
 
 Combínalo con `--query` para exportar solo los mensajes coincidentes:

@@ -450,6 +450,18 @@ pdf-toolkit merge . -o combined.pdf
 
 With `--dirname seq-no` both commands share the numbering: message `0023` becomes `0023.html` and its attachments go to `0023/`, which is what `attach-to-pdf` expects. Use `--level page` when you merge, so every attachment stays pinned to its own message; with one PDF per message, `--level document` also works and more PDF viewers show it. See pdf-toolkit's README for its options and how it screens attachments.
 
+Any other HTML-to-PDF converter works on the exported pages too; it just won't embed the attachments. Two options, each trading speed for fidelity differently:
+
+```bash
+cd outdir
+# sghtmltopdf: pure Rust, no browser, fast; supports a subset of CSS
+for f in *.html; do sghtmltopdf "$f" -o "${f%.html}.pdf"; done
+# Headless Chromium/Chrome: renders email HTML best, but is slower
+for f in *.html; do chromium --headless --no-pdf-header-footer --print-to-pdf="${f%.html}.pdf" "$f"; done
+```
+
+[sghtmltopdf](https://github.com/waka/sghtmltopdf) is a young project, so check the result on your own mail. wkhtmltopdf also still works, but it was archived in 2023. Remote images are blocked in the HTML export by default (`--allow-remote-images` or `--raw-html` let them through), so none of these tools fetches anything from the network unless you allow it.
+
 If you prefer a graphical app, [Mbox Viewer Pro](https://mboxviewerpro.com) for Mac, Windows and Linux (beta) exports messages to PDF directly.
 
 Combine with `--query` to export only matching messages:
