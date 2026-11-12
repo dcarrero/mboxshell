@@ -24,20 +24,27 @@ jobs:
       matrix:
         include:
           # Linux x86_64
+          # The three Linux builds go through cargo-zigbuild, which links
+          # against the glibc version named in `glibc` instead of the
+          # runner's. Built the plain way they needed glibc 2.39 (Ubuntu
+          # 24.04) and did not start on Debian 12 or Ubuntu 22.04.
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: mboxshell-linux-x86_64
             cross: false
+            glibc: "2.17"
           # Linux ARM64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             artifact: mboxshell-linux-aarch64
-            cross: true
+            cross: false
+            glibc: "2.17"
           # Linux RISC-V 64
           - os: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
             artifact: mboxshell-linux-riscv64
-            cross: true
+            cross: false
+            glibc: "2.31"
           # FreeBSD x86_64 (via cross)
           - os: ubuntu-latest
             target: x86_64-unknown-freebsd
@@ -72,26 +79,13 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      # Cross-compilation toolchains
-      - name: Install cross-compilation tools
-        if: matrix.cross && runner.os == 'Linux'
+      # Linux: cargo-zigbuild and zig itself, both pinned. zig is the C
+      # compiler and the linker for every Linux target, so no cross gcc.
+      - name: Install cargo-zigbuild
+        if: matrix.glibc
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu
-
-      - name: Set linker for aarch64-unknown-linux-gnu
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          mkdir -p .cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config.toml
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
-
-      - name: Set linker for riscv64gc-unknown-linux-gnu
-        if: matrix.target == 'riscv64gc-unknown-linux-gnu'
-        run: |
-          mkdir -p .cargo
-          echo '[target.riscv64gc-unknown-linux-gnu]' >> .cargo/config.toml
-          echo 'linker = "riscv64-linux-gnu-gcc"' >> .cargo/config.toml
+          pip install --user --break-system-packages cargo-zigbuild==0.24.1 ziglang==0.17.1
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # FreeBSD cross-compilation via cross tool (prebuilt binary, pinned by
       # the action — avoids compiling cross from git HEAD on every release)
@@ -105,8 +99,26 @@ jobs:
         if: matrix.target == 'x86_64-unknown-freebsd'
         run: cross build --release --locked --target ${{ matrix.target }}
 
+      - name: Build release (Linux, fixed glibc)
+        if: matrix.glibc
+        run: cargo zigbuild --release --locked --target ${{ matrix.target }}.${{ matrix.glibc }}
+
+      # Fails the release if a binary asks for a newer glibc than intended,
+      # instead of finding out from someone whose system cannot run it.
+      - name: Check the glibc the binary needs
+        if: matrix.glibc
+        run: |
+          needed=$(readelf --dyn-syms -W target/${{ matrix.target }}/release/mboxshell \
+            | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1)
+          echo "needs $needed (limit GLIBC_${{ matrix.glibc }})"
+          newest=$(printf '%s\n' "$needed" "GLIBC_${{ matrix.glibc }}" | sort -V | tail -1)
+          if [ "$newest" != "GLIBC_${{ matrix.glibc }}" ]; then
+            echo "::error::${{ matrix.artifact }} needs $needed, above GLIBC_${{ matrix.glibc }}"
+            exit 1
+          fi
+
       - name: Build release
-        if: matrix.target != 'x86_64-unknown-freebsd'
+        if: matrix.target != 'x86_64-unknown-freebsd' && !matrix.glibc
         run: cargo build --release --locked --target ${{ matrix.target }}
 
       # Rename binary for upload
@@ -158,6 +170,13 @@ jobs:
               fi
             done
           done
+
+          # A tag moved to a later commit: the release is already there, with
+          # its notes. Replace the binaries and leave the rest alone.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" --clobber $FILES
+            exit 0
+          fi
 
           gh release create "$TAG" \
             --title "mboxShell $TAG" \
