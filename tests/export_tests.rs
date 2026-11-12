@@ -66,6 +66,6 @@ fn test_html_export_embeds_cid_images() {
     // Without loading the images the references are removed, as before.
     let path = export_html_with(&entries[0], &body, &out, &HtmlOptions::default()).unwrap();
     let html = std::fs::read_to_string(path).unwrap();
-    assert!(!html.contains("data:"), "{html}");
+    assert!(!html.contains("src=\"data:"), "{html}");
     assert!(!html.contains("cid:"), "{html}");
 }

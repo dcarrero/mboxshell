@@ -1200,21 +1200,14 @@ fn cmd_attachments(
     let naming = folder_naming(dirname, seq_width, export_config, entries.len());
     let mut store = mboxshell::store::reader::MboxStore::open(path)?;
 
-    let with_att: Vec<&mboxshell::model::mail::MailEntry> =
-        entries.iter().filter(|e| e.has_attachments).collect();
+    // Every message is looked at, not only those the index flags: the flag
+    // comes from a fast scan while indexing, and what counts is what the
+    // MIME parser finds. Trusting the flag silently skipped attachments.
+    let all: Vec<&mboxshell::model::mail::MailEntry> = entries.iter().collect();
 
-    if with_att.is_empty() {
-        println!("  {}", i18n::cli_no_attachments_found());
-        return Ok(());
-    }
+    println!("  {} {} message(s)", i18n::cli_extracting_from(), all.len());
 
-    println!(
-        "  {} {} message(s)",
-        i18n::cli_extracting_from(),
-        with_att.len()
-    );
-
-    let pb = ProgressBar::new(with_att.len() as u64);
+    let pb = ProgressBar::new(all.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
             .template(&format!(
@@ -1225,9 +1218,9 @@ fn cmd_attachments(
             .progress_chars("#>-"),
     );
 
-    let paths = mboxshell::export::attachment::export_bulk_attachments(
+    let report = mboxshell::export::attachment::export_bulk_attachments(
         &mut store,
-        &with_att,
+        &all,
         output,
         naming,
         &|current, _total| {
@@ -1236,13 +1229,20 @@ fn cmd_attachments(
     )?;
 
     pb.finish_and_clear();
+    if report.paths.is_empty() && report.failed == 0 {
+        println!("  {}", i18n::cli_no_attachments_found());
+        return Ok(());
+    }
     println!(
         "  {} {} {} {}",
         i18n::cli_extracted(),
-        paths.len(),
+        report.paths.len(),
         i18n::cli_attachments_to(),
         output.display()
     );
+    if report.failed > 0 {
+        anyhow::bail!("{} {}", report.failed, i18n::cli_attachments_failed());
+    }
 
     Ok(())
 }

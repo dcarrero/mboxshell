@@ -494,7 +494,7 @@ fn build_lines(
                 for att in &body.attachments {
                     let size = humansize::format_size(att.size, humansize::BINARY);
                     lines.push(Line::from(Span::styled(
-                        format!("  @ {} ({})", att.filename, size),
+                        format!("  @ {} ({})", sanitize_line(&att.filename), size),
                         theme.attachment,
                     )));
                 }

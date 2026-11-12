@@ -10,6 +10,7 @@
 //! │  mbox_file_size: u64                 │
 //! │  mbox_modified_time: i64 (nanos)     │
 //! │  sha256_first_4kb: [u8; 32]         │
+//! │  mac: [u8; 32] (HMAC-SHA256)        │
 //! │  (padding to 128 bytes)              │
 //! ├──────────────────────────────────────┤
 //! │ ENTRIES (variable)                   │
@@ -40,7 +41,11 @@ pub const MAGIC: &[u8; 8] = b"MBOXTUI\0";
 /// a top-level `multipart/mixed` alone (issue #51), so v4 files are rebuilt.
 /// v6: entries encoded with `postcard` instead of `bincode` (unmaintained,
 /// RUSTSEC-2025-0141). Same header bytes; v5 files are rebuilt.
-pub const VERSION: u32 = 6;
+/// v7: the header carries an HMAC of the whole file under a per-user key
+/// (a sidecar that arrived with the mailbox is no longer trusted), and
+/// `has_attachments` also covers single-part non-text messages and named or
+/// non-plain `text/*` parts. v6 files are rebuilt.
+pub const VERSION: u32 = 7;
 
 /// Fixed header size in bytes.
 pub const HEADER_SIZE: usize = 128;
@@ -69,6 +74,9 @@ pub struct IndexHeader {
     pub mbox_modified_time: i64,
     /// SHA-256 of the first 4 KB of the MBOX file.
     pub sha256_first_4kb: [u8; 32],
+    /// HMAC-SHA256, under the user's index key, of this header (with this
+    /// field zeroed) followed by the entries. See [`crate::index::auth`].
+    pub mac: [u8; 32],
 }
 
 // Byte offsets of each header field.
@@ -78,7 +86,9 @@ const OFF_COUNT: usize = 16;
 const OFF_SIZE: usize = 24;
 const OFF_MTIME: usize = 32;
 const OFF_SHA: usize = 40;
-const HEADER_USED: usize = OFF_SHA + 32;
+/// Offset of the [`IndexHeader::mac`] field.
+pub const OFF_MAC: usize = OFF_SHA + 32;
+const HEADER_USED: usize = OFF_MAC + 32;
 
 impl IndexHeader {
     /// Encode the header as its fixed [`HEADER_SIZE`]-byte form (zero padded).
@@ -90,7 +100,8 @@ impl IndexHeader {
         b[OFF_COUNT..OFF_SIZE].copy_from_slice(&self.message_count.to_le_bytes());
         b[OFF_SIZE..OFF_MTIME].copy_from_slice(&self.mbox_file_size.to_le_bytes());
         b[OFF_MTIME..OFF_SHA].copy_from_slice(&self.mbox_modified_time.to_le_bytes());
-        b[OFF_SHA..HEADER_USED].copy_from_slice(&self.sha256_first_4kb);
+        b[OFF_SHA..OFF_MAC].copy_from_slice(&self.sha256_first_4kb);
+        b[OFF_MAC..HEADER_USED].copy_from_slice(&self.mac);
         b
     }
 
@@ -103,7 +114,9 @@ impl IndexHeader {
         let mut magic = [0u8; 8];
         magic.copy_from_slice(&b[..OFF_VERSION]);
         let mut sha256_first_4kb = [0u8; 32];
-        sha256_first_4kb.copy_from_slice(&b[OFF_SHA..HEADER_USED]);
+        sha256_first_4kb.copy_from_slice(&b[OFF_SHA..OFF_MAC]);
+        let mut mac = [0u8; 32];
+        mac.copy_from_slice(&b[OFF_MAC..HEADER_USED]);
         Some(Self {
             magic,
             version: u32::from_le_bytes(b[OFF_VERSION..OFF_FLAGS].try_into().ok()?),
@@ -112,6 +125,7 @@ impl IndexHeader {
             mbox_file_size: u64::from_le_bytes(b[OFF_SIZE..OFF_MTIME].try_into().ok()?),
             mbox_modified_time: i64::from_le_bytes(b[OFF_MTIME..OFF_SHA].try_into().ok()?),
             sha256_first_4kb,
+            mac,
         })
     }
 
@@ -143,6 +157,7 @@ mod tests {
             mbox_file_size: 50_000_000_000,
             mbox_modified_time: -1_700_000_000_123_456_789,
             sha256_first_4kb: [7u8; 32],
+            mac: [9u8; 32],
         }
     }
 
@@ -165,6 +180,8 @@ mod tests {
         assert_eq!(&b[24..32], &50_000_000_000u64.to_le_bytes());
         assert_eq!(&b[32..40], &(-1_700_000_000_123_456_789i64).to_le_bytes());
         assert_eq!(&b[40..72], &[7u8; 32]);
-        assert!(b[72..].iter().all(|&x| x == 0));
+        // v7 appended the MAC after the fields the old files had.
+        assert_eq!(&b[72..104], &[9u8; 32]);
+        assert!(b[104..].iter().all(|&x| x == 0));
     }
 }

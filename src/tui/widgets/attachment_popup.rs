@@ -6,6 +6,7 @@ use ratatui::Frame;
 
 use crate::i18n;
 use crate::tui::app::App;
+use crate::tui::text::sanitize_line;
 use crate::tui::theme::current_theme;
 
 /// Render the attachment popup centered on screen.
@@ -59,8 +60,8 @@ pub fn render(frame: &mut Frame, app: &App) {
             Row::new(vec![
                 Cell::from(marker).style(style),
                 Cell::from(format!("{}", i + 1)).style(style),
-                Cell::from(att.filename.clone()).style(name_style),
-                Cell::from(att.content_type.clone()).style(style),
+                Cell::from(sanitize_line(&att.filename).into_owned()).style(name_style),
+                Cell::from(sanitize_line(&att.content_type).into_owned()).style(style),
                 Cell::from(size).style(style),
             ])
         })

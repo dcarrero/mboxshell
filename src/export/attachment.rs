@@ -6,7 +6,22 @@ use crate::model::attachment::AttachmentMeta;
 use crate::model::mail::MailEntry;
 use crate::store::reader::MboxStore;
 
-use super::eml::sanitize_filename_part;
+use super::eml::{filename_date_stamp, sanitize_attachment_filename, sanitize_filename_part};
+
+/// Most digits a sequence folder name is padded to. More than any message
+/// count needs; a larger `--seq-width` only produced names too long for the
+/// file system, and past 65535 a panic in the formatter.
+pub const MAX_SEQ_WIDTH: usize = 20;
+
+/// What a bulk attachment extraction did.
+#[derive(Debug, Default)]
+pub struct AttachmentExport {
+    /// Every file written.
+    pub paths: Vec<PathBuf>,
+    /// Attachments that could not be written (name too long for the file
+    /// system, disk full, folder not creatable…). Each one is logged.
+    pub failed: usize,
+}
 
 /// Export a single decoded attachment to disk.
 pub fn export_attachment(
@@ -16,11 +31,14 @@ pub fn export_attachment(
     output_dir: &Path,
 ) -> anyhow::Result<PathBuf> {
     let data = store.get_attachment(entry, attachment)?;
-    let filename = sanitize_filename_part(&attachment.filename, 150);
-    let path = output_dir.join(&filename);
+    Ok(write_attachment(&attachment.filename, &data, output_dir)?)
+}
 
+/// Write one attachment's bytes under its sanitized name.
+fn write_attachment(filename: &str, data: &[u8], output_dir: &Path) -> std::io::Result<PathBuf> {
+    let filename = sanitize_attachment_filename(filename, 150);
     // Never overwrite: a counter is appended while the name is taken.
-    Ok(write_unique(&path, &data)?)
+    write_unique(&output_dir.join(filename), data)
 }
 
 /// Extract all attachments from a single message.
@@ -30,14 +48,72 @@ pub fn export_all_attachments(
     output_dir: &Path,
 ) -> anyhow::Result<Vec<PathBuf>> {
     let body = store.get_message(entry)?;
-    let mut paths = Vec::new();
-
-    for att in &body.attachments {
-        let path = export_attachment(store, entry, att, output_dir)?;
-        paths.push(path);
+    if body.attachments.is_empty() {
+        return Ok(Vec::new());
     }
+    let mut paths = Vec::new();
+    let mut first_error = None;
+    write_message_attachments(
+        store,
+        entry,
+        &body.attachments,
+        output_dir,
+        |result| match result {
+            Ok(path) => paths.push(path),
+            Err(e) => {
+                first_error.get_or_insert(e);
+            }
+        },
+    )?;
+    match first_error {
+        Some(e) => Err(e.into()),
+        None => Ok(paths),
+    }
+}
 
-    Ok(paths)
+/// Decode a message once and write each of its attachments into `dir`,
+/// reporting every outcome to `done`.
+fn write_message_attachments(
+    store: &mut MboxStore,
+    entry: &MailEntry,
+    attachments: &[AttachmentMeta],
+    dir: &Path,
+    mut done: impl FnMut(std::io::Result<PathBuf>),
+) -> anyhow::Result<()> {
+    let raw = store.get_raw_message(entry)?;
+    let mut seen = vec![false; attachments.len()];
+    crate::parser::mime::visit_attachments(&raw, |part_index, data| {
+        for (att, seen) in attachments.iter().zip(seen.iter_mut()) {
+            if att.part_index == part_index && !*seen {
+                *seen = true;
+                let result = write_attachment(&att.filename, data, dir);
+                if let Err(e) = &result {
+                    // `?`: Debug-escaped. The name comes from the message and
+                    // could carry terminal escape sequences into the log.
+                    tracing::warn!(
+                        filename = ?att.filename,
+                        error = %e,
+                        "Failed to export attachment"
+                    );
+                }
+                done(result);
+            }
+        }
+    })?;
+    for (att, seen) in attachments.iter().zip(&seen) {
+        if !seen {
+            tracing::warn!(
+                filename = ?att.filename,
+                part = att.part_index,
+                "Attachment not found in message"
+            );
+            done(Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("attachment part {} not found in message", att.part_index),
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// How `export_bulk_attachments` names each message's subfolder.
@@ -67,7 +143,7 @@ impl FolderNaming {
         let last = (total as u64).saturating_sub(1) + start;
         let width = match width {
             0 => last.to_string().len(),
-            w => w,
+            w => w.min(MAX_SEQ_WIDTH),
         };
         FolderNaming::Sequence { start, width }
     }
@@ -94,15 +170,19 @@ impl FolderNaming {
 ///
 /// Creates a subfolder per message, named as `naming` says:
 /// `{output_dir}/{date}_{subject}/` or `{output_dir}/{number}/`.
+///
+/// `entries` may be the whole mailbox: messages without attachments are
+/// skipped. One attachment (or one message) that cannot be written does not
+/// stop the rest; it is counted in [`AttachmentExport::failed`].
 pub fn export_bulk_attachments(
     store: &mut MboxStore,
     entries: &[&MailEntry],
     output_dir: &Path,
     naming: FolderNaming,
     progress: &dyn Fn(usize, usize),
-) -> anyhow::Result<Vec<PathBuf>> {
+) -> anyhow::Result<AttachmentExport> {
     std::fs::create_dir_all(output_dir)?;
-    let mut all_paths = Vec::new();
+    let mut report = AttachmentExport::default();
     let total = entries.len();
 
     for (i, entry) in entries.iter().enumerate() {
@@ -115,36 +195,43 @@ pub fn export_bulk_attachments(
 
         let subfolder_name = message_folder_name(entry, naming);
         let subfolder = output_dir.join(&subfolder_name);
-        std::fs::create_dir_all(&subfolder)?;
+        if let Err(e) = crate::fsutil::create_dir_no_follow(&subfolder) {
+            tracing::warn!(folder = ?subfolder_name, error = %e, "Cannot create attachment folder");
+            report.failed += body.attachments.len();
+            continue;
+        }
 
-        for att in &body.attachments {
-            match export_attachment(store, entry, att, &subfolder) {
-                Ok(path) => all_paths.push(path),
-                Err(e) => {
-                    tracing::warn!(
-                        filename = %att.filename,
-                        error = %e,
-                        "Failed to export attachment"
-                    );
+        let before = report.paths.len() + report.failed;
+        let outcome =
+            write_message_attachments(store, entry, &body.attachments, &subfolder, |result| {
+                match result {
+                    Ok(path) => report.paths.push(path),
+                    Err(_) => report.failed += 1,
                 }
-            }
+            });
+        if let Err(e) = outcome {
+            tracing::warn!(offset = entry.offset, error = %e, "Cannot read message attachments");
+            let handled = report.paths.len() + report.failed - before;
+            report.failed += body.attachments.len().saturating_sub(handled);
         }
     }
     progress(total, total);
 
-    Ok(all_paths)
+    Ok(report)
 }
 
 /// Generate a folder name for a message's attachments.
 fn message_folder_name(entry: &MailEntry, naming: FolderNaming) -> String {
     match naming {
         FolderNaming::DateSubject => {
-            let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
+            let date = filename_date_stamp(&entry.date);
             let subject = sanitize_filename_part(&entry.subject, 60);
             format!("{date}_{subject}")
         }
         FolderNaming::Sequence { start, width } => {
-            format!("{:0width$}", entry.sequence + start)
+            // Clamped here too: the variant can be built directly.
+            let width = width.min(MAX_SEQ_WIDTH);
+            format!("{:0width$}", entry.sequence.saturating_add(start))
         }
     }
 }
@@ -161,7 +248,13 @@ pub(crate) fn write_unique(path: &Path, data: &[u8]) -> std::io::Result<PathBuf>
     use std::io::Write;
 
     let (created, mut file) = crate::fsutil::create_unique(path)?;
-    file.write_all(data)?;
+    if let Err(e) = file.write_all(data).and_then(|()| file.flush()) {
+        // A full disk used to leave an empty or cut-short file behind under
+        // its final name, looking like a finished export.
+        drop(file);
+        let _ = std::fs::remove_file(&created);
+        return Err(e);
+    }
     Ok(created)
 }
 
@@ -215,6 +308,18 @@ mod tests {
         assert_eq!(message_folder_name(&entry, seq(0, 4)), "0009");
         // The width is a minimum, never a cut
         assert_eq!(message_folder_name(&entry, seq(1, 1)), "10");
+        // An absurd width is clamped instead of panicking in the formatter.
+        assert_eq!(
+            message_folder_name(&entry, seq(1, 70_000)).len(),
+            MAX_SEQ_WIDTH
+        );
+        assert_eq!(
+            FolderNaming::sequence(1, 70_000, 10),
+            FolderNaming::Sequence {
+                start: 1,
+                width: MAX_SEQ_WIDTH
+            }
+        );
         assert!(
             message_folder_name(&entry, FolderNaming::DateSubject).starts_with("20240305_090807_")
         );

@@ -69,6 +69,10 @@ postcard = { version = "1", default-features = false, features = ["use-std"] }
 
 # Hashing for index integrity
 sha2 = "0.10"
+# The index is authenticated with a per-user key, so one shipped next to a
+# mailbox is rebuilt instead of trusted
+hmac = "0.12"
+getrandom = "0.3"
 
 # Fast newline scanning when streaming a mailbox (already in the tree through serde_json)
 memchr = "2"

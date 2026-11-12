@@ -92,7 +92,7 @@ pub fn export_multiple_eml_opts(
 ///
 /// Format: `{date}_{from}_{subject}.eml`, truncated to 200 chars.
 fn eml_filename(entry: &MailEntry) -> String {
-    let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
+    let date = filename_date_stamp(&entry.date);
     let from = sanitize_filename_part(&entry.from.address, 30);
     let subject = sanitize_filename_part(&entry.subject, 80);
 
@@ -470,11 +470,58 @@ fn extract_header_value_original_case(headers_raw: &[u8], name_lower: &[u8]) -> 
     None
 }
 
+/// Longest file name component produced from message data, in bytes.
+///
+/// File systems cap a name at 255 bytes (ext4, xfs) or 255 UTF-16 units
+/// (APFS, NTFS). Staying well under leaves room for a date prefix, an
+/// extension and the `_N` suffix added on a name collision.
+const MAX_NAME_BYTES: usize = 200;
+
 /// Sanitize a string for use in filenames.
 ///
 /// Replaces invalid characters with `_`, strips path separators and `..`
-/// sequences to prevent path traversal, and truncates to `max_len`.
+/// sequences to prevent path traversal, and truncates to `max_len`
+/// characters and [`MAX_NAME_BYTES`] bytes: 150 Cyrillic or CJK characters
+/// are 300-450 bytes, which no file system accepts as a name.
 pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
+    finish_filename(clean_filename_chars(s, max_len))
+}
+
+/// Like [`sanitize_filename_part`] for an attachment's own file name: when
+/// the name has to be cut, the cut is made before the extension, so a long
+/// `…report.pdf` is still a `.pdf`.
+pub fn sanitize_attachment_filename(s: &str, max_len: usize) -> String {
+    let full = map_filename_chars(s, usize::MAX);
+    let full = full.trim_matches('.');
+    let cut = clean_filename_chars(s, max_len);
+    if cut.trim_matches('.').len() == full.len() {
+        return finish_filename(cut);
+    }
+    // Something was cut off: keep a short, plain extension if there was one.
+    let ext = full
+        .rsplit_once('.')
+        .map(|(_, ext)| ext)
+        .filter(|ext| !ext.is_empty() && ext.len() <= 16 && ext.chars().all(char::is_alphanumeric));
+    match ext {
+        Some(ext) => {
+            let chars = max_len.saturating_sub(ext.chars().count() + 1);
+            let stem: String = cut.chars().take(chars).collect();
+            let stem = truncate_at_char_boundary(&stem, MAX_NAME_BYTES - ext.len() - 1);
+            finish_filename(format!("{}.{ext}", stem.trim_end_matches('.')))
+        }
+        None => finish_filename(cut),
+    }
+}
+
+/// [`map_filename_chars`], also cut to [`MAX_NAME_BYTES`] bytes.
+fn clean_filename_chars(s: &str, max_len: usize) -> String {
+    let sanitized = map_filename_chars(s, max_len);
+    truncate_at_char_boundary(&sanitized, MAX_NAME_BYTES).to_string()
+}
+
+/// Map every character outside the safe set to `_`, cut to `max_len`
+/// characters and collapse `..`.
+fn map_filename_chars(s: &str, max_len: usize) -> String {
     let sanitized: String = s
         .chars()
         .map(|c| {
@@ -488,25 +535,49 @@ pub fn sanitize_filename_part(s: &str, max_len: usize) -> String {
         .collect();
 
     // Prevent path traversal: collapse `..` into `_`
-    let sanitized = sanitized.replace("..", "_");
+    sanitized.replace("..", "_")
+}
 
+/// Last touches on a cleaned name: no leading/trailing dots, never empty,
+/// never a Windows device, never something a shell reads as an option.
+fn finish_filename(sanitized: String) -> String {
     // Strip leading dots (hidden files on Unix) and trailing dots (Windows issue)
     let sanitized = sanitized.trim_matches('.').to_string();
 
     if sanitized.is_empty() {
         "unknown".to_string()
-    } else if is_windows_reserved(&sanitized) {
+    } else if is_windows_reserved(&sanitized) || sanitized.starts_with('-') {
         // `CON.txt`, `nul`, `COM1.pdf`… name devices on Windows: writing to
         // one fails or goes to the device instead of a file. Every platform
         // gets the prefix, so an export copied to Windows later stays usable.
+        // A name like `-rf` or `--help` is taken for an option by the next
+        // `rm *` or `cat *` run in the export folder.
         format!("_{sanitized}")
     } else {
         sanitized
     }
 }
 
+/// The `%Y%m%d_%H%M%S` stamp that starts an exported file or folder name.
+///
+/// A `Date:` header can carry any year chrono can represent, and outside
+/// 0000-9999 it formats with a sign (`-2621431231_…`, `+2621420101_…`): a
+/// file name that starts with `-` is read as an option by shell tools.
+/// Such dates get an all-zero stamp instead.
+pub(crate) fn filename_date_stamp(date: &chrono::DateTime<chrono::Utc>) -> String {
+    use chrono::Datelike;
+    if (0..=9999).contains(&date.year()) {
+        date.format("%Y%m%d_%H%M%S").to_string()
+    } else {
+        "00000000_000000".to_string()
+    }
+}
+
 /// Whether `name` is a reserved Windows device name (`CON`, `PRN`, `AUX`,
 /// `NUL`, `COM0`-`COM9`, `LPT0`-`LPT9`), with or without an extension.
+///
+/// Windows also reserves the superscript digits `¹`, `²`, `³` after `COM`
+/// and `LPT`, and they pass the alphanumeric filter.
 fn is_windows_reserved(name: &str) -> bool {
     let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
     match stem.as_str() {
@@ -515,9 +586,12 @@ fn is_windows_reserved(name: &str) -> bool {
         // multi-byte character (`Coé…`), which is never a device name (#37).
         _ => match stem.split_at_checked(3) {
             Some((prefix, digit)) => {
+                let mut chars = digit.chars();
                 matches!(prefix, "COM" | "LPT")
-                    && digit.len() == 1
-                    && digit.chars().all(|c| c.is_ascii_digit())
+                    && chars
+                        .next()
+                        .is_some_and(|c| c.is_ascii_digit() || matches!(c, '¹' | '²' | '³'))
+                    && chars.next().is_none()
             }
             None => false,
         },
@@ -557,6 +631,13 @@ mod tests {
         assert_eq!(sanitize_filename_part("Lpt9", 20), "_Lpt9");
         assert_eq!(sanitize_filename_part("console.log", 20), "console.log");
         assert_eq!(sanitize_filename_part("COM10.txt", 20), "COM10.txt");
+        // Superscript digits are reserved too.
+        assert_eq!(sanitize_filename_part("COM¹.txt", 20), "_COM¹.txt");
+        assert_eq!(sanitize_filename_part("lpt²", 20), "_lpt²");
+        assert_eq!(sanitize_filename_part("COM¹²", 20), "COM¹²");
+        // Nothing that a shell would read as an option.
+        assert_eq!(sanitize_filename_part("-rf", 20), "_-rf");
+        assert_eq!(sanitize_filename_part("--help", 20), "_--help");
         // A multi-byte character straddling byte 3 must not panic (#37).
         assert_eq!(sanitize_filename_part("coé.txt", 20), "coé.txt");
         assert_eq!(sanitize_filename_part("ab", 20), "ab");
@@ -795,5 +876,58 @@ mod tests {
             b"Subject: First\n\nbody one\n",
             "the BOM and the envelope line must not reach the .eml"
         );
+    }
+
+    #[test]
+    fn test_sanitized_names_fit_in_a_file_name() {
+        // 150 characters, but 600 bytes: over every file system's limit.
+        let astral = "𝔸".repeat(150);
+        let name = sanitize_filename_part(&astral, 150);
+        assert!(name.len() <= MAX_NAME_BYTES, "{}", name.len());
+        assert!(!name.is_empty());
+        let cyrillic = "ж".repeat(150);
+        assert!(sanitize_filename_part(&cyrillic, 150).len() <= MAX_NAME_BYTES);
+        // ASCII is cut by characters as before.
+        assert_eq!(sanitize_filename_part(&"a".repeat(300), 150).len(), 150);
+    }
+
+    #[test]
+    fn test_attachment_name_keeps_its_extension_when_cut() {
+        let long = format!("{}.pdf", "a".repeat(300));
+        let name = sanitize_attachment_filename(&long, 150);
+        assert_eq!(name.chars().count(), 150);
+        assert!(name.ends_with(".pdf"), "{name}");
+
+        let cjk = format!("{}.docx", "報".repeat(200));
+        let name = sanitize_attachment_filename(&cjk, 150);
+        assert!(name.len() <= MAX_NAME_BYTES, "{}", name.len());
+        assert!(name.ends_with(".docx"), "{name}");
+
+        // Short names are untouched, and so is a name with no real extension.
+        assert_eq!(
+            sanitize_attachment_filename("report.pdf", 150),
+            "report.pdf"
+        );
+        assert_eq!(
+            sanitize_attachment_filename(&"b".repeat(300), 150),
+            "b".repeat(150)
+        );
+        assert_eq!(
+            sanitize_attachment_filename("../../etc/passwd", 150),
+            sanitize_filename_part("../../etc/passwd", 150)
+        );
+    }
+
+    #[test]
+    fn test_filename_date_stamp_never_starts_with_a_sign() {
+        use chrono::TimeZone;
+        let ok = chrono::Utc.with_ymd_and_hms(2024, 3, 5, 9, 8, 7).unwrap();
+        assert_eq!(filename_date_stamp(&ok), "20240305_090807");
+        let far = chrono::Utc.with_ymd_and_hms(99_999, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!(filename_date_stamp(&far), "00000000_000000");
+        let past = chrono::Utc
+            .with_ymd_and_hms(-262_143, 12, 31, 0, 0, 0)
+            .unwrap();
+        assert_eq!(filename_date_stamp(&past), "00000000_000000");
     }
 }

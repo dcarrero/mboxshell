@@ -475,7 +475,7 @@ fn inject_source_header(raw: &[u8], source: &str) -> Vec<u8> {
             out.extend_from_slice(b"X-Mbox-Source: ");
             out.extend_from_slice(source.as_bytes());
             out.extend_from_slice(terminator);
-            out.extend_from_slice(&raw[insert_pos..]);
+            append_demoting_source_headers(&mut out, &raw[insert_pos..]);
             return out;
         }
     }
@@ -486,8 +486,34 @@ fn inject_source_header(raw: &[u8], source: &str) -> Vec<u8> {
     out.extend_from_slice(b"X-Mbox-Source: ");
     out.extend_from_slice(source.as_bytes());
     out.push(b'\n');
-    out.extend_from_slice(&raw[start..]);
+    append_demoting_source_headers(&mut out, &raw[start..]);
     out
+}
+
+/// Append a message (from its first header on), renaming any
+/// `X-Mbox-Source:` header it already has to `X-Original-Mbox-Source:`.
+///
+/// The message is not ours to trust: one that arrives with its own
+/// `X-Mbox-Source: Trusted-Archive.mbox` would otherwise carry two, and a
+/// tool reading the last one would believe the sender's.
+fn append_demoting_source_headers(out: &mut Vec<u8>, message: &[u8]) {
+    const NAME: &[u8] = b"x-mbox-source:";
+    let mut rest = message;
+    while !rest.is_empty() {
+        let end = memchr::memchr(b'\n', rest).map_or(rest.len(), |i| i + 1);
+        let (line, tail) = rest.split_at(end);
+        if line == b"\n" || line == b"\r\n" {
+            break; // end of the headers: the body is copied untouched
+        }
+        if line.len() >= NAME.len() && line[..NAME.len()].eq_ignore_ascii_case(NAME) {
+            out.extend_from_slice(b"X-Original-Mbox-Source:");
+            out.extend_from_slice(&line[NAME.len()..]);
+        } else {
+            out.extend_from_slice(line);
+        }
+        rest = tail;
+    }
+    out.extend_from_slice(rest);
 }
 
 /// Strip control characters (CR/LF/NUL/DEL…) so an origin file name can never
@@ -682,6 +708,16 @@ mod tests {
             b"From x@y Thu Jan 01 00:00:00 2024\nX-Mbox-Source: Inbox.mbox\nSubject: A\n\nbody\n"
                 .to_vec(),
             "header must be the first real header, after the From_ line, with LF"
+        );
+    }
+
+    #[test]
+    fn test_inject_source_header_demotes_one_the_message_brought() {
+        let raw = b"From a@b Thu Jan 01 00:00:00 2024\nSubject: x\nx-mbox-SOURCE: Trusted-Legal-Hold.mbox\n\nX-Mbox-Source: in the body\n";
+        let out = inject_source_header(raw, "evil.mbox");
+        assert_eq!(
+            out,
+            b"From a@b Thu Jan 01 00:00:00 2024\nX-Mbox-Source: evil.mbox\nSubject: x\nX-Original-Mbox-Source: Trusted-Legal-Hold.mbox\n\nX-Mbox-Source: in the body\n"
         );
     }
 

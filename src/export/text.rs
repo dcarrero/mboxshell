@@ -99,7 +99,7 @@ pub fn export_text_opts(
 
 /// Generate a filename for text export.
 fn text_filename(entry: &MailEntry) -> String {
-    let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
+    let date = super::eml::filename_date_stamp(&entry.date);
     let subject = sanitize_filename_part(&entry.subject, 80);
     let name = format!("{date}_{subject}.txt");
     if name.len() > 200 {

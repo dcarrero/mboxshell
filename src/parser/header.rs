@@ -74,13 +74,19 @@ pub fn parse_headers_to_entry_scanned(
         .map(|ct| ct.split(';').next().unwrap_or("").trim().to_lowercase())
         .unwrap_or_else(|| "text/plain".to_string());
 
-    let has_attachment_parts = match body_has_attachment {
-        Some(found) => content_type.starts_with("multipart/") && found,
-        None => {
-            content_type.starts_with("multipart/mixed")
-                || content_type.starts_with("multipart/related")
-        }
-    };
+    // A message that is not multipart is its own single part: anything but
+    // plain text or HTML (a PDF from a scanner, an image, a calendar invite)
+    // is listed as an attachment by the MIME parser, so it is one here too.
+    let single_part_attachment = !content_type.starts_with("multipart/")
+        && !matches!(content_type.as_str(), "" | "text/plain" | "text/html");
+    let has_attachment_parts = single_part_attachment
+        || match body_has_attachment {
+            Some(found) => content_type.starts_with("multipart/") && found,
+            None => {
+                content_type.starts_with("multipart/mixed")
+                    || content_type.starts_with("multipart/related")
+            }
+        };
     let has_attachments = has_attachment_parts
         || headers
             .iter()
@@ -216,40 +222,93 @@ fn group_label(headers: &[(String, String)]) -> Option<String> {
 /// If decoding fails for any token, the original text is preserved.
 pub fn decode_encoded_words(input: &str) -> String {
     let mut result = String::with_capacity(input.len());
-    let mut remaining = input;
+    let mut pos = 0;
     let mut last_was_encoded = false;
+    let mut closes = CloseFinder::new(input);
 
-    while let Some(start) = remaining.find("=?") {
-        let before = &remaining[..start];
-        // If the gap between two encoded words is only whitespace, skip it (RFC 2047 §6.2)
-        if !last_was_encoded || !before.trim().is_empty() {
-            result.push_str(before);
-        }
+    while let Some(found) = input[pos..].find("=?") {
+        let start = pos + found;
+        let before = &input[pos..start];
+        let word_start = start + 2;
 
-        let after_start = &remaining[start + 2..];
-
-        if let Some(decoded) = try_decode_one_word(after_start) {
+        if let Some(decoded) = try_decode_one_word(input, word_start, &mut closes) {
+            // If the gap between two encoded words is only whitespace, skip it (RFC 2047 §6.2)
+            if !last_was_encoded || !before.trim().is_empty() {
+                result.push_str(before);
+            }
             result.push_str(&decoded.text);
-            remaining = &remaining[start + 2 + decoded.consumed..];
+            pos = decoded.end;
             last_was_encoded = true;
         } else {
+            // Not an encoded word after all: the text before it, spaces
+            // included, is ordinary text.
+            result.push_str(before);
             result.push_str("=?");
-            remaining = after_start;
+            pos = word_start;
             last_was_encoded = false;
         }
     }
 
-    result.push_str(remaining);
+    result.push_str(&input[pos..]);
     result
+}
+
+/// Finds the next `?=` at or after a position, remembering the answer.
+///
+/// Every `=?` that does not turn out to be an encoded word used to search
+/// the rest of the header for its closing `?=` again. A header made of
+/// thousands of unclosed `=?a?q?x` took time quadratic in its length: a
+/// 1 MB `Subject:` cost 24 s to index. With the last answer kept, the whole
+/// header is scanned for `?=` once.
+struct CloseFinder<'a> {
+    input: &'a str,
+    /// Position of the first `?=` at or after `searched_from`, if any.
+    next: Option<usize>,
+    /// Where the search that produced `next` began (`None`: not searched).
+    searched_from: Option<usize>,
+}
+
+impl<'a> CloseFinder<'a> {
+    fn new(input: &'a str) -> Self {
+        Self {
+            input,
+            next: None,
+            searched_from: None,
+        }
+    }
+
+    /// Position of the first `?=` at or after `from`.
+    fn find(&mut self, from: usize) -> Option<usize> {
+        let reusable = match (self.searched_from, self.next) {
+            // The remembered `?=` is still ahead of us.
+            (Some(start), Some(next)) => start <= from && from <= next,
+            // Nothing from `start` to the end: nothing from `from` either.
+            (Some(start), None) => start <= from,
+            (None, _) => false,
+        };
+        if !reusable {
+            self.next = self.input.get(from..)?.find("?=").map(|i| from + i);
+            self.searched_from = Some(from);
+        }
+        self.next
+    }
 }
 
 struct DecodedWord {
     text: String,
-    consumed: usize, // bytes consumed from the string *after* the initial "=?"
+    /// Position in the input right after the word's closing `?=`.
+    end: usize,
 }
 
-fn try_decode_one_word(s: &str) -> Option<DecodedWord> {
+/// Decode the encoded word whose `charset` starts at `start` (right after
+/// its `=?`).
+fn try_decode_one_word(
+    input: &str,
+    start: usize,
+    closes: &mut CloseFinder<'_>,
+) -> Option<DecodedWord> {
     // Format: charset?encoding?encoded_text?=
+    let s = &input[start..];
     let first_q = s.find('?')?;
     let charset = &s[..first_q];
 
@@ -257,11 +316,9 @@ fn try_decode_one_word(s: &str) -> Option<DecodedWord> {
     let second_q = rest.find('?')?;
     let encoding = &rest[..second_q];
 
-    let rest2 = &rest[second_q + 1..];
-    let end = rest2.find("?=")?;
-    let encoded_text = &rest2[..end];
-
-    let total_consumed = first_q + 1 + second_q + 1 + end + 2;
+    let text_start = start + first_q + 1 + second_q + 1;
+    let close = closes.find(text_start)?;
+    let encoded_text = &input[text_start..close];
 
     let bytes = match encoding.to_uppercase().as_str() {
         "B" => {
@@ -279,7 +336,7 @@ fn try_decode_one_word(s: &str) -> Option<DecodedWord> {
 
     Some(DecodedWord {
         text,
-        consumed: total_consumed,
+        end: close + 2,
     })
 }
 
@@ -644,6 +701,51 @@ mod tests {
     fn test_decode_base64_encoded_word() {
         let input = "=?UTF-8?B?SG9sYSBtdW5kbw==?=";
         assert_eq!(decode_encoded_words(input), "Hola mundo");
+    }
+
+    #[test]
+    fn test_single_part_non_text_message_has_attachment() {
+        // A scanner or fax-to-mail gateway sends the PDF as the whole message.
+        let flag = |ct: &str, scanned: Option<bool>| {
+            let raw = format!("From: a@b\nSubject: s\nContent-Type: {ct}\n");
+            parse_headers_to_entry_scanned(raw.as_bytes(), 0, 10, 0, scanned)
+                .unwrap()
+                .has_attachments
+        };
+        for scanned in [Some(false), None] {
+            assert!(flag("application/pdf; name=scan.pdf", scanned));
+            assert!(flag("image/jpeg", scanned));
+            assert!(flag("text/calendar; method=REQUEST", scanned));
+            assert!(!flag("text/plain; charset=utf-8", scanned));
+            assert!(!flag("text/html", scanned));
+        }
+        assert!(!flag("multipart/mixed; boundary=B", Some(false)));
+        assert!(flag("multipart/mixed; boundary=B", Some(true)));
+    }
+
+    #[test]
+    fn test_unclosed_encoded_words_are_kept_and_decode_in_linear_time() {
+        // Unclosed words stay as written, and real ones around them decode.
+        assert_eq!(
+            decode_encoded_words("=?UTF-8?B?SG9sYQ==?= =?a?q?x =?b?q?y"),
+            "Hola =?a?q?x =?b?q?y"
+        );
+        assert_eq!(decode_encoded_words("=?"), "=?");
+        assert_eq!(decode_encoded_words("a =?utf-8?q?"), "a =?utf-8?q?");
+        assert_eq!(
+            decode_encoded_words("=?x?z?bad?= =?UTF-8?Q?caf=C3=A9?="),
+            "=?x?z?bad?= café"
+        );
+
+        // 2 MB of unclosed words: quadratic time here was minutes.
+        let hostile = "=?a?q?x ".repeat(250_000);
+        let started = std::time::Instant::now();
+        assert_eq!(decode_encoded_words(&hostile), hostile);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "took {:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

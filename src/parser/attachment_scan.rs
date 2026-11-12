@@ -93,8 +93,13 @@ fn part_header_marks_attachment(line: &[u8]) -> bool {
     }
     if let Some(value) = lower.strip_prefix(b"content-type:") {
         let value = trim_start(value);
-        let is_text_or_multipart = value.starts_with(b"text/") || value.starts_with(b"multipart/");
-        return !is_text_or_multipart || has_name_param(value);
+        // Only plain text and HTML are a message's body. Other `text/*`
+        // parts (a calendar invite, a CSV, a vCard) are listed as
+        // attachments even without a file name.
+        let is_body_or_multipart = starts_with_type(value, b"text/plain")
+            || starts_with_type(value, b"text/html")
+            || value.starts_with(b"multipart/");
+        return !is_body_or_multipart || has_name_param(value);
     }
     false
 }
@@ -117,6 +122,15 @@ fn has_name_param(value: &[u8]) -> bool {
             start = at + needle.len();
         }
         false
+    })
+}
+
+/// Whether a `Content-Type` value is exactly the type `ty` (`text/plain`
+/// but not `text/plain-ish`): followed by nothing, a `;` or whitespace.
+fn starts_with_type(value: &[u8], ty: &[u8]) -> bool {
+    value.strip_prefix(ty).is_some_and(|rest| {
+        rest.first()
+            .is_none_or(|&b| b == b';' || b.is_ascii_whitespace())
     })
 }
 
@@ -170,6 +184,27 @@ Lorem ipsum.\n\
 \n\
 --464285959-821626569-1772377490=:3751081--\n";
         assert_agrees(raw, false);
+    }
+
+    #[test]
+    fn unnamed_non_body_text_parts_are_attachments() {
+        for ty in ["text/calendar; method=REQUEST", "text/csv", "text/x-vcard"] {
+            let raw = format!(
+                "From: a@b.c\nContent-Type: multipart/mixed; boundary=\"B\"\n\n\
+--B\nContent-Type: text/plain\n\nhi\n\
+--B\nContent-Type: {ty}\n\nBEGIN\n--B--\n"
+            );
+            assert_agrees(raw.as_bytes(), true);
+        }
+        // A second plain-text or HTML part is still body, not attachment.
+        for ty in ["text/plain", "text/html; charset=utf-8"] {
+            let raw = format!(
+                "From: a@b.c\nContent-Type: multipart/mixed; boundary=\"B\"\n\n\
+--B\nContent-Type: text/plain\n\nhi\n\
+--B\nContent-Type: {ty}\n\nmore\n--B--\n"
+            );
+            assert_agrees(raw.as_bytes(), false);
+        }
     }
 
     #[test]

@@ -78,7 +78,7 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
         let entry_text = truncate_sidebar_entry(
             row_marker(is_selected && is_focused, is_active),
-            label,
+            &crate::tui::text::sanitize_line(label),
             count,
             max_width,
         );

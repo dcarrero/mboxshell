@@ -214,6 +214,18 @@ pub fn export_html_with(
     let mut out = String::new();
     out.push_str("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
     out.push_str("<meta charset=\"UTF-8\">\n");
+    if !opts.raw {
+        // Second line of defence behind the sanitizer: the page may only
+        // load what it embeds (plus remote images when they were asked for).
+        let img = if opts.allow_remote_images {
+            "data: http: https:"
+        } else {
+            "data:"
+        };
+        out.push_str(&format!(
+            "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src {img}; style-src 'unsafe-inline'\">\n"
+        ));
+    }
     out.push_str(&format!("<title>{}</title>\n", escape_html(&entry.subject)));
     out.push_str("<style>\n");
     out.push_str(
@@ -261,7 +273,14 @@ pub fn export_html_with(
 
     // Body
     out.push_str("<div class=\"body\">\n");
-    if let Some(html) = &body.html {
+    let too_nested = !opts.raw && body.html.as_deref().is_some_and(html_too_nested);
+    if too_nested {
+        out.push_str(&format!(
+            "<p class=\"note\">{}</p>\n",
+            escape_html(crate::i18n::html_too_nested())
+        ));
+    }
+    if let Some(html) = body.html.as_ref().filter(|_| !too_nested) {
         if !opts.raw {
             let (clean, blocked) =
                 sanitize_html_inline(html, opts.allow_remote_images, &opts.inline_images);
@@ -339,6 +358,54 @@ fn escape_html(s: &str) -> String {
         .replace('\'', "&#39;")
 }
 
+/// Deepest element nesting handed to the sanitizer.
+///
+/// Building and cleaning the tree costs time quadratic in the nesting depth:
+/// 100 000 unclosed `<div>` (500 KB of mail) took 17 s, 2 MB over a minute,
+/// with the TUI frozen meanwhile. Real mail nests a few dozen levels deep;
+/// at this limit the sanitizer still answers in a fraction of a second.
+const MAX_HTML_DEPTH: usize = 5_000;
+
+/// Whether `html` may nest more than [`MAX_HTML_DEPTH`] elements deep.
+///
+/// A single linear pass that only ever over-estimates: every start tag
+/// counts as one level deeper and every end tag as one level back, except
+/// for elements that cannot nest — void ones (`<br>`, `<img>`…) and `<p>` /
+/// `<li>`, which close the previous one of their kind and are routinely left
+/// unclosed. `<div/>` is not self-closing in HTML and counts as a start tag.
+pub(crate) fn html_too_nested(html: &str) -> bool {
+    const FLAT: &[&[u8]] = &[
+        b"br", b"img", b"hr", b"meta", b"input", b"link", b"col", b"area", b"base", b"embed",
+        b"source", b"track", b"wbr", b"param", b"p", b"li",
+    ];
+    let bytes = html.as_bytes();
+    let mut depth = 0usize;
+    let mut from = 0;
+    while let Some(found) = memchr::memchr(b'<', &bytes[from..]) {
+        let at = from + found + 1;
+        from = at;
+        match bytes.get(at) {
+            Some(b'/') => depth = depth.saturating_sub(1),
+            Some(c) if c.is_ascii_alphabetic() => {
+                let len = bytes[at..]
+                    .iter()
+                    .take(16)
+                    .take_while(|b| b.is_ascii_alphanumeric())
+                    .count();
+                let name = &bytes[at..at + len];
+                if !FLAT.iter().any(|flat| name.eq_ignore_ascii_case(flat)) {
+                    depth += 1;
+                    if depth > MAX_HTML_DEPTH {
+                        return true;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 /// Sanitize an HTML fragment using `ammonia` with defaults that strip
 /// scripts, styles, iframes, objects, embeds, `on*` event handlers and
 /// `javascript:` URLs while keeping safe formatting and links. Remote images
@@ -374,6 +441,12 @@ pub(crate) fn sanitize_html_inline(
     use std::borrow::Cow;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    // Callers show the text part instead; this is the backstop for one that
+    // does not check, so the sanitizer never sees such markup.
+    if html_too_nested(html) {
+        return (format!("<pre>{}</pre>", escape_html(html)), 0);
+    }
+
     let blocked = Arc::new(AtomicUsize::new(0));
     let counter = Arc::clone(&blocked);
     let inline = inline.clone();
@@ -389,13 +462,17 @@ pub(crate) fn sanitize_html_inline(
                 }
                 return None;
             }
-            // http(s) and protocol-relative `//host` hit the network; a
-            // relative path stays on disk, and other schemes (`data:`) are
-            // removed by ammonia's scheme filter anyway.
+            // Without `allow_remote_images` the only image source that
+            // survives is a `cid:` one resolved above. Matching "looks
+            // remote" on the text was bypassable: `h&#9;ttp://…` has no
+            // `http:` in it, yet a browser strips tab/CR/LF from a URL and
+            // fetches it, and `\\host\share` or `/\host` reach the network
+            // too. A relative path points at nothing in an exported page
+            // anyway.
             let remote = !allow_remote_images
                 && element == "img"
                 && matches!(attribute, "src" | "srcset")
-                && (v.contains("http:") || v.contains("https:") || v.starts_with("//"));
+                && !v.trim().is_empty();
             if remote {
                 counter.fetch_add(1, Ordering::Relaxed);
                 None
@@ -409,7 +486,7 @@ pub(crate) fn sanitize_html_inline(
 }
 
 fn html_filename(entry: &MailEntry) -> String {
-    let date = entry.date.format("%Y%m%d_%H%M%S").to_string();
+    let date = super::eml::filename_date_stamp(&entry.date);
     let subject = sanitize_filename_part(&entry.subject, 80);
     let name = format!("{date}_{subject}.html");
     if name.len() > 200 {
@@ -511,16 +588,13 @@ mod tests {
     fn test_remote_images_are_blocked_by_default() {
         let html = r#"<p>Hi</p><img src="https://track.example/p.gif" alt="logo"><img src="//cdn.example/x.png"><img src="local.png"><a href="https://example.com">link</a>"#;
         let (clean, blocked) = sanitize_html_with(html, false);
-        assert_eq!(blocked, 2);
+        assert_eq!(blocked, 3);
         assert!(
             !clean.contains("track.example") && !clean.contains("cdn.example"),
             "{clean}"
         );
         assert!(clean.contains(r#"alt="logo""#), "alt text stays: {clean}");
-        assert!(
-            clean.contains("local.png"),
-            "relative images stay local: {clean}"
-        );
+        assert!(!clean.contains("local.png"), "{clean}");
         assert!(
             clean.contains("https://example.com"),
             "links are kept: {clean}"
@@ -529,6 +603,107 @@ mod tests {
         let (kept, none) = sanitize_html_with(html, true);
         assert_eq!(none, 0);
         assert!(kept.contains("https://track.example/p.gif"));
+    }
+
+    #[test]
+    fn test_remote_image_block_cannot_be_dodged_with_url_tricks() {
+        // A browser strips tab/CR/LF from a URL and treats `\` as `/`, so
+        // none of these contain `http:` or start with `//` yet all hit the
+        // network when the page is opened.
+        for src in [
+            "h&#9;ttp://t.example/a.gif",
+            "ht&#10;tp://t.example/b.gif",
+            "ht&#13;tps://t.example/c.gif",
+            "/&#9;/t.example/d.gif",
+            "/\\t.example/e.gif",
+            "\\\\t.example\\share\\f.gif",
+            " HTTP://t.example/g.gif",
+        ] {
+            // (`srcset` never reaches the filter: ammonia drops it.)
+            let html = format!(r#"<img src="{src}" alt="x"><img srcset="{src} 2x">"#);
+            let (clean, blocked) = sanitize_html_with(&html, false);
+            assert_eq!(blocked, 1, "{src}: {clean}");
+            assert!(!clean.contains("t.example"), "{src}: {clean}");
+        }
+    }
+
+    #[test]
+    fn test_exported_page_carries_a_content_security_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        let entry = sample_entry();
+        let body = MailBody {
+            text: None,
+            html: Some("<p>x</p>".into()),
+            raw_headers: String::new(),
+            attachments: vec![],
+        };
+        let page = |opts: &HtmlOptions| {
+            let path = export_html_with(&entry, &body, dir.path(), opts).unwrap();
+            std::fs::read_to_string(path).unwrap()
+        };
+        let strict = page(&HtmlOptions::default());
+        assert!(strict.contains("img-src data:;"), "{strict}");
+        let remote = page(&HtmlOptions {
+            allow_remote_images: true,
+            ..Default::default()
+        });
+        assert!(remote.contains("img-src data: http: https:;"), "{remote}");
+        let raw = page(&HtmlOptions {
+            raw: true,
+            ..Default::default()
+        });
+        assert!(!raw.contains("Content-Security-Policy"), "{raw}");
+    }
+
+    #[test]
+    fn test_deeply_nested_html_is_not_handed_to_the_sanitizer() {
+        // 200 000 unclosed <div>: the sanitizer needed over a minute.
+        let hostile = "<div>".repeat(200_000);
+        assert!(html_too_nested(&hostile));
+        let closed = format!(
+            "{}x{}",
+            "<DIV class=a>".repeat(6_000),
+            "</div>".repeat(6_000)
+        );
+        assert!(html_too_nested(&closed));
+
+        let started = std::time::Instant::now();
+        let (clean, _) = sanitize_html_with(&hostile, false);
+        assert!(clean.starts_with("<pre>&lt;div&gt;"), "{}", &clean[..40]);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+
+        // Ordinary mail is nowhere near the limit, however long it is.
+        let newsletter =
+            "<table><tr><td><p>text<br><img src=x><li>item</td></tr></table>".repeat(20_000);
+        assert!(!html_too_nested(&newsletter));
+        let unclosed_paragraphs = "<p>line<br>".repeat(100_000);
+        assert!(!html_too_nested(&unclosed_paragraphs));
+        // Just under the limit still goes through the sanitizer, quickly.
+        let deep = "<div>".repeat(MAX_HTML_DEPTH);
+        assert!(!html_too_nested(&deep));
+        let started = std::time::Instant::now();
+        let _ = sanitize_html_with(&deep, false);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn test_export_falls_back_to_text_for_deeply_nested_html() {
+        let dir = tempfile::tempdir().unwrap();
+        let body = MailBody {
+            text: Some("the plain text".into()),
+            html: Some("<div>".repeat(50_000)),
+            raw_headers: String::new(),
+            attachments: vec![],
+        };
+        let path = export_html(&sample_entry(), &body, dir.path()).unwrap();
+        let page = std::fs::read_to_string(path).unwrap();
+        assert!(page.contains("<pre>the plain text</pre>"), "{page}");
+        assert!(page.contains("class=\"note\""));
+        assert!(!page.contains("<div><div>"));
     }
 
     /// A 1x1 transparent PNG.

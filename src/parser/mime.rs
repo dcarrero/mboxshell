@@ -101,6 +101,24 @@ pub fn extract_attachments(
         .collect())
 }
 
+/// Hand each attachment's decoded bytes to `visit`, by `part_index`, with a
+/// single parse of the message and without copying them.
+///
+/// Extracting one attachment at a time parsed — and decoded every part of —
+/// the whole message once per attachment: a mail with 40 files was decoded
+/// 41 times.
+pub fn visit_attachments(raw_message: &[u8], mut visit: impl FnMut(usize, &[u8])) -> Result<()> {
+    let message_bytes = skip_from_line(raw_message);
+    let parser = MessageParser::default();
+    let msg = parser.parse(message_bytes).ok_or_else(|| {
+        MboxError::MimeError("Failed to parse message for attachment extraction".into())
+    })?;
+    for (idx, part) in msg.attachments().enumerate() {
+        visit(idx, part.contents());
+    }
+    Ok(())
+}
+
 /// Build attachment metadata from a parsed `mail_parser::Message`.
 fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<AttachmentMeta> {
     use mail_parser::MimeHeaders;

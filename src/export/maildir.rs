@@ -36,8 +36,11 @@ pub fn export_maildir(
     dir: &Path,
     progress: &dyn Fn(usize, usize),
 ) -> anyhow::Result<usize> {
+    std::fs::create_dir_all(dir)?;
     for sub in ["cur", "new", "tmp"] {
-        std::fs::create_dir_all(dir.join(sub))?;
+        // Real directories only: a `cur` symlink planted in a shared output
+        // folder would send every message wherever it points.
+        crate::fsutil::create_dir_no_follow(&dir.join(sub))?;
     }
     let pid = std::process::id();
     // When this export started, in microseconds: two exports into the same
@@ -61,15 +64,38 @@ pub fn export_maildir(
             entry.date.timestamp().max(0)
         );
         let (tmp_path, mut file) = create_unique(dir, &unique, &flags)?;
-        file.write_all(&message)?;
+        if let Err(e) = file.write_all(&message) {
+            // Do not leave a cut-short message behind in `tmp/`.
+            drop(file);
+            let _ = std::fs::remove_file(&tmp_path);
+            return Err(e.into());
+        }
         // Many clients sort by file time; make it the message date.
-        let _ = file.set_modified(std::time::SystemTime::from(entry.date));
+        if let Some(when) = system_time(entry.date.timestamp()) {
+            let _ = file.set_modified(when);
+        }
         drop(file);
 
         std::fs::rename(&tmp_path, final_path(dir, &tmp_path, &flags))?;
     }
     progress(total, total);
     Ok(total)
+}
+
+/// The `SystemTime` for a Unix timestamp, or `None` when the platform cannot
+/// represent it.
+///
+/// A `Date:` header can be tens of thousands of years away. Converting it
+/// with `SystemTime::from` adds to `UNIX_EPOCH` unchecked, which panics on
+/// Windows, where file times stop around the year 30828.
+fn system_time(unix_seconds: i64) -> Option<std::time::SystemTime> {
+    let epoch = std::time::SystemTime::UNIX_EPOCH;
+    let span = std::time::Duration::from_secs(unix_seconds.unsigned_abs());
+    if unix_seconds >= 0 {
+        epoch.checked_add(span)
+    } else {
+        epoch.checked_sub(span)
+    }
 }
 
 /// Where a message written at `tmp_path` ends up: `cur/<name>:2,<flags>`.
@@ -272,5 +298,22 @@ mod tests {
             std::fs::read(file.path()).unwrap(),
             b"Subject: First\n\nbody one\n"
         );
+    }
+
+    #[test]
+    fn test_system_time_never_panics_on_extreme_dates() {
+        use std::time::{Duration, SystemTime};
+        assert_eq!(system_time(0), Some(SystemTime::UNIX_EPOCH));
+        assert_eq!(
+            system_time(86_400),
+            Some(SystemTime::UNIX_EPOCH + Duration::from_secs(86_400))
+        );
+        assert_eq!(
+            system_time(-86_400),
+            Some(SystemTime::UNIX_EPOCH - Duration::from_secs(86_400))
+        );
+        // Whatever the platform answers, it must answer.
+        let _ = system_time(i64::MAX);
+        let _ = system_time(i64::MIN);
     }
 }

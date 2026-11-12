@@ -733,8 +733,27 @@ impl App {
     /// The path is stored in `pending_html_view`; the loop performs the spawn
     /// so it can suspend/restore the terminal correctly.
     pub fn request_external_html_view(&mut self) {
-        let html = match self.current_body.as_ref().and_then(|b| b.html.as_deref()) {
-            Some(h) => crate::export::html::sanitize_html(h),
+        const HEAD: &str = "<!DOCTYPE html>\n<meta charset=\"UTF-8\">\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data:; style-src 'unsafe-inline'\">\n";
+        let Some(body) = self.current_body.as_ref() else {
+            self.set_status(i18n::tui_no_html_part());
+            return;
+        };
+        let html = match body.html.as_deref() {
+            // Sanitizing this would freeze the interface for minutes: show
+            // the text instead (the sanitizer escapes it into a `<pre>`).
+            Some(h) if crate::export::html::html_too_nested(h) => format!(
+                "{HEAD}<p>{}</p>\n<pre>{}</pre>",
+                i18n::html_too_nested(),
+                body.text
+                    .as_deref()
+                    .unwrap_or("")
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;")
+            ),
+            // The policy backs the sanitizer up when the viewer is a real
+            // browser: nothing but embedded data may load.
+            Some(h) => format!("{HEAD}{}", crate::export::html::sanitize_html(h)),
             None => {
                 self.set_status(i18n::tui_no_html_part());
                 return;

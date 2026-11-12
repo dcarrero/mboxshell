@@ -281,6 +281,11 @@ msg!(
     "Remote images were blocked to protect your privacy (they can reveal when and where this message is read). Re-export with --allow-remote-images to load them",
     "Se han bloqueado las imágenes remotas para proteger tu privacidad (pueden revelar cuándo y desde dónde se lee este mensaje). Vuelve a exportar con --allow-remote-images para cargarlas"
 );
+msg!(
+    html_too_nested,
+    "The HTML of this message is nested too deeply to process safely; its text is shown instead",
+    "El HTML de este mensaje está demasiado anidado para procesarlo con seguridad; se muestra su texto"
+);
 msg!(err_io, "I/O error reading", "Error de E/S leyendo");
 msg!(tui_header_label, "label", "etiqueta");
 msg!(tui_header_search, "search", "búsqueda");
@@ -813,6 +818,11 @@ msg!(
 );
 msg!(cli_extracted, "Extracted", "Extra\u{ed}do");
 msg!(cli_attachments_to, "attachment(s) to", "adjunto(s) en");
+msg!(
+    cli_attachments_failed,
+    "attachment(s) could not be written (see the log for each one)",
+    "adjunto(s) no se pudieron escribir (el log detalla cada uno)"
+);
 
 #[cfg(test)]
 mod tests {

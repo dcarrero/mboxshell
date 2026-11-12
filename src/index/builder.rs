@@ -1,7 +1,7 @@
 //! Index construction, validation, and persistence.
 
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -10,7 +10,8 @@ use tracing::{debug, info, warn};
 
 use crate::error::MboxError;
 use crate::fsutil;
-use crate::index::format::{IndexHeader, HASH_PREFIX_LEN, HEADER_SIZE, MAGIC, VERSION};
+use crate::index::auth::{Tagger, TaggingWriter};
+use crate::index::format::{IndexHeader, HASH_PREFIX_LEN, HEADER_SIZE, MAGIC, OFF_MAC, VERSION};
 use crate::model::mail::MailEntry;
 use crate::parser::header;
 use crate::parser::mbox::MboxParser;
@@ -104,17 +105,15 @@ pub fn build_index_cancelable(
 }
 
 /// Attempt to load an existing index. Returns `None` if the index is missing or invalid.
+///
+/// The sidecar next to the mailbox is tried first, then the one in the cache
+/// directory: a sidecar that is not ours (another user's, or one that came
+/// with the mailbox) must not hide a good index of our own.
 pub fn load_index(mbox_path: &Path) -> anyhow::Result<Option<Vec<MailEntry>>> {
-    let idx_path = index_path_for(mbox_path);
-    if !idx_path.exists() {
-        // Try cache location
-        let cache_path = cache_index_path_for(mbox_path);
-        if cache_path.exists() {
-            return load_index_from_file(&cache_path, mbox_path);
-        }
-        return Ok(None);
+    if let Some(entries) = load_index_from_file(&index_path_for(mbox_path), mbox_path)? {
+        return Ok(Some(entries));
     }
-    load_index_from_file(&idx_path, mbox_path)
+    load_index_from_file(&cache_index_path_for(mbox_path), mbox_path)
 }
 
 /// Whether an index file of `idx_len` bytes is plausibly valid for an MBOX of
@@ -130,18 +129,43 @@ fn load_index_from_file(
     idx_path: &Path,
     mbox_path: &Path,
 ) -> anyhow::Result<Option<Vec<MailEntry>>> {
+    // Only a regular file is an index. A sidecar planted as a symlink to
+    // `/dev/zero` reports a length of 0 and then never ends, and a FIFO
+    // blocks the open forever.
+    let Ok(idx_meta) = std::fs::symlink_metadata(idx_path) else {
+        return Ok(None);
+    };
+    if !idx_meta.file_type().is_file() {
+        debug!(path = %idx_path.display(), "Index is not a regular file; ignoring");
+        return Ok(None);
+    }
+
     // A crafted/corrupt `.idx` sidecar could be arbitrarily large; reading it
     // whole before validation would OOM. Reject an implausibly large one first.
-    let idx_len = std::fs::metadata(idx_path)
-        .map_err(|e| MboxError::io(idx_path, e))?
-        .len();
+    let idx_len = idx_meta.len();
     let mbox_len = std::fs::metadata(mbox_path).map(|m| m.len()).unwrap_or(0);
     if !index_size_acceptable(idx_len, mbox_len) {
         debug!("Index file implausibly large; ignoring");
         return Ok(None);
     }
 
-    let data = std::fs::read(idx_path).map_err(|e| MboxError::io(idx_path, e))?;
+    // Read no more than the size just checked, whatever the file turns into
+    // between that check and the read. An index we cannot read (another
+    // user's, say) is like a missing one.
+    let mut data = Vec::new();
+    let read = File::open(idx_path)
+        .and_then(|file| file.take(idx_len.saturating_add(1)).read_to_end(&mut data));
+    match read {
+        Ok(_) if data.len() as u64 <= idx_len => {}
+        Ok(_) => {
+            debug!("Index file grew while being read; ignoring");
+            return Ok(None);
+        }
+        Err(e) => {
+            debug!(error = %e, "Index file unreadable; ignoring");
+            return Ok(None);
+        }
+    }
 
     if data.len() < HEADER_SIZE {
         debug!("Index file too small");
@@ -155,6 +179,18 @@ fn load_index_from_file(
 
     if let Err(reason) = header.validate() {
         debug!(reason = %reason, "Index header invalid");
+        return Ok(None);
+    }
+
+    // Only an index this user wrote is trusted: everything below can be
+    // satisfied by whoever supplied the mailbox and the index together.
+    let mut unsigned = header.clone();
+    unsigned.mac = [0u8; 32];
+    let mut tagger = Tagger::new();
+    tagger.update(&unsigned.to_bytes());
+    tagger.update(&data[HEADER_SIZE..]);
+    if !tagger.verify(&header.mac) {
+        debug!("Index was not written by this user (or is corrupt); ignoring");
         return Ok(None);
     }
 
@@ -228,14 +264,12 @@ fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
         mbox_file_size: mbox_meta.len(),
         mbox_modified_time: mbox_mtime,
         sha256_first_4kb: hash,
+        mac: [0u8; 32],
     };
-
-    let padded_header = header.to_bytes();
-    let entries_bytes = postcard::to_allocvec(entries)?;
 
     // Try writing next to the MBOX file first
     let idx_path = index_path_for(mbox_path);
-    match write_index_to_file(&idx_path, &padded_header, &entries_bytes) {
+    match write_index_to_file(&idx_path, &header, entries) {
         Ok(()) => {
             info!(path = %idx_path.display(), "Index written");
             return Ok(());
@@ -250,7 +284,7 @@ fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
     if let Some(parent) = cache_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    write_index_to_file(&cache_path, &padded_header, &entries_bytes)?;
+    write_index_to_file(&cache_path, &header, entries)?;
     info!(path = %cache_path.display(), "Index written to cache");
     Ok(())
 }
@@ -262,8 +296,16 @@ fn write_index(mbox_path: &Path, entries: &[MailEntry]) -> anyhow::Result<()> {
 /// `.name.mboxshell.idx -> ~/.zshrc` symlink got that file truncated and
 /// overwritten. `rename` replaces the link itself, never its target, and a
 /// crash mid-write no longer leaves a truncated index behind.
-fn write_index_to_file(path: &Path, header: &[u8], entries: &[u8]) -> anyhow::Result<()> {
-    let (tmp, file) = fsutil::create_temp_beside(path).map_err(|e| MboxError::io(path, e))?;
+///
+/// The file is owner-only: it holds every sender, recipient and subject of
+/// a mailbox that may itself be private.
+fn write_index_to_file(
+    path: &Path,
+    header: &IndexHeader,
+    entries: &[MailEntry],
+) -> anyhow::Result<()> {
+    let (tmp, file) =
+        fsutil::create_private_temp_beside(path).map_err(|e| MboxError::io(path, e))?;
     if let Err(e) = write_and_commit(file, &tmp, path, header, entries) {
         let _ = std::fs::remove_file(&tmp);
         return Err(MboxError::io(path, e).into());
@@ -272,15 +314,27 @@ fn write_index_to_file(path: &Path, header: &[u8], entries: &[u8]) -> anyhow::Re
 }
 
 /// Fill the temp file and rename it over `path`.
+///
+/// The entries are serialized straight into the file (no second copy of the
+/// whole index in memory) while the tag is computed over what is written;
+/// the tag then goes into its slot in the header.
 fn write_and_commit(
-    mut file: File,
+    file: File,
     tmp: &Path,
     path: &Path,
-    header: &[u8],
-    entries: &[u8],
+    header: &IndexHeader,
+    entries: &[MailEntry],
 ) -> std::io::Result<()> {
-    file.write_all(header)?;
-    file.write_all(entries)?;
+    let mut unsigned = header.clone();
+    unsigned.mac = [0u8; 32];
+
+    let mut writer = TaggingWriter::new(BufWriter::with_capacity(1 << 20, file));
+    writer.write_all(&unsigned.to_bytes())?;
+    let writer = postcard::to_io(entries, writer).map_err(std::io::Error::other)?;
+    let (buffered, tag) = writer.finish();
+    let mut file = buffered.into_inner().map_err(|e| e.into_error())?;
+    file.seek(SeekFrom::Start(OFF_MAC as u64))?;
+    file.write_all(&tag)?;
     file.flush()?;
     drop(file);
     std::fs::rename(tmp, path)
@@ -474,6 +528,13 @@ mod tests {
         std::fs::write(&idx, &old).expect("write v5");
         assert!(load_index(&mbox_path).expect("no error").is_none());
 
+        // A single flipped byte in the entries no longer verifies.
+        let mut flipped = good.clone();
+        let last = flipped.len() - 1;
+        flipped[last] ^= 1;
+        std::fs::write(&idx, &flipped).expect("write flipped");
+        assert!(load_index(&mbox_path).expect("no error").is_none());
+
         // Valid header, garbage payload.
         let mut corrupt = good[..HEADER_SIZE].to_vec();
         corrupt.extend_from_slice(&[0xFF; 64]);
@@ -484,5 +545,69 @@ mod tests {
         let rebuilt = build_index(&mbox_path, false, None).expect("rebuild");
         assert_eq!(rebuilt.len(), entries.len());
         assert!(load_index(&mbox_path).expect("load").is_some());
+    }
+
+    #[test]
+    fn test_index_from_someone_else_is_not_trusted() {
+        // What an attacker shipping `mail.mbox` + its index can produce: a
+        // perfectly formed index for that exact file, with whatever entries
+        // they like — but tagged with a key that is not this user's.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+        let entries = build_index(&mbox_path, true, None).expect("build index");
+        let idx = index_path_for(&mbox_path);
+        let mut forged = std::fs::read(&idx).expect("read index");
+        for b in &mut forged[OFF_MAC..OFF_MAC + 32] {
+            *b ^= 0xA5;
+        }
+        std::fs::write(&idx, &forged).expect("write forged");
+        assert!(load_index(&mbox_path).expect("no error").is_none());
+
+        // Opening the mailbox rebuilds from the mailbox itself.
+        let rebuilt = build_index(&mbox_path, false, None).expect("rebuild");
+        assert_eq!(rebuilt.len(), entries.len());
+        assert!(load_index(&mbox_path).expect("load").is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_index_that_is_not_a_regular_file_is_ignored() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+        let idx = index_path_for(&mbox_path);
+
+        // `/dev/zero` has length 0 and never ends: reading it used to eat
+        // all the memory there was.
+        std::os::unix::fs::symlink("/dev/zero", &idx).expect("plant symlink");
+        assert!(load_index_from_file(&idx, &mbox_path)
+            .expect("no error")
+            .is_none());
+
+        // Even a symlink to a perfectly good index is not followed.
+        std::fs::remove_file(&idx).expect("remove link");
+        build_index(&mbox_path, true, None).expect("build index");
+        let real = dir.path().join("real.idx");
+        std::fs::rename(&idx, &real).expect("move index");
+        std::os::unix::fs::symlink(&real, &idx).expect("link to it");
+        assert!(load_index_from_file(&idx, &mbox_path)
+            .expect("no error")
+            .is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_index_is_private_to_its_owner() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mbox_path = dir.path().join("test.mbox");
+        std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).expect("copy fixture");
+        build_index(&mbox_path, true, None).expect("build index");
+        let mode = std::fs::metadata(index_path_for(&mbox_path))
+            .expect("index")
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o600);
     }
 }

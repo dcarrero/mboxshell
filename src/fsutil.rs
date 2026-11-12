@@ -61,6 +61,30 @@ pub fn create_unique(path: &Path) -> io::Result<(PathBuf, File)> {
     }
 }
 
+/// Create the directory `path`, or accept the one already there — but only
+/// a real directory, never a symlink to one.
+///
+/// Export subfolders have predictable names (`{date}_{subject}`, `cur`,
+/// `0007`). In an output directory someone else can write to, a symlink
+/// planted under that name sent the exported files wherever it pointed.
+/// The parent must exist.
+pub fn create_dir_no_follow(path: &Path) -> io::Result<()> {
+    match std::fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            if std::fs::symlink_metadata(path)?.file_type().is_dir() {
+                Ok(())
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    format!("{} exists and is not a directory", path.display()),
+                ))
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
 /// The first of `inputs` that `output` would overwrite, if any.
 pub fn output_clobbers_input<'a>(output: &Path, inputs: &[&'a Path]) -> Option<&'a Path> {
     inputs
@@ -76,6 +100,19 @@ pub fn output_clobbers_input<'a>(output: &Path, inputs: &[&'a Path]) -> Option<&
 /// with `create_new`: a stale temp — or a symlink someone planted at the
 /// predictable `dest.tmp` name — is never opened and written through.
 pub fn create_temp_beside(dest: &Path) -> io::Result<(PathBuf, File)> {
+    create_temp_beside_with(dest, false)
+}
+
+/// [`create_temp_beside`] for a file only its owner may read (mode `0600` on
+/// Unix), whatever the umask says.
+///
+/// The index holds senders, recipients and subjects: created with the
+/// default mode it was world-readable next to a mailbox that was not.
+pub fn create_private_temp_beside(dest: &Path) -> io::Result<(PathBuf, File)> {
+    create_temp_beside_with(dest, true)
+}
+
+fn create_temp_beside_with(dest: &Path, private: bool) -> io::Result<(PathBuf, File)> {
     let dir = match dest.parent() {
         Some(p) if !p.as_os_str().is_empty() => p,
         _ => Path::new("."),
@@ -89,7 +126,16 @@ pub fn create_temp_beside(dest: &Path) -> io::Result<(PathBuf, File)> {
     let mut attempt = 0u32;
     loop {
         let tmp = dir.join(format!(".{name}.{pid}.{attempt}.tmp"));
-        match OpenOptions::new().write(true).create_new(true).open(&tmp) {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        if private {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        #[cfg(not(unix))]
+        let _ = private;
+        match options.open(&tmp) {
             Ok(file) => return Ok((tmp, file)),
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists && attempt < 100 => {
                 attempt += 1;
@@ -135,6 +181,27 @@ mod tests {
         std::fs::write(&a, b"x").unwrap();
         std::os::unix::fs::symlink(&a, &link).unwrap();
         assert!(same_file(&a, &link));
+    }
+
+    #[test]
+    fn test_create_dir_no_follow_accepts_only_real_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("sub");
+        create_dir_no_follow(&sub).unwrap();
+        create_dir_no_follow(&sub).unwrap(); // already there: fine
+
+        let file = dir.path().join("file");
+        std::fs::write(&file, b"x").unwrap();
+        assert!(create_dir_no_follow(&file).is_err());
+
+        #[cfg(unix)]
+        {
+            let elsewhere = dir.path().join("elsewhere");
+            std::fs::create_dir(&elsewhere).unwrap();
+            let link = dir.path().join("link");
+            std::os::unix::fs::symlink(&elsewhere, &link).unwrap();
+            assert!(create_dir_no_follow(&link).is_err());
+        }
     }
 
     #[test]
