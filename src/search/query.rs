@@ -208,6 +208,23 @@ pub fn parse_query(input: &str) -> SearchQuery {
         } else {
             (false, token.as_str())
         };
+        // A dash on its own (`invoice - march`) negates nothing. Read as
+        // "not the empty string" it matched no message at all.
+        if negated && token.is_empty() {
+            continue;
+        }
+        // Date and size filters have no negated form. Dropping the `-`
+        // made `-date:2024` return exactly what `date:2024` does — the
+        // opposite of what was asked — so it is reported as invalid instead.
+        if negated
+            && ["date:", "before:", "after:", "size:"]
+                .iter()
+                .any(|p| token.starts_with(p))
+        {
+            invalid.push(format!("-{token}"));
+            join_previous = false;
+            continue;
+        }
 
         // Field:value pairs
         if let Some(value) = token.strip_prefix("from:") {
@@ -420,7 +437,7 @@ fn parse_flexible_date_end(s: &str) -> Option<NaiveDate> {
         let month: u32 = parts[1].parse().ok()?;
         // Last day of month: go to first of next month, subtract 1 day
         let (ny, nm) = if month == 12 {
-            (year + 1, 1)
+            (year.checked_add(1)?, 1)
         } else {
             (year, month + 1)
         };
@@ -759,6 +776,37 @@ mod tests {
         assert_eq!(terms(&q)[1].field, SearchField::Subject);
         assert_eq!(q.date_filters.len(), 1);
         assert_eq!(q.has_attachment, Some(true));
+    }
+
+    #[test]
+    fn test_lone_dash_and_negated_filters() {
+        // `invoice - march`: the dash is punctuation, not a negation.
+        let q = parse_query("invoice - march");
+        let terms: Vec<_> = q.groups.iter().flat_map(|g| g.terms.iter()).collect();
+        assert_eq!(terms.len(), 2);
+        assert!(terms.iter().all(|t| !t.negated));
+        assert!(q.invalid.is_empty());
+
+        // No negated form: say so instead of doing the opposite.
+        for filter in [
+            "-date:2024",
+            "-size:>1kb",
+            "-after:2020-01-01",
+            "-before:2020-01-01",
+        ] {
+            let q = parse_query(filter);
+            assert_eq!(q.invalid, vec![filter.to_string()]);
+            assert!(q.date_filters.is_empty() && q.size_filters.is_empty());
+        }
+        // Negated terms still work.
+        let q = parse_query("-from:spam");
+        assert!(q.groups[0].terms[0].negated);
+    }
+
+    #[test]
+    fn test_date_range_at_the_end_of_time_does_not_overflow() {
+        let q = parse_query("date:2024..2147483647-12");
+        assert_eq!(q.invalid, vec!["date:2024..2147483647-12"]);
     }
 
     #[test]

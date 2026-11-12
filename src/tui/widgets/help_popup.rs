@@ -24,7 +24,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let screen = frame.area();
 
     // First pass: determine width and column count using a preliminary width
-    let popup_width = (screen.width * 78 / 100).min(screen.width.saturating_sub(4));
+    let popup_width = super::percent_of(screen.width, 78).min(screen.width.saturating_sub(4));
     let inner_width = popup_width.saturating_sub(2) as usize; // borders
 
     let cols = if inner_width >= 90 {

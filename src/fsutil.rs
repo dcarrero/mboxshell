@@ -145,6 +145,39 @@ fn create_temp_beside_with(dest: &Path, private: bool) -> io::Result<(PathBuf, F
     }
 }
 
+/// Removes a temp output file on drop unless disarmed, so an export or merge
+/// that fails half-way does not leave a stray temp file next to the output.
+///
+/// Declare it *before* the writer on that file: locals drop in reverse order,
+/// so the file handle is closed before the removal (required on Windows).
+pub(crate) struct TempFileGuard {
+    path: PathBuf,
+    armed: bool,
+}
+
+impl TempFileGuard {
+    /// Guard the temp file at `path`.
+    pub(crate) fn new(path: &Path) -> Self {
+        Self {
+            path: path.to_path_buf(),
+            armed: true,
+        }
+    }
+
+    /// The file was renamed into place: leave it alone.
+    pub(crate) fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        if self.armed {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

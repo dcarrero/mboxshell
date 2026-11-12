@@ -164,12 +164,24 @@ impl Config {
             warn_invalid("display.layout", &d.layout);
             d.layout = defaults.display.layout;
         }
-        if d.max_cached_messages == 0 {
-            warn_invalid("display.max_cached_messages", "0");
+        // The cache is allocated up front: 0 is not a cache, and an absurd
+        // size aborted with "Hash table capacity overflow".
+        if d.max_cached_messages == 0 || d.max_cached_messages > MAX_CACHED_MESSAGES {
+            warn_invalid(
+                "display.max_cached_messages",
+                &d.max_cached_messages.to_string(),
+            );
             d.max_cached_messages = defaults.display.max_cached_messages;
         }
 
         let e = &mut self.export;
+        if e.attachment_seq_width > crate::export::attachment::MAX_SEQ_WIDTH {
+            warn_invalid(
+                "export.attachment_seq_width",
+                &e.attachment_seq_width.to_string(),
+            );
+            e.attachment_seq_width = defaults.export.attachment_seq_width;
+        }
         if matches!(e.csv_separator, '"' | '\n' | '\r') {
             warn_invalid("export.csv_separator", &e.csv_separator.to_string());
             e.csv_separator = defaults.export.csv_separator;
@@ -178,6 +190,9 @@ impl Config {
         (self, warnings)
     }
 }
+
+/// Largest accepted `display.max_cached_messages`.
+pub const MAX_CACHED_MESSAGES: usize = 10_000;
 
 /// `true` if `format` is a non-empty `strftime` string chrono can render.
 ///
@@ -447,10 +462,18 @@ csv_separator = ";"
         cfg.display.theme = "solarized".into();
         cfg.display.layout = "stacked".into();
         cfg.display.max_cached_messages = 0;
+        cfg.export.attachment_seq_width = 70_000;
         cfg.export.csv_separator = '"';
         let (cfg, warnings) = cfg.sanitized();
         assert_eq!(cfg, Config::default());
-        assert_eq!(warnings.len(), 8);
+        assert_eq!(warnings.len(), 9);
+
+        // Absurdly large is as invalid as zero.
+        let mut cfg = Config::default();
+        cfg.display.max_cached_messages = usize::MAX;
+        let (cfg, warnings) = cfg.sanitized();
+        assert_eq!(cfg, Config::default());
+        assert_eq!(warnings.len(), 1);
     }
 
     #[test]

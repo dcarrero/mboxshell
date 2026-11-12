@@ -287,6 +287,11 @@ msg!(
     "El HTML de este mensaje está demasiado anidado para procesarlo con seguridad; se muestra su texto"
 );
 msg!(err_io, "I/O error reading", "Error de E/S leyendo");
+msg!(
+    err_writing_output,
+    "could not write the output (disk full?)",
+    "no se pudo escribir la salida (\u{bf}disco lleno?)"
+);
 msg!(tui_header_label, "label", "etiqueta");
 msg!(tui_header_search, "search", "búsqueda");
 msg!(tui_files, "file(s)", "fichero(s)");

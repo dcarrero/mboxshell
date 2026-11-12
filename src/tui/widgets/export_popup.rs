@@ -96,8 +96,8 @@ pub fn render(frame: &mut Frame, app: &App) {
 
 /// Calculate a centered rectangle.
 fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    let width = area.width * percent_x / 100;
-    let height = area.height * percent_y / 100;
+    let width = super::percent_of(area.width, percent_x);
+    let height = super::percent_of(area.height, percent_y);
     let x = area.x + (area.width.saturating_sub(width)) / 2;
     let y = area.y + (area.height.saturating_sub(height)) / 2;
     Rect::new(x, y, width, height)

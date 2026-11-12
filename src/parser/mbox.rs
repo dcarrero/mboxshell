@@ -394,6 +394,50 @@ fn starts_with_from(line: &[u8]) -> bool {
     line.starts_with(b"From ")
 }
 
+/// Counts the message separators in a stream of lines the way the indexer
+/// decides them, for code that copies a mailbox without parsing it.
+#[derive(Debug)]
+pub(crate) struct SeparatorCounter {
+    first_line: bool,
+    git_patch_mbox: bool,
+    /// Separators seen so far.
+    pub(crate) count: u64,
+}
+
+impl Default for SeparatorCounter {
+    fn default() -> Self {
+        Self {
+            first_line: true,
+            git_patch_mbox: false,
+            count: 0,
+        }
+    }
+}
+
+impl SeparatorCounter {
+    /// Feed the next line of the mailbox (only its first kilobyte matters).
+    pub(crate) fn line(&mut self, line: &[u8]) {
+        let kind = classify_from_line(line);
+        if self.first_line && kind == FromLineKind::GitPatchMarker {
+            self.git_patch_mbox = true;
+        }
+        let is_separator = match kind {
+            FromLineKind::Separator => true,
+            FromLineKind::GitPatchMarker => self.git_patch_mbox,
+            FromLineKind::Content => self.first_line && starts_with_from(line),
+        };
+        if is_separator {
+            self.count += 1;
+        }
+        self.first_line = false;
+    }
+
+    /// A line that does not start with `From ` went by.
+    pub(crate) fn other_line(&mut self) {
+        self.first_line = false;
+    }
+}
+
 /// Classification of a line with respect to MBOX message separation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FromLineKind {
@@ -456,8 +500,12 @@ fn read_line_capped<R: BufRead>(
 ///
 /// A separator must look like `From <sender> <asctime date>` and end right
 /// after the date (an optional timezone is allowed before or after the
-/// year). Anything trailing the date — like the `<br>` of an HTML body that
-/// quotes an email verbatim — disqualifies the line. A bare `From ` line
+/// year, and a `remote from <host>` tail after that). Anything else trailing
+/// the date — like the `<br>` of an HTML body that quotes an email verbatim
+/// — disqualifies the line. The sender is whatever precedes the date: one
+/// address normally, but writers have left it empty or put a name with
+/// spaces there, and requiring exactly one token made such a mailbox read
+/// as a single huge message. A bare `From ` line
 /// with nothing after it is also a separator: some writers (e.g.
 /// Thunderbird exporting a Gmail account) emit exactly that (issue #16).
 /// An RFC 2822 date in place of asctime is accepted too (issue #35).
@@ -479,28 +527,16 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
         return FromLineKind::Separator;
     }
 
-    // sender + "Www Mmm dd hh:mm:ss yyyy" (+ optional timezone)
-    let date = match tokens.len() {
-        // Bare "From " with nothing after it: Thunderbird-style separator.
-        0 => return FromLineKind::Separator,
-        6 => &tokens[1..6],
-        7 if is_timezone(tokens[6]) => &tokens[1..6],
-        7 if is_timezone(tokens[5]) && is_year(tokens[6]) => {
-            // "Www Mmm dd hh:mm:ss TZ yyyy" (old ctime placement)
-            &tokens[1..5] // year checked above, validate the rest below
-        }
-        _ => return FromLineKind::Content,
+    // Bare "From " with nothing after it: Thunderbird-style separator.
+    if tokens.is_empty() {
+        return FromLineKind::Separator;
+    }
+    // UUCP-era writers append the relay: `… 1996 remote from host`.
+    let tokens = match tokens.as_slice() {
+        [head @ .., "remote", "from", _host] => head,
+        all => all,
     };
-    let valid = match date {
-        [dow, mon, day, time, year] => {
-            is_day_of_week(dow) && is_month(mon) && is_day(day) && is_time(time) && is_year(year)
-        }
-        [dow, mon, day, time] => {
-            is_day_of_week(dow) && is_month(mon) && is_day(day) && is_time(time)
-        }
-        _ => false,
-    };
-    if !valid {
+    if !ends_with_asctime_date(tokens) {
         return FromLineKind::Content;
     }
 
@@ -510,6 +546,25 @@ fn classify_from_line(line: &[u8]) -> FromLineKind {
         return FromLineKind::GitPatchMarker;
     }
     FromLineKind::Separator
+}
+
+/// Whether `tokens` end with an asctime date: `Www Mmm dd hh:mm[:ss] yyyy`,
+/// with an optional timezone before or after the year.
+fn ends_with_asctime_date(tokens: &[&str]) -> bool {
+    let core = |t: &[&str]| match t {
+        [.., dow, mon, day, time] => {
+            is_day_of_week(dow) && is_month(mon) && is_day(day) && is_time(time)
+        }
+        _ => false,
+    };
+    match tokens {
+        // "Www Mmm dd hh:mm:ss TZ yyyy" (old ctime placement)
+        [head @ .., tz, year] if is_timezone(tz) && is_year(year) && core(head) => true,
+        // "Www Mmm dd hh:mm:ss yyyy TZ"
+        [head @ .., year, tz] if is_timezone(tz) && is_year(year) && core(head) => true,
+        [head @ .., year] => is_year(year) && core(head),
+        [] => false,
+    }
 }
 
 /// RFC 2822 date in the envelope instead of asctime, as written by Aruba's
@@ -539,25 +594,17 @@ fn is_rfc2822_envelope_date(tokens: &[&str]) -> bool {
 }
 
 fn is_day_of_week(s: &str) -> bool {
-    matches!(s, "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")
+    ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        .iter()
+        .any(|d| s.eq_ignore_ascii_case(d))
 }
 
 fn is_month(s: &str) -> bool {
-    matches!(
-        s,
-        "Jan"
-            | "Feb"
-            | "Mar"
-            | "Apr"
-            | "May"
-            | "Jun"
-            | "Jul"
-            | "Aug"
-            | "Sep"
-            | "Oct"
-            | "Nov"
-            | "Dec"
-    )
+    [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+    .iter()
+    .any(|m| s.eq_ignore_ascii_case(m))
 }
 
 fn is_day(s: &str) -> bool {
@@ -565,19 +612,20 @@ fn is_day(s: &str) -> bool {
 }
 
 fn is_time(s: &str) -> bool {
+    // Seconds are optional: `hh:mm` is how some classic writers stamp it.
     let mut parts = s.split(':');
-    let (Some(h), Some(m), Some(sec), None) =
-        (parts.next(), parts.next(), parts.next(), parts.next())
+    let (Some(h), Some(m), sec, None) = (parts.next(), parts.next(), parts.next(), parts.next())
     else {
         return false;
     };
     let ok =
         |t: &str, max: u8| (1..=2).contains(&t.len()) && t.parse::<u8>().is_ok_and(|v| v <= max);
-    ok(h, 23) && ok(m, 59) && ok(sec, 61)
+    ok(h, 23) && ok(m, 59) && sec.is_none_or(|sec| ok(sec, 61))
 }
 
 fn is_year(s: &str) -> bool {
-    s.len() == 4 && s.bytes().all(|b| b.is_ascii_digit())
+    // Four digits, or the two some pre-2000 writers used.
+    matches!(s.len(), 2 | 4) && s.bytes().all(|b| b.is_ascii_digit())
 }
 
 fn is_timezone(s: &str) -> bool {
@@ -625,6 +673,41 @@ mod tests {
             read_line_capped(&mut reader, &mut buf, 8).unwrap(),
             (0, false)
         );
+    }
+
+    #[test]
+    fn test_classify_from_line_unusual_but_real_separators() {
+        use FromLineKind::*;
+        for line in [
+            // no seconds
+            "From user@x Wed Dec 30 12:34 1998\n",
+            // empty sender
+            "From  Thu Jan 01 00:00:00 2024\n",
+            // UUCP relay tail
+            "From user Sat Jan  3 01:05:34 1996 remote from host\n",
+            // a display name where the address should be
+            "From John Doe Thu Jan 01 00:00:00 2024\n",
+            // two-digit year, lowercase names
+            "From a@b Thu Jan 01 00:00:00 24\n",
+            "From a@b thu jan 01 00:00:00 2024\n",
+            // timezone on either side of the year, with any sender
+            "From  Sat Jan  3 01:05:34 EST 1996\n",
+            "From a b c Sat Jan  3 01:05:34 1996 +0100\r\n",
+        ] {
+            assert_eq!(classify_from_line(line.as_bytes()), Separator, "{line}");
+        }
+        for line in [
+            // prose and quoted mail must still be content
+            "From the meeting notes of last Thursday\n",
+            "From a@b Thu Jan 01 00:00:00 2024<br>\n",
+            "From a@b Thu Jan 01 00:00:00 2024 and then some\n",
+            "From a@b Thu Jan 01 2024\n",
+            "From a@b Thu Jan 01 00:00:00 2024 remote from\n",
+            "From Thu Jan 99 00:00:00 2024\n",
+            "From a@b Xxx Jan 01 00:00:00 2024\n",
+        ] {
+            assert_eq!(classify_from_line(line.as_bytes()), Content, "{line}");
+        }
     }
 
     #[test]

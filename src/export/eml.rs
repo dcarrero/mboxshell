@@ -251,17 +251,24 @@ fn reencode_leaf_part(headers_raw: &[u8], body: &[u8], headers_lower: &[u8]) -> 
         }
         new_headers.extend_from_slice(line);
     }
+    // Use the line ending the headers already have.
+    let eol: &[u8] =
+        if headers_raw.windows(2).any(|w| w == b"\r\n") || !headers_raw.contains(&b'\n') {
+            b"\r\n"
+        } else {
+            b"\n"
+        };
     if !new_headers.ends_with(b"\n") {
-        new_headers.extend_from_slice(b"\r\n");
+        new_headers.extend_from_slice(eol);
     }
-    new_headers.extend_from_slice(b"Content-Transfer-Encoding: quoted-printable\r\n");
+    new_headers.extend_from_slice(b"Content-Transfer-Encoding: quoted-printable");
+    new_headers.extend_from_slice(eol);
 
+    // Nothing is appended after the encoded body: an extra line break here
+    // became part of the content once decoded.
     let mut out = new_headers;
-    out.extend_from_slice(b"\r\n");
+    out.extend_from_slice(eol);
     out.extend_from_slice(&encoded);
-    if !out.ends_with(b"\n") {
-        out.extend_from_slice(b"\r\n");
-    }
     out
 }
 
@@ -350,8 +357,9 @@ fn reencode_multipart_body(body: &[u8], boundary: &str, depth: usize) -> Vec<u8>
     }
 
     // Last delimiter segment: from last delim_position to end of body
-    let last = *delim_positions.last().unwrap();
-    out.extend_from_slice(&body[last..]);
+    if let Some(&last) = delim_positions.last() {
+        out.extend_from_slice(&body[last..]);
+    }
     out
 }
 
@@ -394,20 +402,29 @@ struct HeaderBodySplit {
 }
 
 fn find_header_body_split(bytes: &[u8]) -> Option<HeaderBodySplit> {
-    // Look for \r\n\r\n first, then \n\n.
-    if let Some(pos) = find_subsequence(bytes, b"\r\n\r\n") {
-        return Some(HeaderBodySplit {
-            headers_end: pos + 2,
-            body_start: pos + 4,
-        });
+    // The earliest blank line, whichever line ending it uses. Preferring
+    // `\r\n\r\n` anywhere over an earlier `\n\n` took a blank line inside
+    // the body (text pasted from Windows into an LF message) for the end of
+    // the headers: the real `Content-Transfer-Encoding` was dropped and a
+    // new one written into the middle of the body.
+    let crlf = find_subsequence(bytes, b"\r\n\r\n");
+    let lf = find_subsequence(bytes, b"\n\n");
+    match (crlf, lf) {
+        (Some(crlf), Some(lf)) if lf < crlf => Some(lf_split(lf)),
+        (Some(crlf), _) => Some(HeaderBodySplit {
+            headers_end: crlf + 2,
+            body_start: crlf + 4,
+        }),
+        (None, Some(lf)) => Some(lf_split(lf)),
+        (None, None) => None,
     }
-    if let Some(pos) = find_subsequence(bytes, b"\n\n") {
-        return Some(HeaderBodySplit {
-            headers_end: pos + 1,
-            body_start: pos + 2,
-        });
+}
+
+fn lf_split(pos: usize) -> HeaderBodySplit {
+    HeaderBodySplit {
+        headers_end: pos + 1,
+        body_start: pos + 2,
     }
-    None
 }
 
 fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -729,6 +746,51 @@ mod tests {
         let raw = b"Subject: Test\n\nBody";
         let result = skip_from_line(raw);
         assert_eq!(result, raw);
+    }
+
+    /// Decode a re-encoded single-part message back to its body bytes.
+    fn qp_body(eml: &[u8]) -> Vec<u8> {
+        let split = find_header_body_split(eml).expect("blank line");
+        quoted_printable::decode(
+            &eml[split.body_start..],
+            quoted_printable::ParseMode::Robust,
+        )
+        .expect("valid quoted-printable")
+    }
+
+    #[test]
+    fn test_qp_reencode_with_a_crlf_blank_line_inside_an_lf_body() {
+        let body = "Primera línea con eñe.\nTexto pegado desde Windows:\r\n\r\nPárrafo final.";
+        let eml = format!(
+            "From: a@x\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\n\n{body}"
+        );
+        let out = reencode_message_as_qp(eml.into_bytes());
+        let text = String::from_utf8_lossy(&out).into_owned();
+
+        // One CTE header, in the headers, and no trace of the old one.
+        assert_eq!(
+            text.matches("Content-Transfer-Encoding:").count(),
+            1,
+            "{text}"
+        );
+        assert!(!text.contains("8bit"), "{text}");
+        let split = find_header_body_split(&out).unwrap();
+        assert!(
+            text[..split.headers_end].contains("Content-Transfer-Encoding: quoted-printable"),
+            "{text}"
+        );
+        // Pure ASCII, and the body decodes back to exactly what it was.
+        assert!(out.is_ascii());
+        assert_eq!(qp_body(&out), body.as_bytes());
+    }
+
+    #[test]
+    fn test_header_body_split_takes_the_earliest_blank_line() {
+        let lf_first = find_header_body_split(b"A: 1\n\nbody\r\n\r\nmore").unwrap();
+        assert_eq!((lf_first.headers_end, lf_first.body_start), (5, 6));
+        let crlf_first = find_header_body_split(b"A: 1\r\n\r\nbody\n\nmore").unwrap();
+        assert_eq!((crlf_first.headers_end, crlf_first.body_start), (6, 8));
+        assert!(find_header_body_split(b"A: 1\nB: 2\n").is_none());
     }
 
     #[test]

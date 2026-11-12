@@ -19,7 +19,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let row_count: u16 = if has_labels { 10 } else { 9 };
     // rows + title border (1) + footer (2) + borders (2) + padding (1)
     let popup_height = (row_count + 6).min(screen.height.saturating_sub(2));
-    let popup_width = (screen.width * 60 / 100)
+    let popup_width = super::percent_of(screen.width, 60)
         .max(50)
         .min(screen.width.saturating_sub(4));
 

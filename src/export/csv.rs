@@ -36,6 +36,8 @@ pub fn export_csv_with_separator(
     // in the kernel) and written to a fresh temp file renamed into place, so
     // a symlink at `output_path` is replaced rather than written through.
     let (tmp_path, tmp_file) = crate::fsutil::create_temp_beside(output_path)?;
+    // Removes the temp file if anything below fails (a full disk, say).
+    let mut guard = crate::fsutil::TempFileGuard::new(&tmp_path);
     let mut file = std::io::BufWriter::new(tmp_file);
 
     // UTF-8 BOM for Excel
@@ -89,6 +91,7 @@ pub fn export_csv_with_separator(
     file.flush()?;
     drop(file);
     std::fs::rename(&tmp_path, output_path)?;
+    guard.disarm();
     Ok(())
 }
 

@@ -10,6 +10,52 @@ use mboxshell::export::html::{HtmlOptions, InlineImages};
 use mboxshell::i18n;
 use mboxshell::index::{builder, reader as index_reader};
 
+/// What happened to standard output: nothing, its reader went away, or a
+/// real write error.
+static STDOUT_STATE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(STDOUT_OK);
+const STDOUT_OK: u8 = 0;
+const STDOUT_CLOSED: u8 = 1;
+const STDOUT_FAILED: u8 = 2;
+
+/// Write one line to standard output without panicking.
+///
+/// `std::println!` panics when the write fails, and the usual way for it to
+/// fail is the reader leaving early: `mboxshell search … | head` ended with
+/// a panic message and exit code 101. A closed pipe now just stops the
+/// output; any other error (a full disk under `> file`) is reported by
+/// `main` once the command is done.
+fn print_line(args: std::fmt::Arguments<'_>) {
+    print_text(format_args!("{args}\n"));
+}
+
+/// [`print_line`] without the line ending.
+fn print_text(args: std::fmt::Arguments<'_>) {
+    use std::io::Write;
+    use std::sync::atomic::Ordering;
+
+    if STDOUT_STATE.load(Ordering::Relaxed) != STDOUT_OK {
+        return;
+    }
+    if let Err(e) = write!(std::io::stdout().lock(), "{args}") {
+        let state = if e.kind() == std::io::ErrorKind::BrokenPipe {
+            STDOUT_CLOSED
+        } else {
+            STDOUT_FAILED
+        };
+        STDOUT_STATE.store(state, Ordering::Relaxed);
+    }
+}
+
+/// `println!` for this binary: see [`print_line`].
+macro_rules! println {
+    () => {
+        print_line(format_args!(""))
+    };
+    ($($arg:tt)*) => {
+        print_line(format_args!($($arg)*))
+    };
+}
+
 #[derive(Parser)]
 #[command(name = "mboxshell", version)]
 struct Cli {
@@ -190,7 +236,7 @@ enum Commands {
         #[arg(long, value_enum)]
         dirname: Option<AttachmentDirname>,
         /// Minimum digits of a seq-no/seq-no0 name, as in `attachments`
-        #[arg(long, value_name = "N")]
+        #[arg(long, value_name = "N", value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(0..=mboxshell::export::attachment::MAX_SEQ_WIDTH as u64))]
         seq_width: Option<usize>,
         /// Force rebuild index even if one already exists
         #[arg(long)]
@@ -230,7 +276,7 @@ enum Commands {
         dirname: Option<AttachmentDirname>,
         /// Minimum digits of a seq-no/seq-no0 folder, zero-padded (default:
         /// enough for the mailbox's message count)
-        #[arg(long, value_name = "N")]
+        #[arg(long, value_name = "N", value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(0..=mboxshell::export::attachment::MAX_SEQ_WIDTH as u64))]
         seq_width: Option<usize>,
         #[command(flatten)]
         force: ForceArg,
@@ -265,8 +311,13 @@ enum ConfigAction {
 
 /// Detect language early from --lang arg or system env, before clap processes --help.
 fn detect_lang_early() -> i18n::Lang {
-    // Check --lang flag in raw args
-    let args: Vec<String> = std::env::args().collect();
+    // Check --lang flag in raw args. `args_os`, not `args`: the latter
+    // panics on an argument that is not UTF-8, such as a mailbox named in
+    // Latin-1 on Linux, before clap ever sees it. Such an argument is never
+    // `--lang`, so it reads as an empty string here.
+    let args: Vec<String> = std::env::args_os()
+        .map(|a| a.to_str().unwrap_or_default().to_string())
+        .collect();
     for i in 0..args.len() {
         if args[i] == "--lang" {
             if let Some(code) = args.get(i + 1) {
@@ -491,6 +542,15 @@ fn spanish_help(cmd: clap::Command) -> clap::Command {
 }
 
 fn main() -> anyhow::Result<()> {
+    let result = run();
+    if result.is_ok() && STDOUT_STATE.load(std::sync::atomic::Ordering::Relaxed) == STDOUT_FAILED {
+        anyhow::bail!("{}", i18n::err_writing_output());
+    }
+    result
+}
+
+/// Parse the command line and run the command.
+fn run() -> anyhow::Result<()> {
     // Detect language BEFORE clap parsing so --help is localized
     let lang = detect_lang_early();
     i18n::set_lang(lang);
@@ -689,7 +749,7 @@ fn cmd_config(action: ConfigAction) -> anyhow::Result<()> {
             let contents = std::fs::read_to_string(&path).map_err(|e| {
                 anyhow::anyhow!("{} {}: {e}", i18n::msg_config_cannot_read(), path.display())
             })?;
-            print!("{contents}");
+            print_text(format_args!("{contents}"));
             // Say so if mboxshell would ignore the file, since `show` is
             // where people look when a setting seems to have no effect.
             match toml::from_str::<mboxshell::config::Config>(&contents) {
@@ -701,7 +761,9 @@ fn cmd_config(action: ConfigAction) -> anyhow::Result<()> {
                 Err(e) => eprintln!("{}\n{e}", i18n::msg_config_parse_error()),
             }
         }
-        ConfigAction::Defaults => print!("{}", mboxshell::config::defaults_toml()),
+        ConfigAction::Defaults => {
+            print_text(format_args!("{}", mboxshell::config::defaults_toml()));
+        }
     }
     Ok(())
 }

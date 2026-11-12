@@ -62,7 +62,7 @@ pub fn merge_mbox_files(
     // writes to avoid one syscall per message on the dedup path.
     ensure_not_an_input(output, inputs.iter().map(PathBuf::as_path))?;
     let (tmp_output, tmp_file) = fsutil::create_temp_beside(output)?;
-    let mut guard = TempFileGuard::new(&tmp_output);
+    let mut guard = fsutil::TempFileGuard::new(&tmp_output);
     let mut out_file = std::io::BufWriter::new(tmp_file);
     let mut seen: HashSet<(String, [u8; 32])> = HashSet::new();
     let mut total_messages: u64 = 0;
@@ -185,7 +185,7 @@ pub fn export_mbox(
     // mailbox behind under the name the user asked for.
     ensure_not_an_input(output, std::iter::once(store.path()))?;
     let (tmp_output, tmp_file) = fsutil::create_temp_beside(output)?;
-    let mut guard = TempFileGuard::new(&tmp_output);
+    let mut guard = fsutil::TempFileGuard::new(&tmp_output);
     let mut out_file = std::io::BufWriter::new(tmp_file);
 
     let total = entries.len();
@@ -202,37 +202,6 @@ pub fn export_mbox(
     guard.disarm();
 
     Ok(total)
-}
-
-/// Removes a temp output file on drop unless disarmed, so an export or merge
-/// that fails half-way does not leave a stray temp file next to the output.
-///
-/// Declare it *before* the writer on that file: locals drop in reverse order,
-/// so the file handle is closed before the removal (required on Windows).
-struct TempFileGuard {
-    path: PathBuf,
-    armed: bool,
-}
-
-impl TempFileGuard {
-    fn new(path: &Path) -> Self {
-        Self {
-            path: path.to_path_buf(),
-            armed: true,
-        }
-    }
-
-    fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for TempFileGuard {
-    fn drop(&mut self) {
-        if self.armed {
-            let _ = std::fs::remove_file(&self.path);
-        }
-    }
 }
 
 /// Refuse to write over a mailbox that is being read: the final rename
@@ -272,7 +241,7 @@ fn content_digest(raw: &[u8]) -> [u8; 32] {
 
 /// What [`copy_counting_from_lines`] saw.
 struct CopiedMailbox {
-    /// `From ` lines found at the start of a line.
+    /// Message separators found, by the indexer's rules.
     messages: u64,
     /// The last (up to 4) bytes copied; empty for an empty input.
     tail: Vec<u8>,
@@ -311,18 +280,31 @@ fn copy_counting_from_lines(
         tail.drain(..excess);
     }
     Ok(CopiedMailbox {
-        messages: counter.count,
+        messages: counter.finish(),
         tail,
     })
 }
 
-/// Streaming counter of lines that start with `From `.
+/// Streaming counter of message separators in a mailbox copied block by
+/// block.
+///
+/// Lines that start with `From ` are collected (their first
+/// [`Self::MAX_LINE`] bytes) and judged by the indexer's own rules, so the
+/// total a `--no-dedup` merge reports is the number of messages the result
+/// opens with. Counting every `From ` line also counted the ones inside
+/// bodies.
 struct FromLineCounter {
     /// Inside the first bytes of a line, still able to become `From `.
     candidate: bool,
     /// How many bytes of `From ` the current candidate has matched.
     matched: usize,
-    count: u64,
+    /// What a line must start with to be collected: `From `, preceded by
+    /// a UTF-8 BOM on the very first line of the input.
+    pattern: &'static [u8],
+    /// Collecting the rest of a line that started with `From `.
+    capturing: bool,
+    line: Vec<u8>,
+    separators: crate::parser::mbox::SeparatorCounter,
 }
 
 impl Default for FromLineCounter {
@@ -331,43 +313,93 @@ impl Default for FromLineCounter {
         Self {
             candidate: true,
             matched: 0,
-            count: 0,
+            pattern: Self::BOM_PATTERN,
+            capturing: false,
+            line: Vec::with_capacity(128),
+            separators: Default::default(),
         }
     }
 }
 
 impl FromLineCounter {
     const PATTERN: &'static [u8] = b"From ";
+    /// The first line of a file written by some Windows tools.
+    const BOM_PATTERN: &'static [u8] = b"\xEF\xBB\xBFFrom ";
+    /// A separator line is short; past this it is body text.
+    const MAX_LINE: usize = 1024;
 
     fn feed(&mut self, block: &[u8]) {
         let mut i = 0;
-        loop {
+        while i < block.len() {
+            if self.capturing {
+                let rest = &block[i..];
+                let (line_part, ended) = match memchr::memchr(b'\n', rest) {
+                    Some(p) => (&rest[..=p], true),
+                    None => (rest, false),
+                };
+                let room = Self::MAX_LINE.saturating_sub(self.line.len());
+                self.line
+                    .extend_from_slice(&line_part[..line_part.len().min(room)]);
+                i += line_part.len();
+                if ended {
+                    self.settle();
+                }
+                continue;
+            }
             if self.candidate {
-                let need = &Self::PATTERN[self.matched..];
+                if self.matched == 0 && block[i] != Self::BOM_PATTERN[0] {
+                    // No BOM here (only the first line may have one).
+                    self.pattern = Self::PATTERN;
+                }
+                let need = &self.pattern[self.matched..];
                 let avail = &block[i..];
                 let n = need.len().min(avail.len());
                 if avail[..n] == need[..n] {
                     self.matched += n;
                     i += n;
-                    if self.matched < Self::PATTERN.len() {
-                        // Block exhausted mid-match: resume with the next one.
-                        return;
+                    if self.matched == self.pattern.len() {
+                        self.capturing = true;
+                        self.candidate = false;
+                        self.line.clear();
+                        self.line.extend_from_slice(self.pattern);
                     }
-                    self.count += 1;
+                    // Otherwise the block ran out mid-match: resume with
+                    // the next one.
+                    continue;
                 }
-                // Matched or not, this line is settled; a mismatching byte is
-                // not consumed, since it may itself be the newline.
+                // Not `From `. The mismatching byte is not consumed, since
+                // it may itself be the newline.
                 self.candidate = false;
             }
             match memchr::memchr(b'\n', &block[i..]) {
                 Some(p) => {
                     i += p + 1;
+                    self.separators.other_line();
                     self.candidate = true;
                     self.matched = 0;
+                    self.pattern = Self::PATTERN;
                 }
                 None => return,
             }
         }
+    }
+
+    /// Judge the collected `From ` line and get ready for the next line.
+    fn settle(&mut self) {
+        self.separators.line(&self.line);
+        self.capturing = false;
+        self.candidate = true;
+        self.matched = 0;
+        self.pattern = Self::PATTERN;
+    }
+
+    /// The number of separators, once the whole input has been fed.
+    fn finish(mut self) -> u64 {
+        if self.capturing {
+            // Last line of the input, without a line ending.
+            self.settle();
+        }
+        self.separators.count
     }
 }
 
@@ -970,16 +1002,12 @@ mod tests {
     }
 
     /// Reference count: lines starting with `From `, computed in one pass.
-    fn naive_from_lines(data: &[u8]) -> u64 {
-        let mut count = 0;
-        let mut at_line_start = true;
-        for line in data.split_inclusive(|&b| b == b'\n') {
-            if at_line_start && line.starts_with(b"From ") {
-                count += 1;
-            }
-            at_line_start = line.last() == Some(&b'\n');
-        }
-        count
+    /// How many messages the indexer finds in `data`.
+    fn indexed_messages(data: &[u8]) -> u64 {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("m.mbox");
+        std::fs::write(&path, data).unwrap();
+        builder::build_index(&path, true, None).unwrap().len() as u64
     }
 
     #[test]
@@ -991,7 +1019,10 @@ mod tests {
         assert_eq!(&data[7..12], b"From ");
         let mut out = Vec::new();
         let copied = copy_counting_from_lines(&data[..], &mut out, 7, b"").unwrap();
-        assert_eq!(copied.messages, 2);
+        // Only the first line opens a message: `From b` has no date, so the
+        // indexer reads it as body text, and so does the count.
+        assert_eq!(copied.messages, 1);
+        assert_eq!(copied.messages, indexed_messages(data));
         assert_eq!(out, data.to_vec());
         assert_eq!(copied.tail, b"From");
     }
@@ -999,10 +1030,20 @@ mod tests {
     #[test]
     fn test_copy_counting_matches_single_pass_for_every_block_size() {
         let data: &[u8] = b"From a@b Thu Jan 01 00:00:00 2024\r\nSubject: x\r\n\r\n\
-            From here in the body? no, this is a new message by mbox rules\n\
-            >From quoted\n\n\nFrom  \nFrom\nFro m\nFFrom x\n\xff\xfeFrom y\nFrom z";
-        let expected = naive_from_lines(data);
-        assert_eq!(expected, 4);
+            From here in the body, which is not a separator\n\
+            >From quoted\n\n\nFrom  \nSubject: bare separator\n\nFrom\nFro m\nFFrom x\n\
+            \xff\xfeFrom y\n\nFrom c@d Fri Jan 02 00:00:00 2024\nSubject: z\n\nFrom z";
+        // The count is the number of messages the result opens with.
+        let expected = indexed_messages(data);
+        assert_eq!(expected, 3);
+        // A BOM in front of the first separator does not hide it.
+        let with_bom: Vec<u8> = [&b"\xEF\xBB\xBF"[..], data].concat();
+        assert_eq!(indexed_messages(&with_bom), 3);
+        for block in 1..=9 {
+            let mut out = Vec::new();
+            let copied = copy_counting_from_lines(&with_bom[..], &mut out, block, b"").unwrap();
+            assert_eq!(copied.messages, 3, "block size {block}");
+        }
         for block in 1..=40 {
             let mut out = Vec::new();
             let copied = copy_counting_from_lines(data, &mut out, block, b"").unwrap();
