@@ -204,7 +204,7 @@ enum Commands {
         #[arg(short, long)]
         output: PathBuf,
         /// Only export the messages matching this search query
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true)]
         query: Option<String>,
         /// Re-encode 8-bit text bodies as quoted-printable so the EML is
         /// pure 7-bit ASCII. Helps strict-UTF-8 tools (eml-extractor,

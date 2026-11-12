@@ -188,32 +188,34 @@ pub fn export_bulk_attachments(
     for (i, entry) in entries.iter().enumerate() {
         progress(i, total);
 
-        let body = store.get_message(entry)?;
-        if body.attachments.is_empty() {
-            continue;
-        }
-
-        let subfolder_name = message_folder_name(entry, naming);
-        let subfolder = output_dir.join(&subfolder_name);
-        if let Err(e) = crate::fsutil::create_dir_no_follow(&subfolder) {
-            tracing::warn!(folder = ?subfolder_name, error = %e, "Cannot create attachment folder");
-            report.failed += body.attachments.len();
-            continue;
-        }
-
-        let before = report.paths.len() + report.failed;
-        let outcome =
-            write_message_attachments(store, entry, &body.attachments, &subfolder, |result| {
-                match result {
-                    Ok(path) => report.paths.push(path),
-                    Err(_) => report.failed += 1,
-                }
+        // One read and one MIME parse per message: the same pass finds the
+        // attachments and hands over their bytes.
+        let raw = store.get_raw_message(entry)?;
+        // Created when the first attachment turns up; `Err` once it failed.
+        let mut subfolder: Option<Result<PathBuf, ()>> = None;
+        crate::parser::mime::visit_named_attachments(&raw, |_, filename, data| {
+            let dir = subfolder.get_or_insert_with(|| {
+                let name = message_folder_name(entry, naming);
+                let dir = output_dir.join(&name);
+                crate::fsutil::create_dir_no_follow(&dir)
+                    .map(|()| dir)
+                    .map_err(|e| {
+                        tracing::warn!(folder = ?name, error = %e, "Cannot create attachment folder");
+                    })
             });
-        if let Err(e) = outcome {
-            tracing::warn!(offset = entry.offset, error = %e, "Cannot read message attachments");
-            let handled = report.paths.len() + report.failed - before;
-            report.failed += body.attachments.len().saturating_sub(handled);
-        }
+            let written = match dir {
+                Ok(dir) => write_attachment(filename, data, dir).map_err(|e| {
+                    // `?`: Debug-escaped. The name comes from the message
+                    // and could carry terminal escape sequences into the log.
+                    tracing::warn!(filename = ?filename, error = %e, "Failed to export attachment");
+                }),
+                Err(()) => Err(()),
+            };
+            match written {
+                Ok(path) => report.paths.push(path),
+                Err(()) => report.failed += 1,
+            }
+        });
     }
     progress(total, total);
 

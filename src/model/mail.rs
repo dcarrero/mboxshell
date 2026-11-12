@@ -8,7 +8,8 @@ use super::attachment::AttachmentMeta;
 /// Compact metadata for a single email message, stored in the binary index.
 ///
 /// All indexed messages are kept in memory as `Vec<MailEntry>`.
-/// At ~500 bytes per entry, 1 million messages ≈ 500 MB of RAM.
+/// Measured on a 400 000-message mailbox: about 1.3 KB of RAM per entry
+/// (the struct itself plus its strings), so 1 million messages ≈ 1.3 GB.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MailEntry {
     /// Byte offset of the message start inside the MBOX file

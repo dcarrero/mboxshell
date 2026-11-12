@@ -34,7 +34,7 @@
 | **Solo lectura** | mboxShell nunca escribe en tu `.mbox`. Las exportaciones y fusiones siempre van a ficheros nuevos que tú indicas. |
 | **E/S por streaming** | El fichero se lee por bloques (búfer de 128 KB por defecto). Un buzón de 100 GB usa aproximadamente la misma RAM que uno de 1 GB. |
 | **Índice binario** | En la primera apertura se crea un fichero de índice `<nombre>.mboxshell.idx` junto al MBOX. Guarda metadatos compactos (remitente, asunto, fecha, offsets) para que las siguientes aperturas tarden menos de un segundo. |
-| **Validación del índice** | El índice se vincula al origen mediante tamaño, fecha de modificación y un SHA-256 de los primeros bytes. Si el MBOX cambia, el índice se reconstruye automáticamente. |
+| **Validación del índice** | El índice se vincula al origen mediante tamaño, fecha de modificación y un SHA-256 de los primeros bytes. Si el MBOX cambia, el índice se reconstruye automáticamente. Además va firmado (HMAC-SHA256) con una clave privada de tu cuenta de usuario, de modo que un índice que llega junto a un buzón —en un archivo comprimido, en una carpeta compartida— nunca se da por bueno: se reconstruye a partir del propio buzón. |
 | **Cuerpos bajo demanda** | Los cuerpos se decodifican solo al abrir el mensaje y se mantienen en una pequeña caché LRU (50 mensajes por defecto). |
 | **Etiquetas de Gmail** | Las cabeceras `X-Gmail-Labels` (de Google Takeout) aparecen como carpetas virtuales en una barra lateral. |
 | **Google Groups** | Un archivo de Takeout exporta además cada grupo del que eres propietario como un buzón aparte. mboxShell lo nombra por el grupo y usa el grupo como etiqueta virtual — ver [Buzones de Google Groups](GOOGLE-GROUPS.md) (en inglés). |
@@ -550,7 +550,8 @@ attachment_seq_width = 0          # minimum digits for seq-no names (0 = automat
 
 Rutas relacionadas:
 
-- **Índice**: `.<buzón>.mboxshell.idx`, junto al fichero de origen; si esa carpeta es de solo lectura, en la carpeta de caché.
+- **Índice**: `.<buzón>.mboxshell.idx`, junto al fichero de origen; si esa carpeta es de solo lectura, en la carpeta de caché. Solo lo puede leer su propietario (contiene remitentes y asuntos).
+- **Clave del índice**: `<carpeta de caché>/index.key`, creada en el primer uso y legible solo por su propietario. Si se borra (o el buzón se lleva a otro equipo o usuario), los índices simplemente se reconstruyen en la siguiente apertura.
 - **Carpeta de caché**: `cache_dir`, o el dir. de caché del SO + `/mboxshell`.
 - **Fichero de log**: `<carpeta de caché>/mboxshell.log`.
 

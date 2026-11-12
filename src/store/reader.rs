@@ -69,6 +69,22 @@ impl MboxStore {
         if let Some(body) = self.cache.get(&entry.offset) {
             return Ok(Rc::clone(body));
         }
+        let body = Rc::new(self.decode_message(entry)?);
+        self.cache.put(entry.offset, Rc::clone(&body));
+        Ok(body)
+    }
+
+    /// Read and decode a message without keeping it in the cache.
+    ///
+    /// For passes over many messages that never come back to one (a
+    /// full-text search): caching them only pinned the last 50 bodies —
+    /// hundreds of megabytes on a mailbox with large messages — for nothing.
+    pub fn get_message_uncached(&mut self, entry: &MailEntry) -> Result<MailBody> {
+        self.decode_message(entry)
+    }
+
+    /// Read a message from the mailbox and decode it.
+    fn decode_message(&mut self, entry: &MailEntry) -> Result<MailBody> {
         let limit = entry.length.min(self.decode_limit);
         let raw = self.read_at(entry.offset, limit)?;
         let mut body = mime::parse_message_body(&raw)?;
@@ -80,8 +96,6 @@ impl MboxStore {
             );
             body.text = Some(notice + body.text.as_deref().unwrap_or(""));
         }
-        let body = Rc::new(body);
-        self.cache.put(entry.offset, Rc::clone(&body));
         Ok(body)
     }
 

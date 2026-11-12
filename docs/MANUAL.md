@@ -34,7 +34,7 @@
 | **Read-only** | mboxShell never writes to your `.mbox`. Exports and merges always go to new files you specify. |
 | **Streaming I/O** | The file is read in chunks (128 KB buffer by default). A 100 GB mailbox uses roughly the same RAM as a 1 GB one. |
 | **Binary index** | On first open, an index file `<name>.mboxshell.idx` is created next to the MBOX. It holds compact metadata (sender, subject, date, offsets) so subsequent opens take under a second. |
-| **Index validation** | The index is tied to the source via file size, modification time and a SHA-256 of the file's first bytes. If the MBOX changes, the index is rebuilt automatically. |
+| **Index validation** | The index is tied to the source via file size, modification time and a SHA-256 of the file's first bytes. If the MBOX changes, the index is rebuilt automatically. It is also signed (HMAC-SHA256) with a key private to your user account, so an index that arrives together with a mailbox — in an archive, a shared folder — is never trusted: it is rebuilt from the mailbox itself. |
 | **On-demand bodies** | Message bodies are decoded only when you open a message, then kept in a small LRU cache (50 messages by default). |
 | **Gmail labels** | `X-Gmail-Labels` headers (from Google Takeout) are surfaced as virtual folders in a sidebar. |
 | **Google Groups** | A Takeout archive also exports every group you own as its own mailbox. mboxShell names it after the group and uses the group as a virtual label — see [Google Groups mailboxes](GOOGLE-GROUPS.md). |
@@ -550,7 +550,8 @@ attachment_seq_width = 0          # minimum digits for seq-no names (0 = automat
 
 Related paths:
 
-- **Index**: `.<mailbox>.mboxshell.idx`, next to the source file; if that folder is read-only, in the cache directory.
+- **Index**: `.<mailbox>.mboxshell.idx`, next to the source file; if that folder is read-only, in the cache directory. Readable only by its owner (it holds senders and subjects).
+- **Index key**: `<cache directory>/index.key`, created on first use and readable only by its owner. Deleting it (or moving the mailbox to another machine or user) just makes the indexes rebuild on the next open.
 - **Cache directory**: `cache_dir`, or the OS cache dir + `/mboxshell`.
 - **Log file**: `<cache directory>/mboxshell.log`.
 

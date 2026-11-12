@@ -480,7 +480,7 @@ fn read_line_capped<R: BufRead>(
         if available.is_empty() {
             break; // EOF
         }
-        let (take, done) = match available.iter().position(|&b| b == b'\n') {
+        let (take, done) = match memchr::memchr(b'\n', available) {
             Some(i) => (i + 1, true),
             None => (available.len(), false),
         };

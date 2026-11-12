@@ -119,6 +119,31 @@ pub fn visit_attachments(raw_message: &[u8], mut visit: impl FnMut(usize, &[u8])
     Ok(())
 }
 
+/// Like [`visit_attachments`], also giving each attachment's file name (the
+/// one [`list_attachments`] reports), so a caller that only wants the files
+/// needs no separate listing pass. A message that cannot be parsed has no
+/// attachments. Returns how many were visited.
+pub fn visit_named_attachments(
+    raw_message: &[u8],
+    mut visit: impl FnMut(usize, &str, &[u8]),
+) -> usize {
+    use mail_parser::MimeHeaders;
+
+    let message_bytes = skip_from_line(raw_message);
+    let Some(msg) = MessageParser::default().parse(message_bytes) else {
+        return 0;
+    };
+    let mut count = 0;
+    for (idx, part) in msg.attachments().enumerate() {
+        match part.attachment_name() {
+            Some(name) => visit(idx, name, part.contents()),
+            None => visit(idx, &format!("attachment_{idx}"), part.contents()),
+        }
+        count += 1;
+    }
+    count
+}
+
 /// Build attachment metadata from a parsed `mail_parser::Message`.
 fn list_attachments_from_parsed(msg: &mail_parser::Message<'_>) -> Vec<AttachmentMeta> {
     use mail_parser::MimeHeaders;

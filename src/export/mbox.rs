@@ -192,7 +192,14 @@ pub fn export_mbox(
     for (i, entry) in entries.iter().enumerate() {
         progress(i, total);
         let raw = store.get_raw_message(entry)?;
-        out_file.write_all(&mbox_record(&raw, entry))?;
+        if raw.starts_with(b"From ") {
+            // Already an mbox record: written as it is, without building a
+            // second copy of the message in memory first.
+            out_file.write_all(&raw)?;
+            out_file.write_all(separator_padding(&raw))?;
+        } else {
+            out_file.write_all(&mbox_record(&raw, entry))?;
+        }
     }
     progress(total, total);
 
