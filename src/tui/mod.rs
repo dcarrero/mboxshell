@@ -110,9 +110,14 @@ pub fn run_tui(mbox_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
 /// the process. Best-effort: a signal that cannot be registered keeps its
 /// default behaviour.
 fn register_termination_signals(flag: &Arc<AtomicBool>) -> Vec<signal_hook::SigId> {
-    let mut signals = vec![signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT];
     #[cfg(unix)]
-    signals.push(signal_hook::consts::SIGHUP);
+    let signals = [
+        signal_hook::consts::SIGTERM,
+        signal_hook::consts::SIGINT,
+        signal_hook::consts::SIGHUP,
+    ];
+    #[cfg(not(unix))]
+    let signals = [signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT];
     signals
         .into_iter()
         .filter_map(|signal| signal_hook::flag::register(signal, Arc::clone(flag)).ok())
