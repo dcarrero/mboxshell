@@ -38,6 +38,38 @@ pub struct SearchJob {
     /// Optional set the results must be intersected with ("search within
     /// previous results").
     restrict: Option<HashSet<usize>>,
+    /// The query this job is answering. Results are only applied while it is
+    /// still the query on screen.
+    query: String,
+}
+
+/// File format of a background export of the marked messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExportFormat {
+    /// One `.eml` per message.
+    Eml,
+    /// One sanitized `.html` per message, inline images embedded.
+    Html,
+    /// One `.txt` per message.
+    Txt,
+}
+
+/// An export of the marked messages running on a background thread.
+///
+/// Exporting used to run inside the key handler: 30 000 marked messages
+/// froze the interface for a quarter of a minute, with no progress and no
+/// way to stop it — not even Ctrl-C was read.
+pub struct ExportJob {
+    /// Receives how many messages were written, or the error.
+    rx: Receiver<Result<usize, String>>,
+    /// Set to `true` to ask the worker to stop after the current message.
+    cancel: Arc<AtomicBool>,
+    /// Messages written so far.
+    done: Arc<AtomicUsize>,
+    /// Messages to write.
+    total: usize,
+    format: ExportFormat,
+    output_dir: PathBuf,
 }
 
 /// Which panel currently has keyboard focus.
@@ -264,6 +296,9 @@ pub struct App {
     /// Depth info for each visible row when in threaded mode.
     /// Index corresponds to `visible_indices`.
     pub thread_depths: Vec<usize>,
+    /// Every message as `(entry index, depth)` in conversation order, built
+    /// the first time the threaded view is used.
+    thread_order: Option<Vec<(usize, usize)>>,
 
     // ── Sidebar / Labels ──────────────────────
     /// Whether the sidebar is visible.
@@ -293,6 +328,12 @@ pub struct App {
     pub search_result_index: usize,
     /// In-flight background full-text search, if any.
     pub search_job: Option<SearchJob>,
+    /// The messages the search bar is confined to while it is open: the
+    /// list as it was when `/` was pressed, with "search within previous
+    /// results" on. Typing narrows this set instead of the whole mailbox.
+    pub search_bar_scope: Option<HashSet<usize>>,
+    /// In-flight background export of the marked messages, if any.
+    pub export_job: Option<ExportJob>,
 
     // ── Search filter popup ──────────────────
     /// Whether the search filter popup is visible.
@@ -440,6 +481,7 @@ impl App {
             threaded_view: false,
             threads: Vec::new(),
             thread_depths: Vec::new(),
+            thread_order: None,
             show_sidebar: has_labels && config.display.show_sidebar,
             all_labels,
             label_counts,
@@ -451,6 +493,8 @@ impl App {
             search_results: Vec::new(),
             search_result_index: 0,
             search_job: None,
+            search_bar_scope: None,
+            export_job: None,
             show_search_filter: false,
             search_filter_focus: SearchFilterField::Text,
             filter_text: String::new(),
@@ -512,6 +556,10 @@ impl App {
             return;
         }
         self.selected = index;
+        // Keep the list scrolled to the selection. A search or filter that
+        // shortened the list while it was scrolled far down left the offset
+        // past its end, and the list drew empty until the next key press.
+        self.ensure_selected_visible();
         self.message_scroll_offset = 0;
         self.body_search_clear();
         self.load_selected_body();
@@ -565,6 +613,13 @@ impl App {
                 self.visible_indices = decorated.into_iter().map(|(_, i)| i).collect();
             }
         }
+        // In threaded view the rows follow the conversations, and each row's
+        // indentation belongs to that order. Re-sorting without rebuilding
+        // left the old indentation on reordered rows: a tree that was not
+        // there.
+        if self.threaded_view {
+            self.rebuild_threaded_view();
+        }
     }
 
     /// Change the sort column (toggles direction if same column clicked again).
@@ -594,7 +649,7 @@ impl App {
     pub fn toggle_threads(&mut self) {
         self.threaded_view = !self.threaded_view;
         if self.threaded_view {
-            self.rebuild_threaded_view();
+            self.apply_sort();
             self.set_status(i18n::tui_threaded_view());
         } else {
             self.thread_depths.clear();
@@ -606,32 +661,36 @@ impl App {
         }
     }
 
-    /// Rebuild the threaded view from current entries.
+    /// Arrange the visible messages by conversation.
+    ///
+    /// The threads are built once, from every message (better context than
+    /// the visible ones alone): the index never changes while the mailbox is
+    /// open, so each search, filter or sort only has to pick the visible rows
+    /// out of that order. Rebuilding them every time cost close to a second
+    /// per keystroke on a few hundred thousand messages.
     fn rebuild_threaded_view(&mut self) {
-        // Build threads from the entries matching visible_indices
-        let active_entries: Vec<&MailEntry> = self
-            .visible_indices
-            .iter()
-            .map(|&i| &self.entries[i])
-            .collect();
+        if self.thread_order.is_none() {
+            self.threads = threading::build_threads(&self.entries);
+            self.thread_order = Some(threading::flatten_threads_to_indices(&self.threads));
+        }
+        let Some(flat) = &self.thread_order else {
+            return;
+        };
 
-        // Use all entries for threading (better context), then filter
-        self.threads = threading::build_threads(&self.entries);
+        // Keep only the currently visible entries.
+        let mut visible = vec![false; self.entries.len()];
+        for &i in &self.visible_indices {
+            if let Some(slot) = visible.get_mut(i) {
+                *slot = true;
+            }
+        }
 
-        let flat = threading::flatten_threads_to_indices(&self.threads);
-
-        // Filter to only include currently visible entries
-        let visible_set: std::collections::HashSet<usize> =
-            self.visible_indices.iter().copied().collect();
-        drop(active_entries); // no longer needed
-
-        let mut new_indices = Vec::new();
-        let mut new_depths = Vec::new();
-
-        for (entry_idx, depth) in &flat {
-            if visible_set.contains(entry_idx) {
-                new_indices.push(*entry_idx);
-                new_depths.push(*depth);
+        let mut new_indices = Vec::with_capacity(self.visible_indices.len());
+        let mut new_depths = Vec::with_capacity(self.visible_indices.len());
+        for &(entry_idx, depth) in flat {
+            if visible.get(entry_idx).copied().unwrap_or(false) {
+                new_indices.push(entry_idx);
+                new_depths.push(depth);
             }
         }
 
@@ -658,6 +717,10 @@ impl App {
     /// Apply a label filter from the sidebar.
     /// `None` means show all messages, `Some(label)` filters to that label.
     pub fn apply_label_filter(&mut self, label: Option<String>) {
+        // A search still running was for the previous scope: its results
+        // must not land on top of the label view.
+        self.cancel_search();
+        self.search_bar_scope = None;
         self.active_label_filter = label.clone();
         self.search_query.clear();
         self.search_results.clear();
@@ -680,9 +743,6 @@ impl App {
             }
         }
         self.apply_sort();
-        if self.threaded_view {
-            self.rebuild_threaded_view();
-        }
         if !self.visible_indices.is_empty() {
             self.select_message(0);
         } else {
@@ -786,6 +846,17 @@ impl App {
         self.pending_html_view = Some(path);
     }
 
+    /// Whether anything can change on screen without a key press: a search
+    /// or export reporting progress, a query waiting to run, a status message
+    /// waiting to expire. While this is `false` and no key arrives, the main
+    /// loop does not redraw.
+    pub fn has_pending_work(&self) -> bool {
+        self.search_job.is_some()
+            || self.export_job.is_some()
+            || self.search_dirty_since.is_some()
+            || (self.status_message.is_some() && !self.status_sticky)
+    }
+
     /// Called every tick: clears expired status messages.
     pub fn tick(&mut self) {
         if let Some((_, when)) = &self.status_message {
@@ -806,7 +877,13 @@ impl App {
     pub fn execute_search(&mut self) {
         // A full search supersedes any debounced incremental recompute.
         self.search_dirty_since = None;
-        let restrict = self.search_restrict_set();
+        // The search bar's own scope (taken when it was opened) wins: by
+        // now the list shows what typing narrowed it to, not the previous
+        // results the search was meant to stay within.
+        let restrict = self
+            .search_bar_scope
+            .take()
+            .or_else(|| self.search_restrict_set());
         self.execute_search_restricted(restrict);
     }
 
@@ -911,6 +988,7 @@ impl App {
             cancel,
             progress,
             restrict,
+            query: self.search_query.clone(),
         });
         self.set_status(&format!(
             "{} ({})",
@@ -932,6 +1010,12 @@ impl App {
         match outcome {
             Ok(result) => {
                 if let Some(job) = self.search_job.take() {
+                    // The query on screen moved on while the scan ran (the
+                    // search was abandoned, or replaced by typing): these
+                    // results answer a question nobody is asking any more.
+                    if job.query != self.search_query {
+                        return;
+                    }
                     match result {
                         Ok(results) => self.apply_search_results(results, job.restrict),
                         Err(e) => {
@@ -966,8 +1050,134 @@ impl App {
                 self.set_status(&msg);
             }
             Err(TryRecvError::Disconnected) => {
+                // The worker went away without an answer (it panicked).
                 self.search_job = None;
+                self.set_sticky_status(&format!(
+                    "{}: {}",
+                    i18n::tui_search_error(),
+                    i18n::tui_worker_failed()
+                ));
             }
+        }
+    }
+
+    /// Export every marked message to `output_dir` on a background thread.
+    ///
+    /// The interface stays live meanwhile: the status line shows progress
+    /// and Esc stops the export (what was written stays). Results are
+    /// collected by [`poll_export`](Self::poll_export).
+    pub fn start_export_marked(&mut self, format: ExportFormat, output_dir: PathBuf) {
+        if self.export_job.is_some() {
+            self.set_sticky_status(i18n::tui_export_busy());
+            return;
+        }
+        let indices: Vec<usize> = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| self.marked.contains(&e.offset))
+            .map(|(i, _)| i)
+            .collect();
+        let total = indices.len();
+        let entries = Arc::clone(&self.entries);
+        let path = self.mbox_path.clone();
+        let dir = output_dir.clone();
+        let cancel = Arc::new(AtomicBool::new(false));
+        let done = Arc::new(AtomicUsize::new(0));
+        let (tx, rx) = mpsc::channel();
+
+        let cancel_worker = Arc::clone(&cancel);
+        let done_worker = Arc::clone(&done);
+        std::thread::spawn(move || {
+            let result = export_marked(
+                &path,
+                &entries,
+                &indices,
+                format,
+                &dir,
+                &cancel_worker,
+                &done_worker,
+            );
+            // The receiver may be gone (export cancelled, or the app quit).
+            let _ = tx.send(result.map_err(|e| e.to_string()));
+        });
+
+        self.export_job = Some(ExportJob {
+            rx,
+            cancel,
+            done,
+            total,
+            format,
+            output_dir,
+        });
+        self.set_status(&format!(
+            "{} 0/{total} ({})",
+            i18n::tui_exporting(),
+            i18n::tui_search_cancel_hint()
+        ));
+    }
+
+    /// Poll the in-flight background export (called once per event-loop tick).
+    pub fn poll_export(&mut self) {
+        let outcome = match &self.export_job {
+            Some(job) => job.rx.try_recv(),
+            None => return,
+        };
+        match outcome {
+            Ok(result) => {
+                let Some(job) = self.export_job.take() else {
+                    return;
+                };
+                match result {
+                    Ok(count) => {
+                        let what = match job.format {
+                            ExportFormat::Eml => i18n::tui_exported_messages_eml(),
+                            ExportFormat::Html => i18n::tui_exported_messages_html(),
+                            ExportFormat::Txt => i18n::tui_exported_messages_txt(),
+                        };
+                        self.set_sticky_status(&format!(
+                            "{} {count} {what} -> {}",
+                            i18n::tui_exported(),
+                            job.output_dir.display()
+                        ));
+                    }
+                    Err(e) => {
+                        self.set_sticky_status(&format!("{}: {e}", i18n::tui_export_error()));
+                    }
+                }
+            }
+            Err(TryRecvError::Empty) => {
+                let (done, total) = match &self.export_job {
+                    Some(job) => (job.done.load(Ordering::Relaxed), job.total),
+                    None => return,
+                };
+                self.set_status(&format!(
+                    "{} {done}/{total} ({})",
+                    i18n::tui_exporting(),
+                    i18n::tui_search_cancel_hint()
+                ));
+            }
+            Err(TryRecvError::Disconnected) => {
+                self.export_job = None;
+                self.set_sticky_status(&format!(
+                    "{}: {}",
+                    i18n::tui_export_error(),
+                    i18n::tui_worker_failed()
+                ));
+            }
+        }
+    }
+
+    /// Whether a background export is currently running.
+    pub fn export_in_progress(&self) -> bool {
+        self.export_job.is_some()
+    }
+
+    /// Stop the in-flight export after the message it is writing.
+    pub fn cancel_export(&mut self) {
+        if let Some(job) = self.export_job.take() {
+            job.cancel.store(true, Ordering::Relaxed);
+            self.set_sticky_status(i18n::tui_export_cancelled());
         }
     }
 
@@ -998,9 +1208,6 @@ impl App {
         self.visible_indices = results;
         self.search_result_index = 0;
         self.apply_sort();
-        if self.threaded_view {
-            self.rebuild_threaded_view();
-        }
         if !self.visible_indices.is_empty() {
             self.select_message(0);
         } else {
@@ -1053,19 +1260,26 @@ impl App {
     /// requires full-text search (body:), this skips filtering and shows all
     /// entries (full search runs on Enter).
     pub fn execute_incremental_search(&mut self) {
+        // Whatever a background scan was looking for, the query has changed.
+        self.cancel_search();
+
         if self.search_query.is_empty() {
-            // Restore all messages (respecting label filter)
-            if let Some(label) = self.active_label_filter.clone() {
-                self.visible_indices = self
+            // Restore all messages (respecting the search scope / label filter)
+            self.visible_indices = match (&self.search_bar_scope, &self.active_label_filter) {
+                (Some(scope), _) => {
+                    let mut v: Vec<usize> = scope.iter().copied().collect();
+                    v.sort_unstable();
+                    v
+                }
+                (None, Some(label)) => self
                     .entries
                     .iter()
                     .enumerate()
-                    .filter(|(_, e)| e.labels.iter().any(|l| l == &label))
+                    .filter(|(_, e)| e.labels.iter().any(|l| l == label))
                     .map(|(i, _)| i)
-                    .collect();
-            } else {
-                self.visible_indices = (0..self.entries.len()).collect();
-            }
+                    .collect(),
+                (None, None) => (0..self.entries.len()).collect(),
+            };
             self.apply_sort();
             if !self.visible_indices.is_empty() {
                 self.select_message(0);
@@ -1084,23 +1298,36 @@ impl App {
         // Single metadata pass. `search_metadata` already returns the matching
         // entry indices in ascending order, so we use them directly instead of
         // building a `(0..n)` base set and re-filtering it through a `HashSet`
-        // (the old double pass + extra allocation on every keystroke). When a
-        // sidebar label filter is active, narrow the results in one `retain`.
+        // (the old double pass + extra allocation on every keystroke). The
+        // scope — previous results, or the sidebar label — narrows them in
+        // one `retain`, the same way Enter will.
         let mut results = crate::search::metadata::search_metadata(&self.entries, &query);
-        if let Some(ref label) = self.active_label_filter {
+        if let Some(scope) = &self.search_bar_scope {
+            results.retain(|i| scope.contains(i));
+        } else if let Some(ref label) = self.active_label_filter {
             results.retain(|&i| self.entries[i].labels.iter().any(|l| l == label));
         }
         self.visible_indices = results;
 
         self.apply_sort();
-        if self.threaded_view {
-            self.rebuild_threaded_view();
-        }
         if !self.visible_indices.is_empty() {
             self.select_message(0);
         } else {
             self.current_body = None;
         }
+    }
+
+    /// Open the search bar over the current list.
+    ///
+    /// With "search within previous results" on, the list as it is now
+    /// becomes the scope of everything typed until the bar closes.
+    pub fn open_search_bar(&mut self) {
+        self.search_bar_scope = self
+            .filter_within_results
+            .then(|| self.visible_indices.iter().copied().collect());
+        self.search_active = true;
+        self.search_query.clear();
+        self.focus = PanelFocus::SearchBar;
     }
 
     /// Build a query string from the current filter popup fields.
@@ -1278,6 +1505,54 @@ impl App {
         self.body_search_index = (self.body_search_index + len - 1) % len;
         self.body_search_recenter = true;
     }
+}
+
+/// Body of the export worker thread: write `indices` of `entries` to `dir`,
+/// one file per message, until done or cancelled. Returns how many were
+/// written.
+fn export_marked(
+    mbox_path: &std::path::Path,
+    entries: &[MailEntry],
+    indices: &[usize],
+    format: ExportFormat,
+    dir: &std::path::Path,
+    cancel: &AtomicBool,
+    done: &AtomicUsize,
+) -> anyhow::Result<usize> {
+    use crate::export::html::{export_html_with, HtmlOptions, InlineImages};
+
+    std::fs::create_dir_all(dir)?;
+    // Its own store: the interface keeps reading the mailbox through `App`'s.
+    let mut store = MboxStore::open(mbox_path)?;
+    let mut written = 0;
+    for &i in indices {
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
+        let Some(entry) = entries.get(i) else {
+            continue;
+        };
+        match format {
+            ExportFormat::Eml => {
+                crate::export::eml::export_eml(&mut store, entry, dir)?;
+            }
+            ExportFormat::Html => {
+                let body = store.get_message(entry)?;
+                let opts = HtmlOptions {
+                    inline_images: InlineImages::load(&mut store, entry, &body)?,
+                    ..HtmlOptions::default()
+                };
+                export_html_with(entry, &body, dir, &opts)?;
+            }
+            ExportFormat::Txt => {
+                let body = store.get_message(entry)?;
+                crate::export::text::export_text(entry, &body, dir)?;
+            }
+        }
+        written += 1;
+        done.store(written, Ordering::Relaxed);
+    }
+    Ok(written)
 }
 
 /// Find every case-insensitive, non-overlapping occurrence of `needle` in

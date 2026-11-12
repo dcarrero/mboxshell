@@ -126,6 +126,9 @@ base64 = "0.22"
 # reliably brings a match into view on messages with long, wrapped lines).
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
 crossterm = "0.29"
+# SIGTERM/SIGHUP/SIGINT while the TUI owns the terminal (already in the tree
+# through crossterm; only its safe flag API is used)
+signal-hook = "0.3"
 
 # Distributed binaries: smaller and faster at the cost of slower release
 # builds (only paid on tag pushes).

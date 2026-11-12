@@ -729,6 +729,22 @@ msg!(
     "mensaje(s) como EML"
 );
 msg!(tui_exported, "Exported", "Exportado");
+msg!(tui_exporting, "Exporting", "Exportando");
+msg!(
+    tui_export_cancelled,
+    "Export cancelled; messages written so far are kept",
+    "Exportaci\u{f3}n cancelada; se conservan los mensajes ya escritos"
+);
+msg!(
+    tui_export_busy,
+    "An export is already running (Esc to cancel it)",
+    "Ya hay una exportaci\u{f3}n en curso (Esc para cancelarla)"
+);
+msg!(
+    tui_worker_failed,
+    "the background task stopped unexpectedly (see the log)",
+    "la tarea en segundo plano se detuvo inesperadamente (ver el log)"
+);
 msg!(tui_exported_csv, "message(s) as CSV", "mensaje(s) como CSV");
 msg!(
     tui_exported_messages_html,

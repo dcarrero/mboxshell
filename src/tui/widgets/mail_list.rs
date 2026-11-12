@@ -100,7 +100,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     .style(theme.list_header);
 
     // Virtual scrolling: only build rows for visible range
-    let start = app.list_scroll_offset;
+    // Never start past the end of the list, whatever shortened it.
+    let start = app
+        .list_scroll_offset
+        .min(app.visible_count().saturating_sub(1));
     let end = (start + viewport_height).min(app.visible_count());
 
     let rows: Vec<Row> = (start..end)

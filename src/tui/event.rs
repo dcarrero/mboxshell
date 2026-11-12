@@ -13,7 +13,9 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::i18n;
 
-use super::app::{App, LayoutMode, PanelFocus, SearchFilterField, SortColumn, SIZE_OPTIONS};
+use super::app::{
+    App, ExportFormat, LayoutMode, PanelFocus, SearchFilterField, SortColumn, SIZE_OPTIONS,
+};
 
 /// Process a key event and update the application state.
 pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
@@ -77,9 +79,13 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         return handle_search_filter_popup(app, key);
     }
 
-    // ── Cancel an in-flight background search with Esc ────
+    // ── Cancel an in-flight background search or export with Esc ────
     if app.search_in_progress() && key.code == KeyCode::Esc {
         app.cancel_search();
+        return Ok(());
+    }
+    if app.export_in_progress() && key.code == KeyCode::Esc {
+        app.cancel_export();
         return Ok(());
     }
 
@@ -112,9 +118,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         (_, KeyCode::Char('/'))
             if app.focus != PanelFocus::Sidebar && app.focus != PanelFocus::MailView =>
         {
-            app.search_active = true;
-            app.search_query.clear();
-            app.focus = PanelFocus::SearchBar;
+            app.open_search_bar();
             return Ok(());
         }
         // Layout shortcuts
@@ -310,6 +314,7 @@ fn handle_mail_list_keys(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
         KeyCode::Char('S') => {
             app.sort_ascending = !app.sort_ascending;
             app.apply_sort();
+            app.ensure_selected_visible();
         }
 
         // ── Feature toggles ─────────────────────────────────
@@ -668,23 +673,30 @@ fn default_download_dir() -> PathBuf {
     dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
+/// Hand the marked messages to a background export and return the status
+/// line to show while it runs.
+fn export_marked_in_background(
+    app: &mut App,
+    format: ExportFormat,
+    output_dir: &std::path::Path,
+) -> String {
+    app.start_export_marked(format, output_dir.to_path_buf());
+    // `start_export_marked` set the status (progress, or "already running").
+    app.status_message
+        .as_ref()
+        .map(|(msg, _)| msg.clone())
+        .unwrap_or_default()
+}
+
 /// Export the current (or marked) message(s) as EML.
 fn export_current_eml(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<String> {
     std::fs::create_dir_all(output_dir)?;
 
     if !app.marked.is_empty() {
-        let entries: Vec<&crate::model::mail::MailEntry> = app
-            .entries
-            .iter()
-            .filter(|e| app.marked.contains(&e.offset))
-            .collect();
-        let count = entries.len();
-        crate::export::eml::export_multiple_eml(&mut app.store, &entries, output_dir, &|_, _| {})?;
-        Ok(format!(
-            "{} {count} {} -> {}",
-            i18n::tui_exported(),
-            i18n::tui_exported_messages_eml(),
-            output_dir.display()
+        Ok(export_marked_in_background(
+            app,
+            ExportFormat::Eml,
+            output_dir,
         ))
     } else if let Some(entry) = app.current_entry().cloned() {
         let path = crate::export::eml::export_eml(&mut app.store, &entry, output_dir)?;
@@ -722,22 +734,10 @@ fn export_current_html(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<St
     std::fs::create_dir_all(output_dir)?;
 
     if !app.marked.is_empty() {
-        let entries: Vec<crate::model::mail::MailEntry> = app
-            .entries
-            .iter()
-            .filter(|e| app.marked.contains(&e.offset))
-            .cloned()
-            .collect();
-        let count = entries.len();
-        for entry in &entries {
-            let body = app.store.get_message(entry)?;
-            export_html_with_images(app, entry, &body, output_dir)?;
-        }
-        Ok(format!(
-            "{} {count} {} -> {}",
-            i18n::tui_exported(),
-            i18n::tui_exported_messages_html(),
-            output_dir.display()
+        Ok(export_marked_in_background(
+            app,
+            ExportFormat::Html,
+            output_dir,
         ))
     } else if let (Some(entry), Some(body)) =
         (app.current_entry().cloned(), app.current_body.clone())
@@ -762,22 +762,10 @@ fn export_current_txt(app: &mut App, output_dir: &PathBuf) -> anyhow::Result<Str
     std::fs::create_dir_all(output_dir)?;
 
     if !app.marked.is_empty() {
-        let entries: Vec<crate::model::mail::MailEntry> = app
-            .entries
-            .iter()
-            .filter(|e| app.marked.contains(&e.offset))
-            .cloned()
-            .collect();
-        let count = entries.len();
-        for entry in &entries {
-            let body = app.store.get_message(entry)?;
-            crate::export::text::export_text(entry, &body, output_dir)?;
-        }
-        Ok(format!(
-            "{} {count} {} -> {}",
-            i18n::tui_exported(),
-            i18n::tui_exported_messages_txt(),
-            output_dir.display()
+        Ok(export_marked_in_background(
+            app,
+            ExportFormat::Txt,
+            output_dir,
         ))
     } else if let (Some(entry), Some(body)) =
         (app.current_entry().cloned(), app.current_body.clone())
@@ -873,8 +861,11 @@ fn handle_search_input(app: &mut App, key: KeyEvent) -> anyhow::Result<()> {
             app.search_active = false;
             app.search_history_index = None;
             app.focus = PanelFocus::MailList;
-            // Abandon any debounced incremental recompute for the closed query.
+            // Abandon any debounced incremental recompute for the closed query,
+            // and any background scan still running for an earlier one.
             app.cancel_pending_incremental_search();
+            app.cancel_search();
+            app.search_bar_scope = None;
             // Leaving the search resets the scope, so drop within-results mode.
             app.filter_within_results = false;
             // Reset to show all messages (respecting active label filter)
@@ -1209,8 +1200,35 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let out = tmp.path().to_path_buf();
 
+        // Marked messages are exported on a background thread: wait for it
+        // the way the main loop does, by polling.
+        fn wait_for_export(app: &mut App) {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+            while app.export_in_progress() {
+                assert!(std::time::Instant::now() < deadline, "export never ended");
+                std::thread::sleep(std::time::Duration::from_millis(5));
+                app.poll_export();
+            }
+        }
+
         export_current_html(&mut app, &out).unwrap();
+        assert!(app.export_in_progress(), "the key handler must not block");
+        // A second export while one runs is refused, not queued on top.
         export_current_txt(&mut app, &out).unwrap();
+        wait_for_export(&mut app);
+        let status = app
+            .status_message
+            .clone()
+            .map(|(m, _)| m)
+            .unwrap_or_default();
+        assert!(
+            status.contains("2 "),
+            "final status reports the count: {status}"
+        );
+        assert!(app.status_sticky);
+
+        export_current_txt(&mut app, &out).unwrap();
+        wait_for_export(&mut app);
 
         let count_ext = |ext: &str| {
             std::fs::read_dir(&out)
@@ -1221,6 +1239,126 @@ mod tests {
         };
         assert_eq!(count_ext("html"), 2, "one HTML file per marked message");
         assert_eq!(count_ext("txt"), 2, "one TXT file per marked message");
+    }
+
+    #[test]
+    fn export_of_marked_messages_can_be_cancelled_with_esc() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.marked.insert(app.entries[0].offset);
+        let tmp = tempfile::tempdir().unwrap();
+        export_current_eml(&mut app, &tmp.path().to_path_buf()).unwrap();
+        assert!(app.export_in_progress());
+        handle_key_event(&mut app, key(KeyCode::Esc, KeyModifiers::NONE)).unwrap();
+        assert!(!app.export_in_progress());
+        assert!(app.has_pending_work() || app.status_sticky);
+    }
+
+    /// A list scrolled far down and then shortened by a search drew empty:
+    /// the scroll offset stayed past the end of the new list.
+    #[test]
+    fn list_scroll_follows_the_selection_after_a_search() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.list_viewport_height = 2;
+        let last = app.visible_count() - 1;
+        app.select_message(last);
+        assert!(app.list_scroll_offset > 0);
+
+        app.search_query = format!("id:{}", app.entries[0].message_id);
+        app.execute_search();
+        assert!(app.visible_count() < last + 1);
+        assert_eq!(app.selected, 0);
+        assert_eq!(
+            app.list_scroll_offset, 0,
+            "the first result must be on screen"
+        );
+    }
+
+    /// A background search that was abandoned must not replace the view when
+    /// it finally answers.
+    #[test]
+    fn abandoned_background_search_does_not_overwrite_the_view() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        let all = app.visible_count();
+
+        // Esc in the search bar while a body search is running.
+        app.search_query = "body:zzzz-not-there".into();
+        app.execute_search();
+        assert!(app.search_in_progress());
+        app.search_active = true;
+        handle_key_event(&mut app, key(KeyCode::Esc, KeyModifiers::NONE)).unwrap();
+        assert!(!app.search_in_progress());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        app.poll_search();
+        assert_eq!(
+            app.visible_count(),
+            all,
+            "the abandoned search changed the list"
+        );
+
+        // A label filter applied while a body search is running.
+        app.search_query = "body:zzzz-not-there".into();
+        app.execute_search();
+        app.apply_label_filter(None);
+        assert!(!app.search_in_progress());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        app.poll_search();
+        assert_eq!(app.visible_count(), all);
+    }
+
+    /// With "search within previous results" on, typing in the search bar
+    /// narrows the previous results, not the whole mailbox.
+    #[test]
+    fn search_bar_typing_stays_within_previous_results() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        assert!(app.entries.len() >= 3);
+        // "Previous results": just the first two messages of the mailbox.
+        app.visible_indices = vec![0, 1];
+        app.filter_within_results = true;
+        app.open_search_bar();
+
+        // A query every message matches.
+        app.search_query = "size:>0b".into();
+        app.execute_incremental_search();
+        let mut shown = app.visible_indices.clone();
+        shown.sort_unstable();
+        assert_eq!(shown, vec![0, 1], "typing must stay inside the scope");
+
+        // Clearing the query brings the scope back, not the whole mailbox.
+        app.search_query.clear();
+        app.execute_incremental_search();
+        assert_eq!(app.visible_count(), 2);
+
+        // Enter confirms inside the same scope.
+        app.search_query = "size:>0b".into();
+        app.execute_search();
+        assert_eq!(app.visible_count(), 2);
+        assert!(
+            app.search_bar_scope.is_none(),
+            "the scope ends with the bar"
+        );
+    }
+
+    /// Sorting in threaded view keeps rows and indentation in step.
+    #[test]
+    fn sorting_in_threaded_view_keeps_the_tree_consistent() {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.toggle_threads();
+        let before: Vec<(usize, usize)> = app
+            .visible_indices
+            .iter()
+            .copied()
+            .zip(app.thread_depths.iter().copied())
+            .collect();
+        handle_key_event(&mut app, key(KeyCode::Char('s'), KeyModifiers::NONE)).unwrap();
+        handle_key_event(&mut app, key(KeyCode::Char('S'), KeyModifiers::NONE)).unwrap();
+        let after: Vec<(usize, usize)> = app
+            .visible_indices
+            .iter()
+            .copied()
+            .zip(app.thread_depths.iter().copied())
+            .collect();
+        assert_eq!(before, after);
+        assert_eq!(app.visible_indices.len(), app.thread_depths.len());
     }
 
     /// Regression for the mark-all (`*`) toggle: it must act on the visible set,

@@ -73,48 +73,44 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     // Reuse the cached styled render when nothing that affects the lines has
     // changed. The key captures every input build_lines reads, so a match means
     // the cache is still correct — no per-frame re-sanitize/re-style, and the
-    // wrapped-row count (`line_count`, a full word-wrap) is computed once per
-    // rebuild instead of every frame.
+    // wrapped-row layout (a full word-wrap) is computed once per rebuild
+    // instead of every frame.
     let key = RenderKey {
         offset: entry_offset,
         width: body_width,
         show_raw: app.show_raw,
         show_full_headers: app.show_full_headers,
-        body_search_index: app.body_search_index,
         body_search_gen: app.body_search_gen,
     };
     let fresh = app.render_cache.as_ref().is_some_and(|c| c.key == key);
     if !fresh {
         let (lines, body_line_start) = build_lines(app, &theme, sep_width);
-        let total_wrapped = Paragraph::new(lines.clone())
-            .wrap(Wrap { trim: false })
-            .line_count(body_width)
-            .max(1);
+        let row_starts = wrapped_row_starts(&lines, body_width);
         app.render_cache = Some(CachedRender {
             key,
             lines,
-            total_wrapped,
+            row_starts,
             body_line_start,
+            active_match: app.body_search_index,
         });
     }
-    // Take the (now fresh) cached values for this frame. Cloning the lines is
-    // the price of ratatui consuming them in `Paragraph::new`; it still skips
-    // the sanitize/style work of a rebuild.
-    let (lines, total_wrapped, body_line_start) = match app.render_cache.as_ref() {
-        Some(c) => (c.lines.clone(), c.total_wrapped, c.body_line_start),
-        None => return,
+    // `n`/`N` only move the emphasis from one match to another: restyle
+    // those two lines instead of rebuilding (and re-wrapping) the whole body.
+    restyle_active_match(app, &theme);
+
+    let Some(cache) = app.render_cache.as_ref() else {
+        return;
     };
+    let total_wrapped = cache.total_rows();
+    let body_line_start = cache.body_line_start;
     app.body_line_start = body_line_start;
 
     // Bring the focused in-body match into view, if navigation requested it.
-    // We measure the wrapped rows preceding the match's line and centre on it,
+    // The rows before the match's line come straight from the wrapped layout,
     // so the match lands inside the viewport regardless of earlier wrapping.
     if app.body_search_recenter {
         if let Some(m) = app.body_search_matches.get(app.body_search_index) {
-            let target = (body_line_start + m.line).min(lines.len());
-            let rows_before = Paragraph::new(lines[..target].to_vec())
-                .wrap(Wrap { trim: false })
-                .line_count(body_width);
+            let rows_before = cache.rows_before(body_line_start + m.line);
             app.message_scroll_offset = rows_before.saturating_sub(visible_height / 2);
         }
         app.body_search_recenter = false;
@@ -122,6 +118,18 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let max_scroll = total_wrapped.saturating_sub(visible_height);
     let scroll = app.message_scroll_offset.min(max_scroll);
+
+    // Only the lines that can reach the viewport are handed to ratatui.
+    // Giving it the whole message made every frame cost time proportional to
+    // the scroll position (0.1 s per frame at the end of a 4 MB body), and
+    // its scroll offset is a `u16`: past row 65 535 the view wrapped around
+    // to the top and the rest of the message could not be read at all.
+    let (first_line, skip_rows) = cache.locate(scroll);
+    let last_line = (first_line + visible_height.max(1)).min(cache.lines.len());
+    let window: Vec<Line<'static>> = cache.lines[first_line..last_line].to_vec();
+    // Within one line: only a single line wrapping over more than 65 535
+    // rows could exceed this.
+    let skip_rows = u16::try_from(skip_rows).unwrap_or(u16::MAX);
 
     // Build the scroll indicator for the bottom border (e.g. "[ ↕ 45% ]"),
     // appending an in-body search match counter when a search is active.
@@ -139,8 +147,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         super::body_search_bar::render(frame, app, prompt_area);
     }
 
-    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
-    frame.render_widget(paragraph.scroll((scroll as u16, 0)), body_area);
+    let paragraph = Paragraph::new(window).wrap(Wrap { trim: false });
+    frame.render_widget(paragraph.scroll((skip_rows, 0)), body_area);
 
     // With focus here, the terminal cursor marks the first visible line so
     // screen readers and magnifiers follow the scrolling body. (An open
@@ -190,19 +198,22 @@ fn scroll_indicator<'a>(
 /// When the in-body search has matches on this line, those matches are
 /// highlighted (the focused one is emphasised) and URL colouring is skipped for
 /// the line. Otherwise the line falls back to plain URL highlighting.
+///
+/// `line_matches` are the matches on this line only, and `active` the
+/// position of the focused one among them. Passing every match of the body
+/// and filtering here made the build quadratic: typing one common letter
+/// into the search of a 4 MB message froze the interface for ten seconds.
 fn style_body_line<'a>(
     line: &str,
     theme: &crate::tui::theme::Theme,
-    matches: &[BodyMatch],
-    active_index: usize,
-    line_idx: usize,
+    line_matches: &[BodyMatch],
+    active: Option<usize>,
 ) -> Line<'a> {
-    // Collect this line's matches in reading order, tagging the focused one.
-    let hits: Vec<(usize, usize, bool)> = matches
+    // This line's matches in reading order, tagging the focused one.
+    let hits: Vec<(usize, usize, bool)> = line_matches
         .iter()
         .enumerate()
-        .filter(|(_, m)| m.line == line_idx)
-        .map(|(global_idx, m)| (m.start, m.end, global_idx == active_index))
+        .map(|(i, m)| (m.start, m.end, active == Some(i)))
         .collect();
 
     if hits.is_empty() {
@@ -285,8 +296,9 @@ fn style_urls<'a>(line: &str, theme: &crate::tui::theme::Theme) -> Line<'a> {
 /// Two renders with an equal key produce byte-identical `lines`, so the cached
 /// build can be reused. The key therefore lists every input the line-building
 /// reads: which message (`offset`), the wrap width, the two view-mode toggles,
-/// and the in-body-search state (focused index + a generation counter bumped
-/// whenever the match set is rebuilt).
+/// and the in-body-search match set (a generation counter bumped whenever it
+/// is rebuilt). Which match is focused is not part of the key: moving the
+/// focus restyles two lines of the cached render in place.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct RenderKey {
     /// MBOX offset of the selected message (its identity in the index).
@@ -297,8 +309,6 @@ pub struct RenderKey {
     pub show_raw: bool,
     /// Full-headers view toggle.
     pub show_full_headers: bool,
-    /// Focused in-body match (changes highlight emphasis via `n`/`N`).
-    pub body_search_index: usize,
     /// In-body match-set generation (bumped on open/clear/recompute).
     pub body_search_gen: u64,
 }
@@ -313,10 +323,116 @@ pub struct CachedRender {
     pub key: RenderKey,
     /// Fully styled lines, ready to hand to a `Paragraph`.
     pub lines: Vec<Line<'static>>,
-    /// Number of wrapped rows at `key.width` (drives `max_scroll`).
-    pub total_wrapped: usize,
+    /// `row_starts[i]` is the wrapped row at which line `i` begins, at
+    /// `key.width`; one extra entry at the end holds the total row count.
+    pub row_starts: Vec<usize>,
     /// Absolute line index where the body text begins.
     pub body_line_start: usize,
+    /// The in-body match drawn as focused.
+    pub active_match: usize,
+}
+
+impl CachedRender {
+    /// Number of wrapped rows of the whole message (at least 1).
+    pub fn total_rows(&self) -> usize {
+        self.row_starts.last().copied().unwrap_or(0).max(1)
+    }
+
+    /// Wrapped rows above line `line`.
+    fn rows_before(&self, line: usize) -> usize {
+        let line = line.min(self.lines.len());
+        self.row_starts.get(line).copied().unwrap_or(0)
+    }
+
+    /// The line that wrapped row `row` falls in, and how many of that line's
+    /// own rows precede it.
+    fn locate(&self, row: usize) -> (usize, usize) {
+        if self.lines.is_empty() {
+            return (0, 0);
+        }
+        // Last line whose first row is at or before `row`.
+        let line = self.row_starts[..self.lines.len()]
+            .partition_point(|&start| start <= row)
+            .saturating_sub(1);
+        (line, row - self.row_starts[line])
+    }
+}
+
+/// For each line, the wrapped row it starts at when drawn `width` columns
+/// wide, plus a final entry with the total.
+fn wrapped_row_starts(lines: &[Line<'_>], width: u16) -> Vec<usize> {
+    let mut starts = Vec::with_capacity(lines.len() + 1);
+    let mut row = 0usize;
+    for line in lines {
+        starts.push(row);
+        // A line that fits is one row; only longer ones need the real
+        // word-wrap to be counted.
+        row += if width == 0 || line.width() <= usize::from(width) {
+            1
+        } else {
+            Paragraph::new(line.clone())
+                .wrap(Wrap { trim: false })
+                .line_count(width)
+                .max(1)
+        };
+    }
+    starts.push(row);
+    starts
+}
+
+/// The matches of `matches` (sorted by line) that sit on body line `line`,
+/// as a range of indices.
+fn matches_on_line(matches: &[BodyMatch], line: usize) -> std::ops::Range<usize> {
+    let start = matches.partition_point(|m| m.line < line);
+    let end = start + matches[start..].partition_point(|m| m.line == line);
+    start..end
+}
+
+/// Move the "focused match" emphasis in the cached render to the match the
+/// app now points at, restyling only the lines involved.
+fn restyle_active_match(app: &mut App, theme: &crate::tui::theme::Theme) {
+    let Some(previous) = app.render_cache.as_ref().map(|c| c.active_match) else {
+        return;
+    };
+    let current = app.body_search_index;
+    if previous == current {
+        return;
+    }
+    let matches = &app.body_search_matches;
+    let mut body_lines: Vec<usize> = [previous, current]
+        .iter()
+        .filter_map(|&i| matches.get(i).map(|m| m.line))
+        .collect();
+    body_lines.dedup();
+
+    let mut restyled: Vec<(usize, Line<'static>)> = Vec::with_capacity(2);
+    if let Some(text) = app.current_body.as_ref().and_then(|b| b.text.as_deref()) {
+        for &body_line in &body_lines {
+            // Same text the build styled: the body's line, sanitized.
+            let Some(raw) = text.lines().nth(body_line) else {
+                continue;
+            };
+            let line = sanitize_line(raw);
+            let range = matches_on_line(matches, body_line);
+            let active = current
+                .checked_sub(range.start)
+                .filter(|i| *i < range.len());
+            restyled.push((
+                body_line,
+                style_body_line(&line, theme, &matches[range], active),
+            ));
+        }
+    }
+
+    if let Some(cache) = app.render_cache.as_mut() {
+        for (body_line, styled) in restyled {
+            // Same text, new colours: the wrapped layout is unchanged.
+            if let Some(slot) = cache.lines.get_mut(cache.body_line_start + body_line) {
+                *slot = styled;
+            }
+        }
+        cache.active_match = current;
+    }
 }
 
 /// Build the fully-styled lines for the current message view.
@@ -348,13 +464,12 @@ fn build_lines(
                 )));
             }
             lines.push(Line::from(""));
+            // The in-body search works here too: its matches are anchored
+            // to where the text starts. (It was left at 0, so `n`/`N`
+            // scrolled to the wrong place and nothing was highlighted.)
+            body_line_start = lines.len();
             if let Some(text) = &body.text {
-                for line in text.lines() {
-                    lines.push(Line::from(Span::styled(
-                        sanitize_line(line).into_owned(),
-                        theme.message_body,
-                    )));
-                }
+                push_body_lines(&mut lines, text, app, theme);
             }
         }
     } else {
@@ -457,21 +572,7 @@ fn build_lines(
         body_line_start = lines.len();
         if let Some(body) = &app.current_body {
             if let Some(text) = &body.text {
-                for (idx, line) in text.lines().enumerate() {
-                    // Sanitize before styling. The in-body search sanitizes the
-                    // same way, so match byte ranges line up with what is shown.
-                    let line = sanitize_line(line);
-                    // Highlight in-body search matches when present, otherwise
-                    // fall back to plain URL detection.
-                    let styled_line = style_body_line(
-                        &line,
-                        theme,
-                        &app.body_search_matches,
-                        app.body_search_index,
-                        idx,
-                    );
-                    lines.push(styled_line);
-                }
+                push_body_lines(&mut lines, text, app, theme);
             } else {
                 lines.push(Line::from(Span::styled(
                     i18n::tui_no_text_content(),
@@ -503,6 +604,34 @@ fn build_lines(
     }
 
     (lines, body_line_start)
+}
+
+/// Append the body text, one styled line per text line, highlighting the
+/// in-body search matches (or URLs where there are none).
+fn push_body_lines(
+    lines: &mut Vec<Line<'static>>,
+    text: &str,
+    app: &App,
+    theme: &crate::tui::theme::Theme,
+) {
+    let matches = &app.body_search_matches;
+    // The matches are in reading order, so one cursor walks them alongside
+    // the lines.
+    let mut next = 0;
+    for (idx, line) in text.lines().enumerate() {
+        let start = next;
+        while matches.get(next).is_some_and(|m| m.line == idx) {
+            next += 1;
+        }
+        // Sanitize before styling. The in-body search sanitizes the same
+        // way, so match byte ranges line up with what is shown.
+        let line = sanitize_line(line);
+        let active = app
+            .body_search_index
+            .checked_sub(start)
+            .filter(|i| *i < next - start);
+        lines.push(style_body_line(&line, theme, &matches[start..next], active));
+    }
 }
 
 #[cfg(test)]
@@ -571,6 +700,135 @@ mod render_tests {
         );
     }
 
+    fn app_with_body(text: String) -> App {
+        let mut app = App::new(fixture("simple.mbox"), true).expect("open fixture");
+        app.current_body = Some(std::rc::Rc::new(MailBody {
+            text: Some(text),
+            html: None,
+            raw_headers: "X-Test: 1".to_string(),
+            attachments: Vec::new(),
+        }));
+        app.layout = LayoutMode::HorizontalSplit;
+        app.focus = PanelFocus::MailView;
+        app
+    }
+
+    fn draw(app: &mut App, width: u16, height: u16) -> String {
+        let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
+        term.draw(|f| crate::tui::ui::render(f, app)).expect("draw");
+        rendered_rows(&term)
+    }
+
+    /// ratatui scrolls by a `u16`: past row 65 535 the view wrapped back to
+    /// the top, so the end of a long message could not be read.
+    #[test]
+    fn body_beyond_65535_rows_is_reachable() {
+        let text: String = (0..70_000).map(|i| format!("line {i:05} x\n")).collect();
+        let mut app = app_with_body(text);
+
+        app.message_scroll_offset = 66_000;
+        let screen = draw(&mut app, 60, 30);
+        assert!(screen.contains("line 6599"), "{screen}");
+        assert!(!screen.contains("line 00"), "wrapped to the top:\n{screen}");
+
+        // The very end.
+        app.message_scroll_offset = usize::MAX / 2;
+        let screen = draw(&mut app, 60, 30);
+        assert!(screen.contains("line 69999"), "{screen}");
+
+        // And in-body search reaches a match down there.
+        app.body_search_query = "line 68000".to_string();
+        app.recompute_body_matches();
+        assert_eq!(app.body_search_matches.len(), 1);
+        let screen = draw(&mut app, 60, 30);
+        assert!(screen.contains("line 68000"), "{screen}");
+    }
+
+    /// Scrolling by wrapped rows lands on the same text a full render would
+    /// show, including in the middle of a wrapped line.
+    #[test]
+    fn windowed_render_matches_row_arithmetic() {
+        let mut text = String::new();
+        for i in 0..200 {
+            text.push_str(&format!("p{i:03} {}\n", "word ".repeat(30)));
+        }
+        let mut app = app_with_body(text);
+        let _ = draw(&mut app, 50, 20);
+        let cache = app.render_cache.as_ref().expect("cache");
+        let total = cache.total_rows();
+        assert!(total > 600, "lines must wrap: {total}");
+        // Every line starts where the previous ones end.
+        assert_eq!(cache.row_starts.len(), cache.lines.len() + 1);
+        for row in [0, 1, 7, 250, total - 1] {
+            let (line, skip) = cache.locate(row);
+            assert_eq!(cache.row_starts[line] + skip, row);
+            assert!(row < cache.row_starts[line + 1]);
+        }
+        // Scrolled to the start of paragraph 100: it is the first thing shown.
+        let p100 = cache.body_line_start + 100;
+        app.message_scroll_offset = cache.rows_before(p100);
+        let screen = draw(&mut app, 50, 20);
+        let body: Vec<&str> = screen.lines().filter(|l| l.contains("word")).collect();
+        let first = screen
+            .lines()
+            .find(|l| l.contains("p1") || l.contains("p0"));
+        assert!(first.is_some_and(|l| l.contains("p100")), "{screen}");
+        assert!(!body.is_empty());
+    }
+
+    /// Typing one common letter into the search of a large body used to take
+    /// time quadratic in its size.
+    #[test]
+    fn in_body_search_with_many_matches_is_fast_and_n_moves_the_focus() {
+        let text = "la casa de la abuela esta en la plaza\n".repeat(20_000);
+        let mut app = app_with_body(text);
+        app.body_search_query = "a".to_string();
+
+        let started = std::time::Instant::now();
+        app.recompute_body_matches();
+        assert_eq!(app.body_search_matches.len(), 200_000);
+        let _ = draw(&mut app, 80, 30);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(20),
+            "took {:?}",
+            started.elapsed()
+        );
+
+        // `n` restyles in place: the cached render is not rebuilt.
+        let key = app.render_cache.as_ref().map(|c| c.key.clone());
+        let focused = |app: &App| {
+            let cache = app.render_cache.as_ref().expect("cache");
+            let line = &cache.lines[cache.body_line_start];
+            line.spans
+                .iter()
+                .position(|s| s.style.add_modifier.contains(super::Modifier::REVERSED))
+        };
+        assert_eq!(focused(&app), Some(1), "first match focused");
+        app.body_search_next();
+        let _ = draw(&mut app, 80, 30);
+        assert_eq!(app.render_cache.as_ref().map(|c| c.key.clone()), key);
+        assert_eq!(focused(&app), Some(3), "focus moved to the second match");
+        app.body_search_prev();
+        let _ = draw(&mut app, 80, 30);
+        assert_eq!(focused(&app), Some(1));
+    }
+
+    /// In raw view the in-body search highlights and scrolls like anywhere else.
+    #[test]
+    fn in_body_search_works_in_raw_view() {
+        let mut text = "filler\n".repeat(300);
+        text.push_str("the RAWNEEDLE is here\n");
+        let mut app = app_with_body(text);
+        app.show_raw = true;
+        app.body_search_query = "RAWNEEDLE".to_string();
+        app.recompute_body_matches();
+        let screen = draw(&mut app, 60, 20);
+        assert!(screen.contains("RAWNEEDLE"), "{screen}");
+        let cache = app.render_cache.as_ref().expect("cache");
+        let line = &cache.lines[cache.body_line_start + 300];
+        assert!(line.spans.len() > 1, "the match is highlighted");
+    }
+
     /// Smoke test: the full UI renders in every layout plus the help overlay
     /// without panicking and produces a non-empty frame. Guards the ratatui
     /// render pipeline (notably across the 0.30 upgrade).
@@ -619,7 +877,6 @@ mod render_tests {
             width: 80,
             show_raw: false,
             show_full_headers: false,
-            body_search_index: 0,
             body_search_gen: 0,
         };
         assert_eq!(base, base.clone(), "identical inputs → cache hit");
@@ -648,13 +905,6 @@ mod render_tests {
             base,
             RenderKey {
                 show_full_headers: true,
-                ..base.clone()
-            }
-        );
-        assert_ne!(
-            base,
-            RenderKey {
-                body_search_index: 1,
                 ..base.clone()
             }
         );

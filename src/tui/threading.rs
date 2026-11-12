@@ -130,28 +130,43 @@ pub fn build_threads(entries: &[MailEntry]) -> Vec<Thread> {
                 continue;
             }
 
-            // Check for cycles before linking
-            if would_create_cycle(&containers, parent_id, child_id) {
+            // Already linked this way: the usual case, since every reply
+            // repeats the whole chain of its ancestors in `References`.
+            // Re-checking each of those links made a 2000-message chain take
+            // seconds.
+            let (already_linked, child_is_leaf) = match containers.get(child_id) {
+                Some(child) => (
+                    child.parent.as_deref() == Some(parent_id.as_str()),
+                    child.children.is_empty(),
+                ),
+                None => continue,
+            };
+            if already_linked {
+                continue;
+            }
+
+            // Check for cycles before linking. A container without children
+            // is nobody's ancestor, so it cannot close a loop.
+            if !child_is_leaf && would_create_cycle(&containers, parent_id, child_id) {
                 continue;
             }
 
             // Remove child from its old parent (if any)
             if let Some(old_parent_id) = containers.get(child_id).and_then(|c| c.parent.clone()) {
-                if old_parent_id != *parent_id {
-                    if let Some(old_parent) = containers.get_mut(&old_parent_id) {
-                        old_parent.children.retain(|c| c != child_id);
-                    }
+                if let Some(old_parent) = containers.get_mut(&old_parent_id) {
+                    old_parent.children.retain(|c| c != child_id);
                 }
             }
 
-            // Set new parent
+            // Set new parent. The child is in a parent's `children` exactly
+            // when that is its `parent`, and it was not ours until now, so
+            // there is nothing to search for before pushing (searching made
+            // one message with 50 000 direct replies quadratic).
             if let Some(child) = containers.get_mut(child_id) {
                 child.parent = Some(parent_id.clone());
             }
             if let Some(parent) = containers.get_mut(parent_id) {
-                if !parent.children.contains(child_id) {
-                    parent.children.push(child_id.clone());
-                }
+                parent.children.push(child_id.clone());
             }
         }
     }
@@ -249,21 +264,30 @@ fn would_create_cycle(
     child_id: &str,
 ) -> bool {
     // Walk up from parent_id; if we reach child_id, it's a cycle
-    let mut current = Some(parent_id.to_string());
-    let mut depth = 0;
-    while let Some(ref id) = current {
+    let mut current = Some(parent_id);
+    let mut depth = 0usize;
+    while let Some(id) = current {
         if id == child_id {
             return true;
         }
         depth += 1;
-        if depth > 100 {
-            // Safety: break on deep chains
+        if depth > MAX_CYCLE_WALK {
+            // Longer than any real conversation: refuse the link rather
+            // than keep walking.
             return true;
         }
-        current = containers.get(id.as_str()).and_then(|c| c.parent.clone());
+        current = containers.get(id).and_then(|c| c.parent.as_deref());
     }
     false
 }
+
+/// Longest ancestor chain [`would_create_cycle`] follows.
+///
+/// It used to be 100, and giving up meant refusing the link: a real thread
+/// deeper than that was cut into pieces of 100 messages. The walk only runs
+/// when a message that already has replies gets a new parent, so a generous
+/// limit costs nothing on ordinary mailboxes.
+const MAX_CYCLE_WALK: usize = 100_000;
 
 /// Flatten a container and its descendants into `(entry_index, depth)`,
 /// in pre-order with siblings sorted by date.
@@ -508,6 +532,76 @@ mod tests {
         a.thread_id = Some("111".to_string());
         b.thread_id = Some("222".to_string());
         assert_eq!(build_threads(&[a, b]).len(), 2);
+    }
+
+    #[test]
+    fn test_long_chain_with_full_references_is_one_thread_and_fast() {
+        // Oldest first, each message listing every ancestor in References —
+        // what a mailing-list archive looks like. This used to take seconds
+        // (every link re-checked for every message) and, past 100 levels,
+        // the thread was cut into pieces.
+        let base = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        let n: u64 = 1_500;
+        let ids: Vec<String> = (0..n).map(|i| format!("<c{i}@example.invalid>")).collect();
+        let entries: Vec<MailEntry> = (0..n)
+            .map(|i| {
+                let refs: Vec<&str> = ids[..i as usize].iter().map(String::as_str).collect();
+                let date = base + chrono::Duration::seconds(i as i64);
+                make_entry(i, &ids[i as usize], None, refs, "Chain", date)
+            })
+            .collect();
+        let started = std::time::Instant::now();
+        let threads = build_threads(&entries);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(30),
+            "took {:?}",
+            started.elapsed()
+        );
+        assert_eq!(threads.len(), 1);
+        let nodes = flatten_threads_to_indices(&threads);
+        assert_eq!(nodes.len(), n as usize);
+        assert_eq!(nodes.iter().map(|(_, d)| *d).max(), Some(n as usize - 1));
+    }
+
+    #[test]
+    fn test_many_direct_replies_to_one_message() {
+        let base = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        let n: u64 = 30_000;
+        let mut entries = vec![make_entry(0, "<root@x>", None, vec![], "Poll", base)];
+        entries.extend((1..n).map(|i| {
+            let id = format!("<r{i}@x>");
+            let date = base + chrono::Duration::seconds(i as i64);
+            make_entry(i, &id, Some("<root@x>"), vec![], "Re: Poll", date)
+        }));
+        let started = std::time::Instant::now();
+        let threads = build_threads(&entries);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(30),
+            "took {:?}",
+            started.elapsed()
+        );
+        assert_eq!(threads.len(), 1);
+        let nodes = flatten_threads_to_indices(&threads);
+        assert_eq!(nodes.len(), n as usize);
+        assert_eq!(
+            nodes.iter().filter(|(_, d)| *d == 1).count(),
+            n as usize - 1
+        );
+    }
+
+    #[test]
+    fn test_reference_cycles_are_still_refused() {
+        let base = Utc.with_ymd_and_hms(2015, 4, 16, 9, 0, 0).unwrap();
+        // a replies to b, b replies to c, c replies to a.
+        let entries = vec![
+            make_entry(0, "<a@x>", Some("<b@x>"), vec![], "Loop", base),
+            make_entry(1, "<b@x>", Some("<c@x>"), vec![], "Loop", base),
+            make_entry(2, "<c@x>", Some("<a@x>"), vec![], "Loop", base),
+        ];
+        let nodes = flatten_threads_to_indices(&build_threads(&entries));
+        let mut seen: Vec<usize> = nodes.iter().map(|(i, _)| *i).collect();
+        seen.sort_unstable();
+        assert_eq!(seen, vec![0, 1, 2], "every message appears exactly once");
     }
 
     #[test]
