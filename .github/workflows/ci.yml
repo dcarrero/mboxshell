@@ -48,6 +48,20 @@ jobs:
           tool: cargo-audit
       - name: Audit dependencies
         run: cargo audit
+  # The declared minimum Rust version (`rust-version` in Cargo.toml) must
+  # really build the locked dependency tree. Nothing checked it, and 1.85
+  # stayed declared after dependencies had moved on to 1.88. A `check` on
+  # one runner: no tests, no linking.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch
+        with:
+          toolchain: "1.88"
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Check with the minimum supported Rust
+        run: cargo check --locked
   test:
     strategy:
       matrix:

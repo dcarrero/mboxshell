@@ -79,7 +79,7 @@ En Windows, mueve el `.exe` a una carpeta de tu `PATH`, o ejecútalo directament
 
 ### Compilar desde el código fuente
 
-Requiere [Rust](https://www.rust-lang.org/tools/install) 1.85 o posterior.
+Requiere [Rust](https://www.rust-lang.org/tools/install) 1.88 o posterior.
 
 ```bash
 git clone https://github.com/dcarrero/mboxshell.git

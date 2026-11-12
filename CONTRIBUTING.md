@@ -26,7 +26,7 @@ If you see something off, contact the maintainer at <https://carrero.es> or via 
 
 ### Prerequisites
 
-- Rust **1.85** or newer (MSRV — see `rust-version` in `Cargo.toml`). Install via [rustup](https://rustup.rs).
+- Rust **1.88** or newer (MSRV — see `rust-version` in `Cargo.toml`). Install via [rustup](https://rustup.rs).
 - A POSIX-ish shell. Windows is supported as a target; building from Windows works too but the helper commands below assume bash/zsh.
 
 ```bash
@@ -62,7 +62,7 @@ If a fixture needs to be larger than a few KB (multipart trees, base64 attachmen
 
 The project follows the rules in `CLAUDE.md`:
 
-- Rust edition 2021, MSRV 1.85.
+- Rust edition 2021, MSRV 1.88.
 - `cargo clippy -- -D warnings` must pass — always.
 - `cargo fmt` applied — always.
 - Public functions need `///` doc comments.

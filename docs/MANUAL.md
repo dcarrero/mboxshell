@@ -79,7 +79,7 @@ On Windows, move the `.exe` into a folder on your `PATH`, or run it directly.
 
 ### Build from source
 
-Requires [Rust](https://www.rust-lang.org/tools/install) 1.85 or later.
+Requires [Rust](https://www.rust-lang.org/tools/install) 1.88 or later.
 
 ```bash
 git clone https://github.com/dcarrero/mboxshell.git
