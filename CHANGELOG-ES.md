@@ -4,6 +4,13 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.4.1
+
+Actualización de seguridad de dos dependencias; el programa funciona igual y el índice sigue en v7.
+
+- Seguridad: **`ammonia` 4.2.4 → 4.2.5** (RUSTSEC-2026-0533, XSS por mutación con SVG y MathML incrustados), la biblioteca que sanea el HTML de los mensajes en las exportaciones HTML y la vista externa (`H`).
+- Seguridad: **`rustix` 1.1.3 → 1.1.6** (RUSTSEC-2026-0486). `cargo audit` vuelve a no avisar de nada.
+
 ## v1.4.0
 
 Una revisión de seguridad, estabilidad y rendimiento de todo el programa. 40 tests nuevos (370 en total). Cambia el formato del índice (v7): los índices existentes se regeneran solos la primera vez que se abre cada buzón. Para compilar desde el código hace falta Rust 1.88.

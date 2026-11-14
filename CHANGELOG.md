@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.4.1
+
+Security update of two dependencies; no change in behaviour, and the index stays at v7.
+
+- Security: **`ammonia` 4.2.4 → 4.2.5** (RUSTSEC-2026-0533, mutation XSS through embedded SVG and MathML), the library that sanitizes the HTML of messages for HTML exports and the external view (`H`).
+- Security: **`rustix` 1.1.3 → 1.1.6** (RUSTSEC-2026-0486). `cargo audit` reports nothing again.
+
 ## v1.4.0
 
 A security, stability and performance review of the whole program. 40 new tests (370 total). The index format changes (v7): existing indexes are rebuilt automatically the first time a mailbox is opened. Building from source now needs Rust 1.88.
