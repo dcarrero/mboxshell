@@ -5,6 +5,7 @@
 use std::io::Write;
 use std::path::Path;
 
+use crate::export::attachment::FolderNaming;
 use crate::model::mail::MailEntry;
 
 /// Export a list of entries to a CSV file.
@@ -25,6 +26,21 @@ pub fn export_csv(
     export_csv_with_separator(entries, output_path, snippets, sep)
 }
 
+/// [`export_csv`] with a `File` column, last, when `naming` numbers the
+/// messages (`seq-no`/`seq-no0`): the name, without extension, that `export
+/// -f eml|txt|html` gives each message under the same naming (`0007` for
+/// `0007.html` and folder `0007/`), so a row can be joined to its file
+/// (issue #59). Date-and-subject names get no column: on a collision the
+/// exporters add a suffix that only writing the files decides.
+pub fn export_csv_named(
+    entries: &[&MailEntry],
+    output_path: &Path,
+    naming: Option<FolderNaming>,
+) -> anyhow::Result<()> {
+    let sep = crate::config::active().export.csv_separator;
+    write_csv(entries, output_path, None, naming, sep)
+}
+
 /// [`export_csv`] with an explicit field separator.
 pub fn export_csv_with_separator(
     entries: &[&MailEntry],
@@ -32,6 +48,17 @@ pub fn export_csv_with_separator(
     snippets: Option<&[String]>,
     sep: char,
 ) -> anyhow::Result<()> {
+    write_csv(entries, output_path, snippets, None, sep)
+}
+
+fn write_csv(
+    entries: &[&MailEntry],
+    output_path: &Path,
+    snippets: Option<&[String]>,
+    naming: Option<FolderNaming>,
+    sep: char,
+) -> anyhow::Result<()> {
+    let naming = naming.filter(|n| matches!(n, FolderNaming::Sequence { .. }));
     // Buffered (one syscall per row made 100k rows spend most of their time
     // in the kernel) and written to a fresh temp file renamed into place, so
     // a symlink at `output_path` is replaced rather than written through.
@@ -58,6 +85,9 @@ pub fn export_csv_with_separator(
     if snippets.is_some() {
         columns.push("Snippet");
     }
+    if naming.is_some() {
+        columns.push("File");
+    }
     writeln!(file, "{}", columns.join(&sep.to_string()))?;
 
     // Data rows
@@ -83,6 +113,9 @@ pub fn export_csv_with_separator(
         if let Some(snips) = snippets {
             let snippet = snips.get(i).map(|s| s.as_str()).unwrap_or("");
             fields.push(csv_escape(snippet, sep));
+        }
+        if let Some(stem) = FolderNaming::file_stem(naming, entry) {
+            fields.push(csv_escape(&stem, sep));
         }
 
         writeln!(file, "{}", fields.join(&sep.to_string()))?;

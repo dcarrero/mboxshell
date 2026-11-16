@@ -232,7 +232,8 @@ enum Commands {
         /// (date and subject, the default) keeps the usual names, seq-no or
         /// seq-no0 name each file after its message's number (`0007.html`
         /// for folder `0007/`). txt and html also list that folder under
-        /// the attachments.
+        /// the attachments; csv adds a last column, File, with that name
+        /// (`0007`, no extension).
         #[arg(long, value_enum)]
         dirname: Option<AttachmentDirname>,
         /// Minimum digits of a seq-no/seq-no0 name, as in `attachments`
@@ -449,7 +450,7 @@ const ARG_HELP_ES: &[(&str, &str, &str)] = &[
     (
         "export",
         "dirname",
-        "Nombrar los ficheros eml/txt/html como las carpetas de `attachments`: dts (fecha y asunto, por defecto) deja los nombres de siempre; seq-no o seq-no0 nombran cada fichero con el número de su mensaje (`0007.html` para la carpeta `0007/`). En txt y html, además, la lista de adjuntos indica esa carpeta",
+        "Nombrar los ficheros eml/txt/html como las carpetas de `attachments`: dts (fecha y asunto, por defecto) deja los nombres de siempre; seq-no o seq-no0 nombran cada fichero con el número de su mensaje (`0007.html` para la carpeta `0007/`). En txt y html, además, la lista de adjuntos indica esa carpeta; en csv, una última columna, File, lleva ese nombre (`0007`, sin extensión)",
     ),
     (
         "export",
@@ -1023,7 +1024,7 @@ fn cmd_export(
             if let Some(parent) = csv_path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            mboxshell::export::csv::export_csv(&selected, &csv_path, None)?;
+            mboxshell::export::csv::export_csv_named(&selected, &csv_path, Some(naming))?;
             pb.finish_and_clear();
             println!("  {} {}", i18n::cli_exported_csv(), csv_path.display());
         }

@@ -69,3 +69,61 @@ fn test_html_export_embeds_cid_images() {
     assert!(!html.contains("src=\"data:"), "{html}");
     assert!(!html.contains("cid:"), "{html}");
 }
+
+/// The `File` column of a numbered CSV export names the `.html`/`.eml` file
+/// that `export` writes for the same row under the same naming (issue #59),
+/// including when only some messages are selected.
+#[test]
+fn test_csv_file_column_matches_exported_files() {
+    use mboxshell::export::attachment::FolderNaming;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let mbox_path = tmp.path().join("simple.mbox");
+    std::fs::copy("tests/fixtures/simple.mbox", &mbox_path).unwrap();
+    let entries = builder::build_index(&mbox_path, true, None).unwrap();
+    assert!(entries.len() > 2);
+    // Every other message, as `--query` would pick a subset; the numbers
+    // still count the whole mailbox.
+    let selected: Vec<_> = entries.iter().step_by(2).collect();
+    let naming = FolderNaming::sequence(1, 3, entries.len());
+
+    let out = tmp.path().join("out");
+    let mut store = MboxStore::open(&mbox_path).unwrap();
+    mboxshell::export::eml::export_multiple_eml_opts(
+        &mut store,
+        &selected,
+        &out,
+        false,
+        Some(naming),
+        &|_, _| {},
+    )
+    .unwrap();
+    let opts = HtmlOptions {
+        naming: Some(naming),
+        ..HtmlOptions::default()
+    };
+    for entry in &selected {
+        let body = store.get_message(entry).unwrap();
+        export_html_with(entry, &body, &out, &opts).unwrap();
+    }
+
+    let csv_path = tmp.path().join("export.csv");
+    mboxshell::export::csv::export_csv_named(&selected, &csv_path, Some(naming)).unwrap();
+    let text = std::fs::read_to_string(&csv_path).unwrap();
+    let mut lines = text.trim_start_matches('\u{feff}').lines();
+    assert!(lines.next().unwrap().ends_with(",Message_ID,File"));
+    let stems: Vec<&str> = lines.map(|l| l.rsplit(',').next().unwrap()).collect();
+    assert_eq!(stems.len(), selected.len());
+    for (stem, entry) in stems.iter().zip(&selected) {
+        assert_eq!(*stem, format!("{:03}", entry.sequence + 1));
+        assert!(out.join(format!("{stem}.html")).is_file(), "{stem}.html");
+        assert!(out.join(format!("{stem}.eml")).is_file(), "{stem}.eml");
+    }
+
+    // Date-and-subject names leave the CSV as it always was.
+    mboxshell::export::csv::export_csv_named(&selected, &csv_path, Some(FolderNaming::DateSubject))
+        .unwrap();
+    let text = std::fs::read_to_string(&csv_path).unwrap();
+    let header = text.trim_start_matches('\u{feff}').lines().next().unwrap();
+    assert!(header.ends_with(",Message_ID"), "{header}");
+}
