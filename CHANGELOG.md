@@ -4,6 +4,13 @@ All notable changes to mboxshell are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.4.2
+
+The CSV export can point at the files of the other exports, and the dependencies are up to date. 1 new test (371 total); the index stays at v7.
+
+- Feature: **`export -f csv --dirname seq-no|seq-no0` adds a `File` column** (last, so the other columns keep their positions) with the name, without extension, that `export -f html|eml|txt` gives the same message under the same naming: `0007` for `0007.html`, `0007.eml` and the attachment folder `0007/`. `--seq-width` applies, and the numbers count the whole mailbox under `--query` too. Scripts that post-process an export can join each row to its file instead of listing `*.html` in the folder (#59). With the default `dts` names the CSV is unchanged: when two messages share a date and subject, the suffix that tells them apart is decided only when the files are written.
+- Dependencies: compatible updates (clap 4.6, regex 1.13, rayon 1.12, chrono 0.4.45, encoding_rs 0.8.44, tempfile 3.27 and others); Rust 1.88 is still enough to build. `cargo audit` reports nothing.
+
 ## v1.4.1
 
 Security update of two dependencies; no change in behaviour, and the index stays at v7.

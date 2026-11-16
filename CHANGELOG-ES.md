@@ -4,6 +4,13 @@ Todos los cambios relevantes de mboxshell se documentan en este fichero.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto se ajusta a [Semantic Versioning](https://semver.org/lang/es/).
 
+## v1.4.2
+
+La exportación CSV puede señalar los ficheros de las otras exportaciones, y las dependencias están al día. 1 prueba nueva (371 en total); el índice sigue en v7.
+
+- Novedad: **`export -f csv --dirname seq-no|seq-no0` añade una columna `File`** (la última, así las demás no cambian de posición) con el nombre, sin extensión, que `export -f html|eml|txt` da al mismo mensaje con el mismo criterio: `0007` para `0007.html`, `0007.eml` y la carpeta de adjuntos `0007/`. Respeta `--seq-width`, y con `--query` la numeración sigue contando el buzón entero. Un script que procese una exportación puede unir cada fila con su fichero en vez de listar los `*.html` de la carpeta (#59). Con los nombres `dts` de siempre el CSV no cambia: cuando dos mensajes comparten fecha y asunto, el sufijo que los distingue solo se decide al escribir los ficheros.
+- Dependencias: actualizaciones compatibles (clap 4.6, regex 1.13, rayon 1.12, chrono 0.4.45, encoding_rs 0.8.44, tempfile 3.27 y otras); sigue bastando Rust 1.88 para compilar. `cargo audit` no avisa de nada.
+
 ## v1.4.1
 
 Actualización de seguridad de dos dependencias; el programa funciona igual y el índice sigue en v7.
